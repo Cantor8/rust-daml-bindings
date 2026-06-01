@@ -78,6 +78,9 @@ pub use self::identifier::DamlIdentifier;
 mod transaction;
 pub use self::transaction::DamlTransaction;
 
+/// Cross-synchronizer contract reassignment: data + commands.
+pub mod reassignment;
+
 mod configuration;
 pub use self::configuration::DamlLedgerConfiguration;
 

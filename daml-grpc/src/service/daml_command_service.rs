@@ -4,13 +4,15 @@ use std::fmt::Debug;
 use tonic::transport::Channel;
 use tracing::{instrument, trace};
 
-use crate::data::filter::DamlTransactionFormat;
+use crate::data::filter::{DamlEventFormat, DamlTransactionFormat};
 use crate::data::offset::DamlLedgerOffset;
+use crate::data::reassignment::{DamlReassignment, DamlReassignmentCommands};
 use crate::data::transaction::DamlTransaction;
 use crate::data::{DamlCommands, DamlResult};
 use crate::grpc_protobuf::com::daml::ledger::api::v2::command_service_client::CommandServiceClient;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::{
-    Commands, SubmitAndWaitForTransactionRequest, SubmitAndWaitRequest,
+    Commands, ReassignmentCommands, SubmitAndWaitForReassignmentRequest, SubmitAndWaitForTransactionRequest,
+    SubmitAndWaitRequest,
 };
 use crate::service::common::make_request;
 use crate::util::Required;
@@ -29,8 +31,7 @@ use crate::util::Required;
 ///   selectable via `TransactionFormat::transaction_shape =
 ///   LedgerEffects`.
 /// - A new `SubmitAndWaitForReassignment` covers cross-synchronizer
-///   contract movements; not wired up here — see the upcoming
-///   reassignment checkpoint.
+///   contract movements.
 #[derive(Debug)]
 pub struct DamlCommandService<'a> {
     channel: Channel,
@@ -117,6 +118,35 @@ impl<'a> DamlCommandService<'a> {
             .into_inner();
         trace!(?response);
         DamlTransaction::try_from(response.transaction.req()?)
+    }
+
+    /// Submit a [`DamlReassignmentCommands`] payload and wait for the
+    /// resulting reassignment.
+    ///
+    /// `event_format` controls which events appear in the returned
+    /// `DamlReassignment`. Passing `None` returns a reassignment with
+    /// no events populated — useful when the caller only cares about
+    /// the `update_id` and offset. The events themselves take ACS-delta
+    /// shape regardless of any `transaction_shape` you might set
+    /// elsewhere; reassignments have no notion of a tree.
+    #[instrument(skip(self))]
+    pub async fn submit_and_wait_for_reassignment(
+        &self,
+        commands: impl Into<DamlReassignmentCommands> + Debug,
+        event_format: Option<DamlEventFormat>,
+    ) -> DamlResult<DamlReassignment> {
+        let payload = SubmitAndWaitForReassignmentRequest {
+            reassignment_commands: Some(ReassignmentCommands::from(commands.into())),
+            event_format: event_format.map(Into::into),
+        };
+        trace!(payload = ?payload, token = ?self.auth_token);
+        let response = self
+            .client()
+            .submit_and_wait_for_reassignment(make_request(payload, self.auth_token)?)
+            .await?
+            .into_inner();
+        trace!(?response);
+        DamlReassignment::try_from(response.reassignment.req()?)
     }
 
     fn client(&self) -> CommandServiceClient<Channel> {
