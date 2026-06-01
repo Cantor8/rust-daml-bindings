@@ -65,4 +65,9 @@ impl<'a> DamlModulePayload<'a> {
     pub fn templates(&self) -> &'a [daml_lf_2::DefTemplate] {
         &self.module.templates
     }
+
+    /// Slice of the interface definitions in this module.
+    pub fn interfaces(&self) -> &'a [daml_lf_2::DefInterface] {
+        &self.module.interfaces
+    }
 }

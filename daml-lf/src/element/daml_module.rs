@@ -23,6 +23,8 @@ pub struct DamlModule<'a> {
     child_modules: HashMap<Cow<'a, str>, DamlModule<'a>>,
     #[serde(serialize_with = "serialize::serialize_map")]
     data_types: HashMap<Cow<'a, str>, DamlData<'a>>,
+    #[serde(serialize_with = "serialize::serialize_map")]
+    interfaces: HashMap<Cow<'a, str>, crate::element::DamlInterface<'a>>,
     #[cfg(feature = "full")]
     values: HashMap<Cow<'a, str>, DamlDefValue<'a>>,
 }
@@ -39,6 +41,7 @@ impl<'a> DamlModule<'a> {
         flags: DamlFeatureFlags,
         synonyms: Vec<DamlDefTypeSyn<'a>>,
         data_types: HashMap<Cow<'a, str>, DamlData<'a>>,
+        interfaces: HashMap<Cow<'a, str>, crate::element::DamlInterface<'a>>,
         #[cfg(feature = "full")] values: HashMap<Cow<'a, str>, DamlDefValue<'a>>,
     ) -> Self {
         Self {
@@ -47,6 +50,7 @@ impl<'a> DamlModule<'a> {
             synonyms,
             child_modules: HashMap::default(),
             data_types,
+            interfaces,
             #[cfg(feature = "full")]
             values,
         }
@@ -75,6 +79,11 @@ impl<'a> DamlModule<'a> {
     /// The `DamlData` declared in the module.
     pub fn data_types(&self) -> impl Iterator<Item = &DamlData<'a>> {
         self.data_types.values()
+    }
+
+    /// The `DamlInterface`s declared in the module.
+    pub fn interfaces(&self) -> impl Iterator<Item = &crate::element::DamlInterface<'a>> {
+        self.interfaces.values()
     }
 
     /// The `DamlDefValue` declared in the module.
@@ -144,6 +153,7 @@ impl<'a> DamlModule<'a> {
         self.flags = other.flags;
         self.data_types = other.data_types;
         self.synonyms = other.synonyms;
+        self.interfaces = other.interfaces;
         #[cfg(feature = "full")]
         {
             self.values = other.values;
@@ -158,6 +168,7 @@ impl<'a> DamlModule<'a> {
             synonyms: Vec::default(),
             child_modules: HashMap::default(),
             data_types: HashMap::default(),
+            interfaces: HashMap::default(),
             #[cfg(feature = "full")]
             values: HashMap::default(),
         }
@@ -170,9 +181,11 @@ impl<'a> DamlVisitableElement<'a> for DamlModule<'a> {
         self.synonyms.iter().for_each(|syn| syn.accept(visitor));
         if visitor.sort_elements() {
             self.data_types.values().sorted_by_key(|ty| ty.name()).for_each(|data| data.accept(visitor));
+            self.interfaces.values().sorted_by_key(|i| i.name()).for_each(|i| i.accept(visitor));
             self.child_modules.values().sorted_by_key(|&m| m.path.clone()).for_each(|module| module.accept(visitor));
         } else {
             self.data_types.values().for_each(|data| data.accept(visitor));
+            self.interfaces.values().for_each(|i| i.accept(visitor));
             self.child_modules.values().for_each(|module| module.accept(visitor));
         }
         #[cfg(feature = "full")]

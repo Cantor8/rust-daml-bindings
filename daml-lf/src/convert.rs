@@ -9,6 +9,7 @@
 mod archive_payload;
 mod data_payload;
 mod field_payload;
+mod interface_payload;
 mod interned;
 mod module_payload;
 mod package_payload;
@@ -26,14 +27,15 @@ use bounded_static::ToBoundedStatic;
 use crate::convert::archive_payload::DamlArchivePayload;
 use crate::convert::data_payload::DamlDataPayload;
 use crate::convert::field_payload::convert_field;
+use crate::convert::interface_payload::convert_interface;
 use crate::convert::interned::PackageInternedResolver;
 use crate::convert::module_payload::DamlModulePayload;
 use crate::convert::package_payload::DamlPackagePayload;
 use crate::convert::template_payload::{convert_choice, convert_def_key, convert_implements};
 use crate::convert::type_payload::{convert_type, convert_type_params};
 use crate::element::{
-    DamlArchive, DamlData, DamlDefTypeSyn, DamlEnum, DamlFeatureFlags, DamlModule, DamlPackage, DamlRecord,
-    DamlTemplate, DamlVariant,
+    DamlArchive, DamlData, DamlDefTypeSyn, DamlEnum, DamlFeatureFlags, DamlInterface, DamlModule, DamlPackage,
+    DamlRecord, DamlTemplate, DamlVariant,
 };
 use crate::lf_protobuf::daml_lf_2;
 use crate::lf_protobuf::daml_lf_2::def_data_type::DataCons;
@@ -127,6 +129,7 @@ fn insert_module<'a>(
     let leaf_path = path.iter().map(|s| Cow::Borrowed(*s)).collect::<Vec<_>>();
     let data_types = build_data_types(module, package, &leaf_path)?;
     let synonyms = build_synonyms(module, package, &leaf_path)?;
+    let interfaces = build_interfaces(module, package, &leaf_path)?;
     let leaf = DamlModule::new_leaf(
         leaf_path,
         DamlFeatureFlags::new(
@@ -136,11 +139,25 @@ fn insert_module<'a>(
         ),
         synonyms,
         data_types,
+        interfaces,
         #[cfg(feature = "full")]
         HashMap::new(),
     );
     cursor.take_from(leaf);
     Ok(())
+}
+
+fn build_interfaces<'a>(
+    module: &DamlModulePayload<'a>,
+    package: &'a DamlPackagePayload<'a>,
+    module_path: &[Cow<'a, str>],
+) -> DamlLfResult<HashMap<Cow<'a, str>, DamlInterface<'a>>> {
+    let mut out = HashMap::new();
+    for proto in module.interfaces() {
+        let interface = convert_interface(proto, package, module_path)?;
+        out.insert(Cow::Owned(interface.name().to_owned()), interface);
+    }
+    Ok(out)
 }
 
 fn build_synonyms<'a>(
