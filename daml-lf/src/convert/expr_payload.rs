@@ -1,16 +1,13 @@
 //! LF2 expression-tree → element/ conversion.
 //!
-//! 3.8b implements the leaf variants of [`DamlExpr`]:
-//! `VarInternedStr`, `Val`, `Builtin`, `BuiltinCon`, `BuiltinLit`,
-//! `Nil`, `OptionalNone`, and `TypeRep`. All non-leaf variants still
-//! return [`DamlLfConvertError::MissingRequiredField`] — those land
-//! in 3.8c+ (record/variant/enum, App/Case/Let, Update, Throw,
-//! interface ops).
+//! 3.8c adds the data-shaped variants: record / variant / enum /
+//! struct construction, projection, and update, plus the `ToAny` /
+//! `FromAny` conversions used to encode "Any" template payloads.
 //!
 //! Per-checkpoint scope:
-//!  - 3.8b: leaves (this checkpoint)
+//!  - 3.8b: leaves.
 //!  - 3.8c: record / variant / enum / struct construction +
-//!    projection + update + To/FromAny.
+//!    projection + update + To/FromAny (this checkpoint).
 //!  - 3.8d: application / abstraction / case / let / cons /
 //!    optional-some.
 //!  - 3.8e: exception expressions (Throw, ToAnyException,
@@ -33,10 +30,12 @@ use std::borrow::Cow;
 
 use crate::convert::interned::PackageInternedResolver;
 use crate::convert::package_payload::DamlPackagePayload;
-use crate::convert::type_payload::convert_type;
+use crate::convert::type_payload::{convert_tycon_id, convert_type, convert_type_con};
 use crate::convert::util::Required;
 use crate::element::{
-    DamlBuiltinFunction, DamlExpr, DamlLocalValueName, DamlPrimCon, DamlPrimLit, DamlValueName,
+    DamlBuiltinFunction, DamlEnumCon, DamlExpr, DamlFieldWithExpr, DamlFromAny, DamlLocalValueName, DamlPrimCon,
+    DamlPrimLit, DamlRecCon, DamlRecProj, DamlRecUpd, DamlStructCon, DamlStructProj, DamlStructUpd, DamlToAny,
+    DamlValueName, DamlVariantCon,
 };
 use crate::error::{DamlLfConvertError, DamlLfConvertResult};
 use crate::lf_protobuf::daml_lf_2;
@@ -71,19 +70,75 @@ pub fn convert_expr<'a>(
             Ok(DamlExpr::OptionalNone(ty))
         },
         ExprSum::TypeRep(ty) => Ok(DamlExpr::TypeRep(convert_type(ty, package)?)),
-        // 3.8c+: record / variant / enum / struct.
-        ExprSum::RecCon(_)
-        | ExprSum::RecProj(_)
-        | ExprSum::RecUpd(_)
-        | ExprSum::VariantCon(_)
-        | ExprSum::EnumCon(_)
-        | ExprSum::StructCon(_)
-        | ExprSum::StructProj(_)
-        | ExprSum::StructUpd(_)
-        | ExprSum::ToAny(_)
-        | ExprSum::FromAny(_)
+        ExprSum::RecCon(rc) => {
+            let tycon = convert_type_con(rc.tycon.as_ref().req()?, package)?;
+            let fields = convert_field_exprs(&rc.fields, package)?;
+            Ok(DamlExpr::RecCon(DamlRecCon::new(tycon, fields)))
+        },
+        ExprSum::RecProj(rp) => {
+            let tycon = convert_type_con(rp.tycon.as_ref().req()?, package)?;
+            let record = convert_expr(rp.record.as_deref().req()?, package)?;
+            let field = package.resolve_string(rp.field_interned_str)?;
+            Ok(DamlExpr::RecProj(DamlRecProj::new(tycon, Box::new(record), Cow::Borrowed(field))))
+        },
+        ExprSum::RecUpd(ru) => {
+            let tycon = convert_type_con(ru.tycon.as_ref().req()?, package)?;
+            let record = convert_expr(ru.record.as_deref().req()?, package)?;
+            let update = convert_expr(ru.update.as_deref().req()?, package)?;
+            let field = package.resolve_string(ru.field_interned_str)?;
+            Ok(DamlExpr::RecUpd(DamlRecUpd::new(
+                tycon,
+                Box::new(record),
+                Box::new(update),
+                Cow::Borrowed(field),
+            )))
+        },
+        ExprSum::VariantCon(vc) => {
+            let tycon = convert_type_con(vc.tycon.as_ref().req()?, package)?;
+            let variant_arg = convert_expr(vc.variant_arg.as_deref().req()?, package)?;
+            let variant_con = package.resolve_string(vc.variant_con_interned_str)?;
+            Ok(DamlExpr::VariantCon(DamlVariantCon::new(
+                tycon,
+                Box::new(variant_arg),
+                Cow::Borrowed(variant_con),
+            )))
+        },
+        ExprSum::EnumCon(ec) => {
+            let tycon = convert_tycon_id(ec.tycon.as_ref().req()?, package)?;
+            let enum_con = package.resolve_string(ec.enum_con_interned_str)?;
+            Ok(DamlExpr::EnumCon(DamlEnumCon::new(Box::new(tycon), Cow::Borrowed(enum_con))))
+        },
+        ExprSum::StructCon(sc) => {
+            let fields = convert_field_exprs(&sc.fields, package)?;
+            Ok(DamlExpr::StructCon(DamlStructCon::new(fields)))
+        },
+        ExprSum::StructProj(sp) => {
+            let struct_expr = convert_expr(sp.r#struct.as_deref().req()?, package)?;
+            let field = package.resolve_string(sp.field_interned_str)?;
+            Ok(DamlExpr::StructProj(DamlStructProj::new(Box::new(struct_expr), Cow::Borrowed(field))))
+        },
+        ExprSum::StructUpd(su) => {
+            let struct_expr = convert_expr(su.r#struct.as_deref().req()?, package)?;
+            let update = convert_expr(su.update.as_deref().req()?, package)?;
+            let field = package.resolve_string(su.field_interned_str)?;
+            Ok(DamlExpr::StructUpd(DamlStructUpd::new(
+                Box::new(struct_expr),
+                Box::new(update),
+                Cow::Borrowed(field),
+            )))
+        },
+        ExprSum::ToAny(ta) => {
+            let ty = convert_type(ta.r#type.as_ref().req()?, package)?;
+            let expr = convert_expr(ta.expr.as_deref().req()?, package)?;
+            Ok(DamlExpr::ToAny(DamlToAny::new(ty, Box::new(expr))))
+        },
+        ExprSum::FromAny(fa) => {
+            let ty = convert_type(fa.r#type.as_ref().req()?, package)?;
+            let expr = convert_expr(fa.expr.as_deref().req()?, package)?;
+            Ok(DamlExpr::FromAny(DamlFromAny::new(ty, Box::new(expr))))
+        },
         // 3.8d: App / Case / Let / Cons / OptionalSome.
-        | ExprSum::App(_)
+        ExprSum::App(_)
         | ExprSum::TyApp(_)
         | ExprSum::Abs(_)
         | ExprSum::TyAbs(_)
@@ -115,6 +170,23 @@ pub fn convert_expr<'a>(
         // 2.dev experimental — out of scope.
         | ExprSum::Experimental(_) => Err(DamlLfConvertError::MissingRequiredField),
     }
+}
+
+/// Convert a slice of LF2 `FieldWithExpr` into the element-layer
+/// [`DamlFieldWithExpr`] vector used by record / struct
+/// construction.
+fn convert_field_exprs<'a>(
+    protos: &[daml_lf_2::FieldWithExpr],
+    package: &'a DamlPackagePayload<'a>,
+) -> DamlLfConvertResult<Vec<DamlFieldWithExpr<'a>>> {
+    protos
+        .iter()
+        .map(|f| {
+            let name = package.resolve_string(f.field_interned_str)?;
+            let expr = convert_expr(f.expr.as_ref().req()?, package)?;
+            Ok(DamlFieldWithExpr::new(Cow::Borrowed(name), expr))
+        })
+        .collect()
 }
 
 /// Convert an LF2 `ValueId` (module reference + interned dotted

@@ -127,6 +127,19 @@ fn convert_builtin<'a>(
     })
 }
 
+/// Convert an LF2 `r#type::Con` (a possibly-applied type constructor)
+/// into a [`DamlTyCon`]: the constructor name plus its type
+/// arguments. The result is the same shape produced by the matching
+/// arm in [`convert_type`].
+pub fn convert_type_con<'a>(
+    proto: &daml_lf_2::r#type::Con,
+    package: &'a DamlPackagePayload<'a>,
+) -> DamlLfConvertResult<DamlTyCon<'a>> {
+    let tycon = convert_tycon_id(proto.tycon.as_ref().req()?, package)?;
+    let args = convert_types(&proto.args, package)?;
+    Ok(DamlTyCon::new(Box::new(tycon), args))
+}
+
 /// Convert an LF2 `TypeConId` into a [`DamlTyConName::Absolute`].
 ///
 /// 3.4 always produces the `Absolute` variant — the `Local` /
