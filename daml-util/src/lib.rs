@@ -16,13 +16,11 @@
 #![doc(html_logo_url = "https://docs.daml.com/_static/images/DAML_Logo_Blue.svg")]
 #![doc(html_root_url = "https://docs.rs/daml-util/0.2.2")]
 
-// TODO annoying having to specify both "util" and "sandbox" features to be able to use sandbox.
-
-#[cfg(feature = "sandbox")]
-mod sandbox_auth;
+// The v1-shaped sandbox JWT token builder was removed in the v2
+// migration: Canton v2 uses a different claim shape
+// (`aud` / `scope` / `sub` style audience-scoped tokens) that the
+// v1 `https://daml.com/ledger-api` claim doesn't model. A v2 token
+// helper is a planned follow-up.
 
 /// Conveniences for working with a collection of [`DamlPackage`](daml_grpc::data::package::DamlPackage).
 pub mod package;
-
-#[cfg(feature = "sandbox")]
-pub use sandbox_auth::{DamlSandboxAuthError, DamlSandboxAuthResult, DamlSandboxAuthToken, DamlSandboxTokenBuilder};
