@@ -244,13 +244,11 @@ impl DamlGrpcClient {
         DamlPackageService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
-    /// DOCME
+    /// Retrieve a [`DamlCommandSubmissionService`] for fire-and-forget
+    /// command submissions. Completion is observed separately through
+    /// `command_completion_service()`.
     pub fn command_submission_service(&self) -> DamlCommandSubmissionService<'_> {
-        DamlCommandSubmissionService::new(
-            self.channel.clone(),
-            &self.ledger_identity,
-            self.config.auth_token.as_deref(),
-        )
+        DamlCommandSubmissionService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
     /// DOCME

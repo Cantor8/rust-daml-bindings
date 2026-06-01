@@ -1,7 +1,7 @@
 use crate::data::identifier::DamlIdentifier;
 use crate::data::value::DamlValue;
-use crate::grpc_protobuf::com::daml::ledger::api::v1::command::Command;
-use crate::grpc_protobuf::com::daml::ledger::api::v1::ExerciseByKeyCommand;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::command::Command;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::ExerciseByKeyCommand;
 
 /// Exercise a choice on an existing contract specified by its key.
 #[derive(Debug, Eq, PartialEq, Clone)]

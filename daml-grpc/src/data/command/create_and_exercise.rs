@@ -1,7 +1,7 @@
 use crate::data::identifier::DamlIdentifier;
 use crate::data::value::{DamlRecord, DamlValue};
-use crate::grpc_protobuf::com::daml::ledger::api::v1::command::Command;
-use crate::grpc_protobuf::com::daml::ledger::api::v1::CreateAndExerciseCommand;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::command::Command;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::CreateAndExerciseCommand;
 
 /// Create a contract and exercise a choice on it in the same transaction.
 #[derive(Debug, Eq, PartialEq, Clone)]

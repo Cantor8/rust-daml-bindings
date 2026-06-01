@@ -1,7 +1,7 @@
 use crate::data::identifier::DamlIdentifier;
 use crate::data::value::DamlRecord;
-use crate::grpc_protobuf::com::daml::ledger::api::v1::command::Command;
-use crate::grpc_protobuf::com::daml::ledger::api::v1::CreateCommand;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::command::Command;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::CreateCommand;
 
 /// Create a new contract instance based on a template.
 #[derive(Debug, Eq, PartialEq, Clone)]

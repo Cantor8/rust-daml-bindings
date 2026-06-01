@@ -158,14 +158,14 @@ impl<'a> DamlSimpleExecutor<'a> {
         act_as: Vec<String>,
         read_as: Vec<String>,
         workflow_id: &str,
-        application_id: &str,
+        user_id: &str,
         deduplication_period: Option<DamlCommandsDeduplicationPeriod>,
         min_ledger_time: Option<DamlMinLedgerTime>,
         auth_token: Option<&'a str>,
     ) -> Self {
         let command_factory = DamlCommandFactory::new(
             workflow_id,
-            application_id,
+            user_id,
             act_as,
             read_as,
             deduplication_period,

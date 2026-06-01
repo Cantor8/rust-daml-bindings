@@ -55,7 +55,9 @@ pub mod command {
 }
 
 mod commands;
-pub use self::commands::{DamlCommands, DamlCommandsDeduplicationPeriod, DamlMinLedgerTime};
+pub use self::commands::{
+    DamlCommands, DamlCommandsDeduplicationPeriod, DamlDisclosedContract, DamlMinLedgerTime, DamlPrefetchContractKey,
+};
 
 mod error;
 pub use self::error::DamlError;

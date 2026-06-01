@@ -1,12 +1,18 @@
-use crate::data::command::DamlCommand;
-use crate::data::{DamlCommands, DamlCommandsDeduplicationPeriod, DamlMinLedgerTime};
 use uuid::Uuid;
 
-/// Factory for creating [`DamlCommands`] to submit to a Daml ledger.
+use crate::data::command::DamlCommand;
+use crate::data::{DamlCommands, DamlCommandsDeduplicationPeriod, DamlMinLedgerTime};
+
+/// Factory for assembling [`DamlCommands`] payloads from a fixed set of
+/// submission parameters (workflow id, user id, act-as parties, dedup
+/// period, …) and a variable list of [`DamlCommand`]s.
+///
+/// v2 dropped the single-party `party` field; submissions act on behalf
+/// of the `act_as` set instead.
 #[derive(Debug)]
 pub struct DamlCommandFactory {
     workflow_id: String,
-    application_id: String,
+    user_id: String,
     act_as: Vec<String>,
     read_as: Vec<String>,
     deduplication_period: Option<DamlCommandsDeduplicationPeriod>,
@@ -16,7 +22,7 @@ pub struct DamlCommandFactory {
 impl DamlCommandFactory {
     pub fn new(
         workflow_id: impl Into<String>,
-        application_id: impl Into<String>,
+        user_id: impl Into<String>,
         act_as: impl Into<Vec<String>>,
         read_as: impl Into<Vec<String>>,
         deduplication_period: impl Into<Option<DamlCommandsDeduplicationPeriod>>,
@@ -24,7 +30,7 @@ impl DamlCommandFactory {
     ) -> Self {
         Self {
             workflow_id: workflow_id.into(),
-            application_id: application_id.into(),
+            user_id: user_id.into(),
             act_as: act_as.into(),
             read_as: read_as.into(),
             deduplication_period: deduplication_period.into(),
@@ -32,12 +38,12 @@ impl DamlCommandFactory {
         }
     }
 
-    pub const fn workflow_id(&self) -> &String {
+    pub fn workflow_id(&self) -> &str {
         &self.workflow_id
     }
 
-    pub fn application_id(&self) -> &str {
-        &self.application_id
+    pub fn user_id(&self) -> &str {
+        &self.user_id
     }
 
     pub fn act_as(&self) -> &[String] {
@@ -69,17 +75,17 @@ impl DamlCommandFactory {
         S: Into<String>,
         V: Into<Vec<DamlCommand>>,
     {
-        DamlCommands::new(
-            self.workflow_id.clone(),
-            self.application_id.clone(),
-            command_id.map_or_else(|| format!("{}", Uuid::new_v4()), Into::into),
-            "",
-            "",
-            self.act_as.clone(),
-            self.read_as.clone(),
-            commands.into(),
-            self.deduplication_period.clone(),
-            self.min_ledger_time.clone(),
-        )
+        DamlCommands {
+            workflow_id: self.workflow_id.clone(),
+            read_as: self.read_as.clone(),
+            deduplication_period: self.deduplication_period.clone(),
+            min_ledger_time: self.min_ledger_time.clone(),
+            ..DamlCommands::new(
+                self.user_id.clone(),
+                command_id.map_or_else(|| Uuid::new_v4().to_string(), Into::into),
+                self.act_as.clone(),
+                commands,
+            )
+        }
     }
 }

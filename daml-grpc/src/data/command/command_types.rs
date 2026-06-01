@@ -2,7 +2,7 @@ use crate::data::command::create::DamlCreateCommand;
 use crate::data::command::exercise::DamlExerciseCommand;
 use crate::data::command::exercise_by_key::DamlExerciseByKeyCommand;
 use crate::data::command::DamlCreateAndExerciseCommand;
-use crate::grpc_protobuf::com::daml::ledger::api::v1::Command;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::Command;
 
 /// A Daml ledger command.
 #[derive(Debug, Eq, PartialEq, Clone)]
