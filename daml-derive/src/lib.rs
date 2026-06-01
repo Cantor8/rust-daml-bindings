@@ -398,7 +398,15 @@ pub fn DamlTemplate(attr: proc_macro::TokenStream, input: proc_macro::TokenStrea
     let template_info: DamlTemplateInfo =
         DamlTemplateInfo::from_list(&parse_macro_input!(attr as AttributeArgs)).unwrap_or_else(|e| panic!("{}", e));
     let input: DeriveInput = parse_macro_input!(input as DeriveInput);
-    generator::generate_template(input, template_info.package_id, template_info.module_name)
+    if template_info.package_name.is_none() && template_info.package_id.is_none() {
+        panic!("#[DamlTemplate] requires at least one of `package_name = \"...\"` or `package_id = \"...\"`");
+    }
+    generator::generate_template(
+        input,
+        template_info.package_name,
+        template_info.package_id.unwrap_or_default(),
+        template_info.module_name,
+    )
 }
 
 /// Custom attribute for modelling Daml choices.
@@ -716,6 +724,14 @@ struct CodeGeneratorParameters {
 #[doc(hidden)]
 #[derive(Debug, FromMeta)]
 struct DamlTemplateInfo {
-    pub package_id: String,
+    /// Daml package-name (preferred under v2). When set, the
+    /// generated `template_id()` addresses the template by
+    /// `#<package_name>` on the v2 Ledger API wire.
+    #[darling(default)]
+    pub package_name: Option<String>,
+    /// Daml package-id hash. Required when `package_name` is not
+    /// provided; otherwise informational only.
+    #[darling(default)]
+    pub package_id: Option<String>,
     pub module_name: String,
 }

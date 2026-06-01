@@ -8,11 +8,15 @@ use daml_codegen::renderer::full::{
     quote_choice, quote_daml_enum, quote_daml_record, quote_daml_template, quote_daml_variant,
 };
 use daml_codegen::renderer::quote_archive;
-use daml_codegen::renderer::RenderContext;
-use daml_lf::element::{DamlChoice, DamlEnum, DamlRecord, DamlTemplate, DamlVariant};
-use daml_lf::DarFile;
+use daml_codegen::renderer::{RenderContext, RenderFilterMode};
+use daml_lf::element::{
+    DamlArchive, DamlChoice, DamlEnum, DamlModule, DamlPackage, DamlRecord, DamlTemplate, DamlVariant,
+};
+use daml_lf::{DarFile, LanguageVersion};
 use darling::FromMeta;
 use quote::quote;
+use std::borrow::Cow;
+use std::collections::HashMap;
 use syn::{AttributeArgs, Data, DataStruct, DeriveInput, Fields, ItemImpl};
 
 /// Generate a Rust `TokenStream` representing the supplied Daml Archive.
@@ -36,21 +40,50 @@ pub fn generate_tokens(args: AttributeArgs) -> proc_macro::TokenStream {
     }
 }
 
-pub fn generate_template(input: DeriveInput, package_id: String, module_name: String) -> proc_macro::TokenStream {
+pub fn generate_template(
+    input: DeriveInput,
+    package_name: Option<String>,
+    package_id: String,
+    module_name: String,
+) -> proc_macro::TokenStream {
     let struct_name = input.ident.to_string();
     match &input.data {
         Data::Struct(DataStruct {
             fields: Fields::Named(fields_named),
             ..
         }) => {
-            let template: AttrTemplate = extract_template(struct_name, package_id, module_name, fields_named);
+            let template: AttrTemplate = extract_template(struct_name, package_id.clone(), module_name, fields_named);
             let daml_template = DamlTemplate::from(&template);
-            let ctx = RenderContext::default();
+            // Build a synthetic single-package archive so the
+            // codegen's `ctx.package_name_for` resolves to the user-
+            // provided name. When no name is given, the archive is
+            // still empty and the codegen falls back to addressing
+            // by package-id.
+            let archive = synthesize_archive(&package_id, package_name.as_deref());
+            let ctx = RenderContext::with_archive(&archive, RenderFilterMode::default());
             let expanded = quote_daml_template(&ctx, &daml_template);
             proc_macro::TokenStream::from(expanded)
         },
         _ => panic!("the DamlTemplate attribute may only be applied to a named struct type"),
     }
+}
+
+/// Build a minimal one-package `DamlArchive` carrying the
+/// user-provided package-id / package-name pair. Used by the derive
+/// path so the shared codegen helpers (which look the package up
+/// via `RenderContext::package_name_for`) emit the right
+/// `DamlIdentifier` shape.
+fn synthesize_archive(package_id: &str, package_name: Option<&str>) -> DamlArchive<'static> {
+    let mut packages = HashMap::new();
+    let package = DamlPackage::new(
+        Cow::Owned(package_name.unwrap_or_default().to_string()),
+        Cow::Owned(package_id.to_string()),
+        None,
+        LanguageVersion::V2_1,
+        DamlModule::new_root(),
+    );
+    packages.insert(Cow::Owned(package_id.to_string()), package);
+    DamlArchive::new(Cow::Borrowed(""), Cow::Owned(package_id.to_string()), packages)
 }
 
 pub fn generate_choices(input: ItemImpl) -> proc_macro::TokenStream {
