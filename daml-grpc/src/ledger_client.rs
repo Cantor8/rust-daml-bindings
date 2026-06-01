@@ -251,13 +251,13 @@ impl DamlGrpcClient {
         DamlCommandSubmissionService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
-    /// DOCME
+    /// Retrieve a [`DamlCommandCompletionService`] for observing the
+    /// asynchronous outcome (success or rejection) of command
+    /// submissions, plus periodic [`OffsetCheckpoint`] markers.
+    ///
+    /// [`OffsetCheckpoint`]: crate::data::completion::DamlOffsetCheckpoint
     pub fn command_completion_service(&self) -> DamlCommandCompletionService<'_> {
-        DamlCommandCompletionService::new(
-            self.channel.clone(),
-            &self.ledger_identity,
-            self.config.auth_token.as_deref(),
-        )
+        DamlCommandCompletionService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
     /// DOCME

@@ -1,78 +1,54 @@
-use crate::data::DamlError;
-use crate::grpc_protobuf::com::daml::ledger::api::v1::ledger_offset::{LedgerBoundary, Value};
-use crate::grpc_protobuf::com::daml::ledger::api::v1::LedgerOffset;
-use crate::util::Required;
-use std::cmp::Ordering;
-use std::convert::TryFrom;
-use std::str::FromStr;
+/// A ledger offset on the v2 Ledger API.
+///
+/// v2 replaced v1's tagged `LedgerOffset { absolute | boundary }` message
+/// with a plain `int64` where:
+///   - `0` denotes the ledger-begin sentinel (no transactions yet);
+///   - positive values are absolute offsets.
+///
+/// v1's `End` boundary no longer exists as a sentinel — to consume up to
+/// the current ledger end, fetch it with
+/// `StateService::get_ledger_end` and pass the resulting offset.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash, Ord, PartialOrd)]
+pub struct DamlLedgerOffset(pub i64);
 
-// TODO support alternative ledger offset string formats.
-//
-// From proto comments:
-//
-// Absolute values are acquired by reading the transactions in the stream.
-// The offsets can be compared. The format may vary between implementations.
-// It is either:
-// * a string representing an ever-increasing integer
-// * a composite string containing <block-hash>-<block-height>-<event-id>; ordering
-// requires comparing numerical values of the second, then the third element.
+impl DamlLedgerOffset {
+    /// The participant-begin sentinel: "start from the very first offset".
+    pub const BEGIN: Self = Self(0);
 
-#[derive(Debug, Clone)]
+    pub const fn new(offset: i64) -> Self {
+        Self(offset)
+    }
+
+    pub const fn value(self) -> i64 {
+        self.0
+    }
+
+    /// `true` when this offset is the ledger-begin sentinel.
+    pub const fn is_begin(self) -> bool {
+        self.0 == 0
+    }
+}
+
+impl From<i64> for DamlLedgerOffset {
+    fn from(v: i64) -> Self {
+        Self(v)
+    }
+}
+
+impl From<DamlLedgerOffset> for i64 {
+    fn from(o: DamlLedgerOffset) -> Self {
+        o.0
+    }
+}
+
+/// Whether a stream should consume up to a fixed end offset or run
+/// forever. Carried by request types (e.g. `UpdateService.GetUpdates`)
+/// that need to distinguish "tail the ledger" from "give me a finite
+/// historical slice".
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DamlLedgerOffsetType {
+    /// Open-ended: the stream keeps yielding new events as they land.
     Unbounded,
+    /// Terminate after the named offset (inclusive on the wire).
     Bounded(DamlLedgerOffset),
-}
-
-#[derive(PartialEq, Eq, Debug, Clone)]
-pub enum DamlLedgerOffset {
-    Absolute(u64),
-    Boundary(DamlLedgerOffsetBoundary),
-}
-
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
-pub enum DamlLedgerOffsetBoundary {
-    Begin,
-    End,
-}
-
-impl PartialOrd for DamlLedgerOffset {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match (self, other) {
-            (DamlLedgerOffset::Absolute(a1), DamlLedgerOffset::Absolute(a2)) => Some(a1.cmp(a2)),
-            (DamlLedgerOffset::Boundary(b1), DamlLedgerOffset::Boundary(b2)) => Some(b1.cmp(b2)),
-            _ => None,
-        }
-    }
-}
-
-impl TryFrom<LedgerOffset> for DamlLedgerOffset {
-    type Error = DamlError;
-
-    fn try_from(offset: LedgerOffset) -> Result<Self, Self::Error> {
-        match offset.value.req()? {
-            Value::Absolute(abs) => match u64::from_str(&abs) {
-                Ok(v) => Ok(DamlLedgerOffset::Absolute(v)),
-                Err(e) => Err(DamlError::new_failed_conversion(format!("invalid ledger offset: {}", e))),
-            },
-            Value::Boundary(i) => match LedgerBoundary::from_i32(i) {
-                Some(LedgerBoundary::LedgerBegin) => Ok(DamlLedgerOffset::Boundary(DamlLedgerOffsetBoundary::Begin)),
-                Some(LedgerBoundary::LedgerEnd) => Ok(DamlLedgerOffset::Boundary(DamlLedgerOffsetBoundary::End)),
-                None => Err(DamlError::new_failed_conversion(format!("unknown ledger boundary offset: {}", i))),
-            },
-        }
-    }
-}
-
-impl From<DamlLedgerOffset> for LedgerOffset {
-    fn from(daml_ledger_offset: DamlLedgerOffset) -> Self {
-        LedgerOffset {
-            value: match daml_ledger_offset {
-                DamlLedgerOffset::Absolute(s) => Some(Value::Absolute(s.to_string())),
-                DamlLedgerOffset::Boundary(DamlLedgerOffsetBoundary::Begin) =>
-                    Some(Value::Boundary(LedgerBoundary::LedgerBegin as i32)),
-                DamlLedgerOffset::Boundary(DamlLedgerOffsetBoundary::End) =>
-                    Some(Value::Boundary(LedgerBoundary::LedgerEnd as i32)),
-            },
-        }
-    }
 }
