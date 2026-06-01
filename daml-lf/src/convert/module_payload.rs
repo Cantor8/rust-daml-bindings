@@ -60,4 +60,9 @@ impl<'a> DamlModulePayload<'a> {
     pub fn synonyms(&self) -> &'a [daml_lf_2::DefTypeSyn] {
         &self.module.synonyms
     }
+
+    /// Slice of the template definitions in this module.
+    pub fn templates(&self) -> &'a [daml_lf_2::DefTemplate] {
+        &self.module.templates
+    }
 }

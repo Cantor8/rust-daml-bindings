@@ -12,6 +12,7 @@ mod field_payload;
 mod interned;
 mod module_payload;
 mod package_payload;
+mod template_payload;
 mod type_payload;
 mod typevar_payload;
 mod util;
@@ -28,10 +29,13 @@ use crate::convert::field_payload::convert_field;
 use crate::convert::interned::PackageInternedResolver;
 use crate::convert::module_payload::DamlModulePayload;
 use crate::convert::package_payload::DamlPackagePayload;
+use crate::convert::template_payload::{convert_choice, convert_def_key, convert_implements};
 use crate::convert::type_payload::{convert_type, convert_type_params};
 use crate::element::{
-    DamlData, DamlDefTypeSyn, DamlEnum, DamlFeatureFlags, DamlArchive, DamlModule, DamlPackage, DamlRecord, DamlVariant,
+    DamlArchive, DamlData, DamlDefTypeSyn, DamlEnum, DamlFeatureFlags, DamlModule, DamlPackage, DamlRecord,
+    DamlTemplate, DamlVariant,
 };
+use crate::lf_protobuf::daml_lf_2;
 use crate::lf_protobuf::daml_lf_2::def_data_type::DataCons;
 use crate::{DamlLfArchive, DamlLfArchivePayload, DamlLfHashFunction, DamlLfResult, DarFile};
 
@@ -181,9 +185,14 @@ fn build_data_types<'a>(
     package: &'a DamlPackagePayload<'a>,
     module_path: &[Cow<'a, str>],
 ) -> DamlLfResult<HashMap<Cow<'a, str>, DamlData<'a>>> {
+    // Pre-index this module's templates by the data type they wrap
+    // (templates and data-types are sibling lists in LF2; a template
+    // references its argument record via `tycon_interned_dname`).
+    let template_by_tycon: HashMap<i32, &daml_lf_2::DefTemplate> =
+        module.templates().iter().map(|t| (t.tycon_interned_dname, t)).collect();
     let mut out = HashMap::new();
     for payload in module.data_types() {
-        if let Some(data) = build_data_type(payload, package, module_path)? {
+        if let Some(data) = build_data_type(payload, package, module_path, &template_by_tycon)? {
             out.insert(data_key(&data), data);
         }
     }
@@ -194,6 +203,7 @@ fn build_data_type<'a>(
     payload: DamlDataPayload<'a>,
     package: &'a DamlPackagePayload<'a>,
     module_path: &[Cow<'a, str>],
+    template_by_tycon: &HashMap<i32, &'a daml_lf_2::DefTemplate>,
 ) -> DamlLfResult<Option<DamlData<'a>>> {
     let path = package.resolve_dotted(payload.name_index())?;
     let name = path
@@ -210,15 +220,29 @@ fn build_data_type<'a>(
                 .fields
                 .iter()
                 .map(|f| convert_field(f, package))
-                .collect::<crate::error::DamlLfConvertResult<_>>()?;
-            DamlData::Record(DamlRecord::new(
-                name_cow,
-                package_id_cow,
-                module_path_owned,
-                daml_fields,
-                type_params,
-                payload.serializable(),
-            ))
+                .collect::<crate::error::DamlLfConvertResult<Vec<_>>>()?;
+            // If this record is wrapped by a DefTemplate, surface
+            // the richer DamlTemplate shape instead.
+            if let Some(template) = template_by_tycon.get(&payload.name_index()) {
+                DamlData::Template(Box::new(build_template(
+                    template,
+                    name_cow,
+                    package_id_cow,
+                    module_path_owned,
+                    daml_fields,
+                    package,
+                    payload.serializable(),
+                )?))
+            } else {
+                DamlData::Record(DamlRecord::new(
+                    name_cow,
+                    package_id_cow,
+                    module_path_owned,
+                    daml_fields,
+                    type_params,
+                    payload.serializable(),
+                ))
+            }
         },
         Some(DataCons::Variant(fields)) => {
             let daml_fields = fields
@@ -260,4 +284,40 @@ fn build_data_type<'a>(
 /// module prefix.
 fn data_key<'a>(data: &DamlData<'a>) -> Cow<'a, str> {
     Cow::Owned(data.name().to_owned())
+}
+
+/// Combine the record-shaped fields a DefDataType supplies with the
+/// template-only metadata (choices, key, param, implements) into a
+/// [`DamlTemplate`]. Expr-typed fields (precond, signatories,
+/// agreement, observers) live behind `#[cfg(feature = "full")]` and
+/// land in 3.8.
+#[allow(clippy::too_many_arguments)]
+fn build_template<'a>(
+    template: &'a daml_lf_2::DefTemplate,
+    name: Cow<'a, str>,
+    package_id: Cow<'a, str>,
+    module_path: Vec<Cow<'a, str>>,
+    fields: Vec<crate::element::DamlField<'a>>,
+    package: &'a DamlPackagePayload<'a>,
+    serializable: bool,
+) -> DamlLfResult<DamlTemplate<'a>> {
+    let param = package.resolve_string(template.param_interned_str)?;
+    let choices: Vec<_> = template
+        .choices
+        .iter()
+        .map(|c| convert_choice(c, package, &module_path, &package_id))
+        .collect::<crate::error::DamlLfConvertResult<_>>()?;
+    let key = template.key.as_ref().map(|k| convert_def_key(k, package)).transpose()?;
+    let implements = convert_implements(&template.implements, package)?;
+    Ok(DamlTemplate::new(
+        name,
+        package_id,
+        module_path,
+        fields,
+        choices,
+        Cow::Borrowed(param),
+        implements,
+        key,
+        serializable,
+    ))
 }

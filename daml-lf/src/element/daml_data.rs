@@ -170,6 +170,11 @@ pub struct DamlTemplate<'a> {
     fields: Vec<DamlField<'a>>,
     choices: Vec<DamlChoice<'a>>,
     param: Cow<'a, str>,
+    /// Interfaces this template implements (LF2 first-class concept;
+    /// each entry is the interface's tycon-name). The bodies of the
+    /// implementations (methods + view expression) live behind the
+    /// `full` feature once expression conversion lands in 3.8.
+    implements: Vec<DamlTyConName<'a>>,
     #[cfg(feature = "full")]
     precond: Option<DamlExpr<'a>>,
     #[cfg(feature = "full")]
@@ -191,6 +196,7 @@ impl<'a> DamlTemplate<'a> {
         fields: Vec<DamlField<'a>>,
         choices: Vec<DamlChoice<'a>>,
         param: Cow<'a, str>,
+        implements: Vec<DamlTyConName<'a>>,
         #[cfg(feature = "full")] precond: Option<DamlExpr<'a>>,
         #[cfg(feature = "full")] signatories: DamlExpr<'a>,
         #[cfg(feature = "full")] agreement: DamlExpr<'a>,
@@ -205,6 +211,7 @@ impl<'a> DamlTemplate<'a> {
             fields,
             choices,
             param,
+            implements,
             #[cfg(feature = "full")]
             precond,
             #[cfg(feature = "full")]
@@ -231,6 +238,7 @@ impl<'a> DamlTemplate<'a> {
             fields,
             choices: vec![],
             param: Cow::default(),
+            implements: Vec::new(),
             #[cfg(feature = "full")]
             precond: None,
             #[cfg(feature = "full")]
@@ -242,6 +250,13 @@ impl<'a> DamlTemplate<'a> {
             key: None,
             serializable: true,
         }
+    }
+
+    /// Interfaces this template implements. Each entry is the
+    /// interface's tycon-name; resolve to the interface definition
+    /// via `DamlArchive::data_by_tycon_name`.
+    pub fn implements(&self) -> &[DamlTyConName<'a>] {
+        &self.implements
     }
 
     pub fn name(&self) -> &str {
