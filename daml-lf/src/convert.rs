@@ -8,7 +8,11 @@
 
 mod archive_payload;
 mod data_payload;
+#[cfg(feature = "full")]
+mod defvalue_payload;
 mod exception_payload;
+#[cfg(feature = "full")]
+mod expr_payload;
 mod field_payload;
 mod interface_payload;
 mod interned;
@@ -27,7 +31,11 @@ use bounded_static::ToBoundedStatic;
 
 use crate::convert::archive_payload::DamlArchivePayload;
 use crate::convert::data_payload::DamlDataPayload;
+#[cfg(feature = "full")]
+use crate::convert::defvalue_payload::convert_def_value;
 use crate::convert::exception_payload::convert_exception;
+#[cfg(feature = "full")]
+use crate::convert::expr_payload::convert_expr;
 use crate::convert::field_payload::convert_field;
 use crate::convert::interface_payload::convert_interface;
 use crate::convert::interned::PackageInternedResolver;
@@ -35,6 +43,8 @@ use crate::convert::module_payload::DamlModulePayload;
 use crate::convert::package_payload::DamlPackagePayload;
 use crate::convert::template_payload::{convert_choice, convert_def_key, convert_implements};
 use crate::convert::type_payload::{convert_type, convert_type_params};
+#[cfg(feature = "full")]
+use crate::element::DamlDefValue;
 use crate::element::{
     DamlArchive, DamlData, DamlDefTypeSyn, DamlEnum, DamlException, DamlFeatureFlags, DamlInterface, DamlModule,
     DamlPackage, DamlRecord, DamlTemplate, DamlVariant,
@@ -133,6 +143,8 @@ fn insert_module<'a>(
     let synonyms = build_synonyms(module, package, &leaf_path)?;
     let interfaces = build_interfaces(module, package, &leaf_path)?;
     let exceptions = build_exceptions(module, package, &leaf_path)?;
+    #[cfg(feature = "full")]
+    let values = build_values(module, package)?;
     let leaf = DamlModule::new_leaf(
         leaf_path,
         DamlFeatureFlags::new(
@@ -145,10 +157,23 @@ fn insert_module<'a>(
         interfaces,
         exceptions,
         #[cfg(feature = "full")]
-        HashMap::new(),
+        values,
     );
     cursor.take_from(leaf);
     Ok(())
+}
+
+#[cfg(feature = "full")]
+fn build_values<'a>(
+    module: &DamlModulePayload<'a>,
+    package: &'a DamlPackagePayload<'a>,
+) -> DamlLfResult<HashMap<Cow<'a, str>, DamlDefValue<'a>>> {
+    let mut out = HashMap::new();
+    for proto in module.values() {
+        let value = convert_def_value(proto, package)?;
+        out.insert(value.name_clone(), value);
+    }
+    Ok(out)
 }
 
 fn build_interfaces<'a>(
@@ -322,9 +347,10 @@ fn data_key<'a>(data: &DamlData<'a>) -> Cow<'a, str> {
 
 /// Combine the record-shaped fields a DefDataType supplies with the
 /// template-only metadata (choices, key, param, implements) into a
-/// [`DamlTemplate`]. Expr-typed fields (precond, signatories,
-/// agreement, observers) live behind `#[cfg(feature = "full")]` and
-/// land in 3.8.
+/// [`DamlTemplate`]. Under `--features full`, the Expr-typed fields
+/// (precond, signatories, observers) are populated from the LF2
+/// proto; `agreement` was removed in LF2 so we substitute an empty
+/// text placeholder (matching `DamlTemplate::new_with_defaults`).
 #[allow(clippy::too_many_arguments)]
 fn build_template<'a>(
     template: &'a daml_lf_2::DefTemplate,
@@ -343,6 +369,18 @@ fn build_template<'a>(
         .collect::<crate::error::DamlLfConvertResult<_>>()?;
     let key = template.key.as_ref().map(|k| convert_def_key(k, package)).transpose()?;
     let implements = convert_implements(&template.implements, package)?;
+    #[cfg(feature = "full")]
+    let precond = template.precond.as_ref().map(|p| convert_expr(p, package)).transpose()?;
+    #[cfg(feature = "full")]
+    let signatories = {
+        use crate::convert::util::Required;
+        convert_expr(template.signatories.as_ref().req()?, package)?
+    };
+    #[cfg(feature = "full")]
+    let observers = {
+        use crate::convert::util::Required;
+        convert_expr(template.observers.as_ref().req()?, package)?
+    };
     Ok(DamlTemplate::new(
         name,
         package_id,
@@ -351,7 +389,24 @@ fn build_template<'a>(
         choices,
         Cow::Borrowed(param),
         implements,
+        #[cfg(feature = "full")]
+        precond,
+        #[cfg(feature = "full")]
+        signatories,
+        #[cfg(feature = "full")]
+        agreement_placeholder(),
+        #[cfg(feature = "full")]
+        observers,
         key,
         serializable,
     ))
+}
+
+/// LF2 dropped the `agreement` field on `DefTemplate`. The element
+/// layer still carries it for API stability; supply the same empty
+/// text default used by [`DamlTemplate::new_with_defaults`].
+#[cfg(feature = "full")]
+fn agreement_placeholder<'a>() -> crate::element::DamlExpr<'a> {
+    use crate::element::{DamlExpr, DamlPrimLit};
+    DamlExpr::PrimLit(DamlPrimLit::Text(Cow::Borrowed("")))
 }

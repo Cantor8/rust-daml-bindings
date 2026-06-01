@@ -75,4 +75,9 @@ impl<'a> DamlModulePayload<'a> {
     pub fn exceptions(&self) -> &'a [daml_lf_2::DefException] {
         &self.module.exceptions
     }
+
+    /// Slice of the value definitions in this module.
+    pub fn values(&self) -> &'a [daml_lf_2::DefValue] {
+        &self.module.values
+    }
 }

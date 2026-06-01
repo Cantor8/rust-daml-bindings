@@ -1,5 +1,7 @@
 use std::borrow::Cow;
 
+#[cfg(feature = "full")]
+use crate::convert::expr_payload::convert_expr;
 use crate::convert::interned::PackageInternedResolver;
 use crate::convert::package_payload::DamlPackagePayload;
 use crate::convert::type_payload::{convert_tycon_id, convert_type};
@@ -12,10 +14,10 @@ use crate::lf_protobuf::daml_lf_2;
 /// [`DamlChoice`]. The arg-binder becomes a single-element `fields`
 /// vector (`Vec<DamlField>` with one entry).
 ///
-/// 3.5 doesn't touch the choice's Expr-typed fields (controllers,
-/// observers, update, authorizers). They live behind
-/// `#[cfg(feature = "full")]` in [`DamlChoice`] and re-attach in
-/// 3.8 when Expr conversion lands.
+/// Under `--features full`, the choice's Expr-typed bodies (update,
+/// controllers, observers) are populated via [`convert_expr`]; the
+/// LF2 `authorizers` field (only present in 2.dev) is not surfaced
+/// on the element layer yet.
 pub fn convert_choice<'a>(
     proto: &daml_lf_2::TemplateChoice,
     package: &'a DamlPackagePayload<'a>,
@@ -29,6 +31,12 @@ pub fn convert_choice<'a>(
     let arg_ty = convert_type(arg_binder.r#type.as_ref().req()?, package)?;
     let return_type = convert_type(proto.ret_type.as_ref().req()?, package)?;
     let arg_field = DamlField::new(Cow::Borrowed(arg_name), arg_ty);
+    #[cfg(feature = "full")]
+    let update = convert_expr(proto.update.as_ref().req()?, package)?;
+    #[cfg(feature = "full")]
+    let controllers = convert_expr(proto.controllers.as_ref().req()?, package)?;
+    #[cfg(feature = "full")]
+    let observers = convert_expr(proto.observers.as_ref().req()?, package)?;
     Ok(DamlChoice::new(
         Cow::Borrowed(name),
         package_id.clone(),
@@ -37,20 +45,35 @@ pub fn convert_choice<'a>(
         return_type,
         proto.consuming,
         Cow::Borrowed(self_binder),
-        // Expr-typed choice bodies (update, controllers, observers,
-        // authorizers) are populated in 3.8 under the `full` feature.
+        #[cfg(feature = "full")]
+        update,
+        #[cfg(feature = "full")]
+        controllers,
+        #[cfg(feature = "full")]
+        observers,
     ))
 }
 
 /// Convert an LF2 `DefTemplate::DefKey` into the element-layer
-/// [`DamlDefKey`]. Only the key's type carries through in 3.5;
-/// `maintainers` and `key_expr` are `full`-gated and land in 3.8.
+/// [`DamlDefKey`]. Only the key's type carries through under default
+/// features; `maintainers` and `key_expr` are populated under
+/// `--features full`.
 pub fn convert_def_key<'a>(
     proto: &daml_lf_2::def_template::DefKey,
     package: &'a DamlPackagePayload<'a>,
 ) -> DamlLfConvertResult<DamlDefKey<'a>> {
     let ty = convert_type(proto.r#type.as_ref().req()?, package)?;
-    Ok(DamlDefKey::new(ty))
+    #[cfg(feature = "full")]
+    let maintainers = convert_expr(proto.maintainers.as_ref().req()?, package)?;
+    #[cfg(feature = "full")]
+    let key_expr = convert_expr(proto.key_expr.as_ref().req()?, package)?;
+    Ok(DamlDefKey::new(
+        ty,
+        #[cfg(feature = "full")]
+        maintainers,
+        #[cfg(feature = "full")]
+        key_expr,
+    ))
 }
 
 /// Build the list of interfaces a template implements, by tycon name.

@@ -1,7 +1,11 @@
 use std::borrow::Cow;
 
+#[cfg(feature = "full")]
+use crate::convert::expr_payload::convert_expr;
 use crate::convert::interned::PackageInternedResolver;
 use crate::convert::package_payload::DamlPackagePayload;
+#[cfg(feature = "full")]
+use crate::convert::util::Required;
 use crate::element::DamlException;
 use crate::error::DamlLfConvertResult;
 use crate::lf_protobuf::daml_lf_2;
@@ -9,8 +13,9 @@ use crate::lf_protobuf::daml_lf_2;
 /// Convert an LF2 `DefException` into the element-layer
 /// [`DamlException`].
 ///
-/// 3.7 carries name + module-path + package-id only. The `message`
-/// expression body is `full`-feature and arrives in 3.8.
+/// Carries name + module-path + package-id under default features.
+/// Under `--features full`, the `message` expression body is also
+/// populated via [`convert_expr`].
 pub fn convert_exception<'a>(
     proto: &daml_lf_2::DefException,
     package: &'a DamlPackagePayload<'a>,
@@ -23,13 +28,13 @@ pub fn convert_exception<'a>(
         .ok_or(crate::error::DamlLfConvertError::MissingRequiredField)?;
     let mut full_module_path: Vec<Cow<'a, str>> = module_path.to_vec();
     full_module_path.extend(prefix.iter().copied().map(Cow::Borrowed));
+    #[cfg(feature = "full")]
+    let message = convert_expr(proto.message.as_ref().req()?, package)?;
     Ok(DamlException::new(
         Cow::Borrowed(name),
         Cow::Borrowed(package.package_id),
         full_module_path,
-        // `message` is an Expr — populated in 3.8 under the full
-        // feature. Reference here would force an unused-import; the
-        // call-site in build_exceptions skips it because the field
-        // is #[cfg(feature = "full")] on DamlException::new.
+        #[cfg(feature = "full")]
+        message,
     ))
 }
