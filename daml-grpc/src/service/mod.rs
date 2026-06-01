@@ -12,6 +12,7 @@ pub use self::daml_party_management_service::*;
 pub use self::daml_reset_service::*;
 pub use self::daml_time_service::*;
 pub use self::daml_transaction_service::*;
+pub use self::daml_user_management_service::*;
 pub use self::daml_verbosity::DamlVerbosity;
 pub use self::daml_version_service::*;
 
@@ -30,5 +31,6 @@ mod daml_party_management_service;
 mod daml_reset_service;
 mod daml_time_service;
 mod daml_transaction_service;
+mod daml_user_management_service;
 mod daml_verbosity;
 mod daml_version_service;

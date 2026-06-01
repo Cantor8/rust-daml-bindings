@@ -13,6 +13,9 @@ pub mod package;
 /// The details of a Daml party.
 pub mod party;
 
+/// Participant users and their rights.
+pub mod user;
+
 /// Daml values, records, enums & variants.
 pub mod value {
     mod record;

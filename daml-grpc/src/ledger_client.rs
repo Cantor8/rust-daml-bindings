@@ -5,7 +5,9 @@ use crate::service::{
     DamlTransactionService, DamlVersionService,
 };
 #[cfg(feature = "admin")]
-use crate::service::{DamlConfigManagementService, DamlPackageManagementService, DamlPartyManagementService};
+use crate::service::{
+    DamlConfigManagementService, DamlPackageManagementService, DamlPartyManagementService, DamlUserManagementService,
+};
 #[cfg(feature = "sandbox")]
 use crate::service::{DamlResetService, DamlTimeService};
 use std::time::Duration;
@@ -298,6 +300,13 @@ impl DamlGrpcClient {
     #[cfg(feature = "admin")]
     pub fn party_management_service(&self) -> DamlPartyManagementService<'_> {
         DamlPartyManagementService::new(self.channel.clone(), self.config.auth_token.as_deref())
+    }
+
+    /// Retrieve a [`DamlUserManagementService`] for managing
+    /// participant users and their rights.
+    #[cfg(feature = "admin")]
+    pub fn user_management_service(&self) -> DamlUserManagementService<'_> {
+        DamlUserManagementService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
     /// DOCME
