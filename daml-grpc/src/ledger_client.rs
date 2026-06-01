@@ -237,9 +237,11 @@ impl DamlGrpcClient {
         )
     }
 
-    /// DOCME
+    /// Retrieve a [`DamlPackageService`] for querying the Daml-LF packages
+    /// supported by the participant. v2 requests no longer carry a
+    /// ledger-id.
     pub fn package_service(&self) -> DamlPackageService<'_> {
-        DamlPackageService::new(self.channel.clone(), &self.ledger_identity, self.config.auth_token.as_deref())
+        DamlPackageService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
     /// DOCME
