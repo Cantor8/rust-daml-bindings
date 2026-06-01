@@ -5,7 +5,7 @@ use std::io::Error;
 use std::path::Path;
 use std::path::PathBuf;
 
-const ALL_PROTO_SRC_PATHS: &[&str] = &["com/daml/daml_lf_1_14"];
+const ALL_PROTO_SRC_PATHS: &[&str] = &["com/digitalasset/daml/lf/archive"];
 const PROTO_ROOT_PATH: &str = "resources/protobuf";
 
 fn main() -> Result<(), Box<dyn error::Error>> {

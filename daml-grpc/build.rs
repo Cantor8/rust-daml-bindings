@@ -6,9 +6,11 @@ use std::path::Path;
 use std::path::PathBuf;
 
 const ALL_PROTO_SRC_PATHS: &[&str] = &[
-    "com/daml/ledger/api/v1",
-    "com/daml/ledger/api/v1/testing",
-    "com/daml/ledger/api/v1/admin",
+    "com/daml/ledger/api/v2",
+    "com/daml/ledger/api/v2/admin",
+    "com/daml/ledger/api/v2/testing",
+    "com/daml/ledger/api/v2/interactive",
+    "com/daml/ledger/api/v2/interactive/transaction/v1",
     "google/protobuf",
     "google/rpc",
 ];
