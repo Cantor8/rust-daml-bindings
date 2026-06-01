@@ -275,9 +275,11 @@ impl DamlGrpcClient {
         DamlActiveContractsService::new(self.channel.clone(), &self.ledger_identity, self.config.auth_token.as_deref())
     }
 
-    /// DOCME
+    /// Retrieve a [`DamlVersionService`] for querying the participant's
+    /// Ledger API version. The v2 request takes no ledger-id, so the
+    /// service is constructed from only the channel and auth token.
     pub fn version_service(&self) -> DamlVersionService<'_> {
-        DamlVersionService::new(self.channel.clone(), &self.ledger_identity, self.config.auth_token.as_deref())
+        DamlVersionService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
     /// DOCME

@@ -2,23 +2,25 @@ use tonic::transport::Channel;
 use tracing::{instrument, trace};
 
 use crate::data::{DamlFeaturesDescriptor, DamlResult};
-use crate::grpc_protobuf::com::daml::ledger::api::v1::version_service_client::VersionServiceClient;
-use crate::grpc_protobuf::com::daml::ledger::api::v1::GetLedgerApiVersionRequest;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::version_service_client::VersionServiceClient;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::GetLedgerApiVersionRequest;
 use crate::service::common::make_request;
 
-/// Retrieve information about the ledger API version.
+/// Retrieve information about the Ledger API version.
+///
+/// The v2 request carries no fields — participants no longer scope responses
+/// by ledger-id — so this service only needs a channel and an optional auth
+/// token.
 #[derive(Debug)]
 pub struct DamlVersionService<'a> {
     channel: Channel,
-    ledger_id: &'a str,
     auth_token: Option<&'a str>,
 }
 
 impl<'a> DamlVersionService<'a> {
-    pub fn new(channel: Channel, ledger_id: &'a str, auth_token: Option<&'a str>) -> Self {
+    pub fn new(channel: Channel, auth_token: Option<&'a str>) -> Self {
         Self {
             channel,
-            ledger_id,
             auth_token,
         }
     }
@@ -31,20 +33,15 @@ impl<'a> DamlVersionService<'a> {
         }
     }
 
-    /// Override the ledger id to use for this service.
-    pub fn with_ledger_id(self, ledger_id: &'a str) -> Self {
-        Self {
-            ledger_id,
-            ..self
-        }
-    }
-
     /// Read the Ledger API version.
+    ///
+    /// Returns the participant's reported version string and its feature
+    /// descriptor. In v2 the feature descriptor is marked as required, but
+    /// older servers (or non-compliant ones) might still omit it, so it's
+    /// surfaced as `Option`.
     #[instrument(skip(self))]
     pub async fn get_ledger_api_version(&self) -> DamlResult<(String, Option<DamlFeaturesDescriptor>)> {
-        let payload = GetLedgerApiVersionRequest {
-            ledger_id: self.ledger_id.to_string(),
-        };
+        let payload = GetLedgerApiVersionRequest {};
         trace!(payload = ?payload, token = ?self.auth_token);
         let response =
             self.client().get_ledger_api_version(make_request(payload, self.auth_token)?).await?.into_inner();

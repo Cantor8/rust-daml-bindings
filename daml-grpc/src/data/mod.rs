@@ -80,4 +80,8 @@ mod time_model;
 pub use time_model::DamlTimeModel;
 
 mod features;
-pub use features::{DamlFeaturesDescriptor, DamlUserManagementFeature};
+pub use features::{
+    DamlExperimentalCommandInspectionService, DamlExperimentalFeatures, DamlExperimentalStaticTime,
+    DamlFeaturesDescriptor, DamlOffsetCheckpointFeature, DamlPackageFeature, DamlPartyManagementFeature,
+    DamlUserManagementFeature,
+};
