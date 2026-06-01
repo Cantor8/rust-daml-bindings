@@ -315,10 +315,14 @@ impl DamlGrpcClient {
         DamlResetService::new(self.channel.clone(), &self.ledger_identity, self.config.auth_token.as_deref())
     }
 
-    /// DOCME
+    /// Retrieve a [`DamlTimeService`] for reading and advancing the
+    /// participant's static-time clock. Only meaningful when the
+    /// participant is configured for static time (see the
+    /// `experimental.static_time` flag in
+    /// `VersionService::GetLedgerApiVersion`).
     #[cfg(feature = "sandbox")]
     pub fn time_service(&self) -> DamlTimeService<'_> {
-        DamlTimeService::new(self.channel.clone(), &self.ledger_identity, self.config.auth_token.as_deref())
+        DamlTimeService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
     async fn open_channel(config: &DamlGrpcClientConfig) -> DamlResult<Channel> {
