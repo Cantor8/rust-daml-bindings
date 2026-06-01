@@ -8,6 +8,7 @@
 
 mod archive_payload;
 mod data_payload;
+mod exception_payload;
 mod field_payload;
 mod interface_payload;
 mod interned;
@@ -26,6 +27,7 @@ use bounded_static::ToBoundedStatic;
 
 use crate::convert::archive_payload::DamlArchivePayload;
 use crate::convert::data_payload::DamlDataPayload;
+use crate::convert::exception_payload::convert_exception;
 use crate::convert::field_payload::convert_field;
 use crate::convert::interface_payload::convert_interface;
 use crate::convert::interned::PackageInternedResolver;
@@ -34,8 +36,8 @@ use crate::convert::package_payload::DamlPackagePayload;
 use crate::convert::template_payload::{convert_choice, convert_def_key, convert_implements};
 use crate::convert::type_payload::{convert_type, convert_type_params};
 use crate::element::{
-    DamlArchive, DamlData, DamlDefTypeSyn, DamlEnum, DamlFeatureFlags, DamlInterface, DamlModule, DamlPackage,
-    DamlRecord, DamlTemplate, DamlVariant,
+    DamlArchive, DamlData, DamlDefTypeSyn, DamlEnum, DamlException, DamlFeatureFlags, DamlInterface, DamlModule,
+    DamlPackage, DamlRecord, DamlTemplate, DamlVariant,
 };
 use crate::lf_protobuf::daml_lf_2;
 use crate::lf_protobuf::daml_lf_2::def_data_type::DataCons;
@@ -130,6 +132,7 @@ fn insert_module<'a>(
     let data_types = build_data_types(module, package, &leaf_path)?;
     let synonyms = build_synonyms(module, package, &leaf_path)?;
     let interfaces = build_interfaces(module, package, &leaf_path)?;
+    let exceptions = build_exceptions(module, package, &leaf_path)?;
     let leaf = DamlModule::new_leaf(
         leaf_path,
         DamlFeatureFlags::new(
@@ -140,6 +143,7 @@ fn insert_module<'a>(
         synonyms,
         data_types,
         interfaces,
+        exceptions,
         #[cfg(feature = "full")]
         HashMap::new(),
     );
@@ -156,6 +160,19 @@ fn build_interfaces<'a>(
     for proto in module.interfaces() {
         let interface = convert_interface(proto, package, module_path)?;
         out.insert(Cow::Owned(interface.name().to_owned()), interface);
+    }
+    Ok(out)
+}
+
+fn build_exceptions<'a>(
+    module: &DamlModulePayload<'a>,
+    package: &'a DamlPackagePayload<'a>,
+    module_path: &[Cow<'a, str>],
+) -> DamlLfResult<HashMap<Cow<'a, str>, DamlException<'a>>> {
+    let mut out = HashMap::new();
+    for proto in module.exceptions() {
+        let exception = convert_exception(proto, package, module_path)?;
+        out.insert(Cow::Owned(exception.name().to_owned()), exception);
     }
     Ok(out)
 }

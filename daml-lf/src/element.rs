@@ -1,5 +1,6 @@
 mod daml_archive;
 mod daml_data;
+mod daml_exception;
 mod daml_field;
 mod daml_interface;
 mod daml_module;
@@ -16,6 +17,7 @@ mod daml_expr;
 
 pub use daml_archive::*;
 pub use daml_data::*;
+pub use daml_exception::*;
 pub use daml_field::*;
 pub use daml_interface::*;
 pub use daml_module::*;

@@ -70,4 +70,9 @@ impl<'a> DamlModulePayload<'a> {
     pub fn interfaces(&self) -> &'a [daml_lf_2::DefInterface] {
         &self.module.interfaces
     }
+
+    /// Slice of the exception definitions in this module.
+    pub fn exceptions(&self) -> &'a [daml_lf_2::DefException] {
+        &self.module.exceptions
+    }
 }

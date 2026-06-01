@@ -11,9 +11,9 @@ use crate::element::{
     DamlUpdate, DamlUpdateEmbedExpr, DamlValueName, DamlVarWithType, DamlVariantCon, RoundingMode,
 };
 use crate::element::{
-    DamlAbsoluteTyCon, DamlArchive, DamlArrow, DamlChoice, DamlData, DamlDefKey, DamlDefTypeSyn, DamlEnum, DamlField,
-    DamlForall, DamlInterface, DamlInterfaceMethod, DamlKind, DamlLocalTyCon, DamlModule, DamlNonLocalTyCon,
-    DamlPackage, DamlRecord, DamlStruct, DamlSyn, DamlTemplate, DamlTyCon, DamlTyConName, DamlType,
+    DamlAbsoluteTyCon, DamlArchive, DamlArrow, DamlChoice, DamlData, DamlDefKey, DamlDefTypeSyn, DamlEnum,
+    DamlException, DamlField, DamlForall, DamlInterface, DamlInterfaceMethod, DamlKind, DamlLocalTyCon, DamlModule,
+    DamlNonLocalTyCon, DamlPackage, DamlRecord, DamlStruct, DamlSyn, DamlTemplate, DamlTyCon, DamlTyConName, DamlType,
     DamlTypeVarWithKind, DamlVar, DamlVariant,
 };
 
@@ -74,6 +74,8 @@ pub trait DamlElementVisitor {
     fn post_visit_interface<'a>(&mut self, interface: &'a DamlInterface<'a>) {}
     fn pre_visit_interface_method<'a>(&mut self, method: &'a DamlInterfaceMethod<'a>) {}
     fn post_visit_interface_method<'a>(&mut self, method: &'a DamlInterfaceMethod<'a>) {}
+    fn pre_visit_exception<'a>(&mut self, exception: &'a DamlException<'a>) {}
+    fn post_visit_exception<'a>(&mut self, exception: &'a DamlException<'a>) {}
     fn pre_visit_choice<'a>(&mut self, choice: &'a DamlChoice<'a>) {}
     fn post_visit_choice<'a>(&mut self, choice: &'a DamlChoice<'a>) {}
     fn pre_visit_record<'a>(&mut self, record: &'a DamlRecord<'a>) {}

@@ -25,6 +25,8 @@ pub struct DamlModule<'a> {
     data_types: HashMap<Cow<'a, str>, DamlData<'a>>,
     #[serde(serialize_with = "serialize::serialize_map")]
     interfaces: HashMap<Cow<'a, str>, crate::element::DamlInterface<'a>>,
+    #[serde(serialize_with = "serialize::serialize_map")]
+    exceptions: HashMap<Cow<'a, str>, crate::element::DamlException<'a>>,
     #[cfg(feature = "full")]
     values: HashMap<Cow<'a, str>, DamlDefValue<'a>>,
 }
@@ -36,12 +38,14 @@ impl<'a> DamlModule<'a> {
     }
 
     /// Create a leaf `DamlModule`.
+    #[allow(clippy::too_many_arguments)]
     pub fn new_leaf(
         path: Vec<Cow<'a, str>>,
         flags: DamlFeatureFlags,
         synonyms: Vec<DamlDefTypeSyn<'a>>,
         data_types: HashMap<Cow<'a, str>, DamlData<'a>>,
         interfaces: HashMap<Cow<'a, str>, crate::element::DamlInterface<'a>>,
+        exceptions: HashMap<Cow<'a, str>, crate::element::DamlException<'a>>,
         #[cfg(feature = "full")] values: HashMap<Cow<'a, str>, DamlDefValue<'a>>,
     ) -> Self {
         Self {
@@ -51,6 +55,7 @@ impl<'a> DamlModule<'a> {
             child_modules: HashMap::default(),
             data_types,
             interfaces,
+            exceptions,
             #[cfg(feature = "full")]
             values,
         }
@@ -84,6 +89,11 @@ impl<'a> DamlModule<'a> {
     /// The `DamlInterface`s declared in the module.
     pub fn interfaces(&self) -> impl Iterator<Item = &crate::element::DamlInterface<'a>> {
         self.interfaces.values()
+    }
+
+    /// The `DamlException`s declared in the module.
+    pub fn exceptions(&self) -> impl Iterator<Item = &crate::element::DamlException<'a>> {
+        self.exceptions.values()
     }
 
     /// The `DamlDefValue` declared in the module.
@@ -154,6 +164,7 @@ impl<'a> DamlModule<'a> {
         self.data_types = other.data_types;
         self.synonyms = other.synonyms;
         self.interfaces = other.interfaces;
+        self.exceptions = other.exceptions;
         #[cfg(feature = "full")]
         {
             self.values = other.values;
@@ -169,6 +180,7 @@ impl<'a> DamlModule<'a> {
             child_modules: HashMap::default(),
             data_types: HashMap::default(),
             interfaces: HashMap::default(),
+            exceptions: HashMap::default(),
             #[cfg(feature = "full")]
             values: HashMap::default(),
         }
@@ -182,10 +194,12 @@ impl<'a> DamlVisitableElement<'a> for DamlModule<'a> {
         if visitor.sort_elements() {
             self.data_types.values().sorted_by_key(|ty| ty.name()).for_each(|data| data.accept(visitor));
             self.interfaces.values().sorted_by_key(|i| i.name()).for_each(|i| i.accept(visitor));
+            self.exceptions.values().sorted_by_key(|e| e.name()).for_each(|e| e.accept(visitor));
             self.child_modules.values().sorted_by_key(|&m| m.path.clone()).for_each(|module| module.accept(visitor));
         } else {
             self.data_types.values().for_each(|data| data.accept(visitor));
             self.interfaces.values().for_each(|i| i.accept(visitor));
+            self.exceptions.values().for_each(|e| e.accept(visitor));
             self.child_modules.values().for_each(|module| module.accept(visitor));
         }
         #[cfg(feature = "full")]
