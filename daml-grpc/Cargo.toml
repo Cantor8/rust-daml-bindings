@@ -15,6 +15,11 @@ build = "build.rs"
 [features]
 default = [ "admin" ]
 admin = []
+# Gates the live-sandbox smoke test. Off by default so
+# `cargo test` doesn't try to dial a participant; turn on with
+# `cargo test -p daml-grpc --features integration` after starting
+# canton-sandbox.
+integration = []
 
 [dependencies]
 futures = "0.3.21"
@@ -31,10 +36,12 @@ async-trait = "0.1.52"
 itertools = "0.10.3"
 tracing = "0.1.31"
 
+# dev-dependencies are kept minimal here; the Phase 8 v2
+# integration smoke test lives in its own crate-local target
+# gated by `--features integration`.
 [dev-dependencies]
 daml = { path = "../daml", features = [ "lf", "util" ] }
-tokio = { version = "1.17.0", features = [ "macros" ] }
-lazy_static = "1.4.0"
+tokio = { version = "1.17.0", features = [ "macros", "rt-multi-thread" ] }
 anyhow = "1.0.55"
 tracing-subscriber = { version = "0.3.9", features = ["env-filter"] }
 

@@ -1,5 +1,0 @@
-module Fuji.NestedModuleTest.Sibling where
-
-import Fuji.NestedModuleTest.Parent
-
-data SiblingData = SiblingData with value : ParentData

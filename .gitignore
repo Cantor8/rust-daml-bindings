@@ -1,7 +1,10 @@
 .idea
 Cargo.lock
+log
 logs
 *.log
 target
 *.DS_Store
 local_dars/
+# Daml SDK / daml build artifact dirs inside fixture projects
+.daml/
