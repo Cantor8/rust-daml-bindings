@@ -1,15 +1,18 @@
 //! LF2 expression-tree → element/ conversion.
 //!
-//! 3.8c adds the data-shaped variants: record / variant / enum /
-//! struct construction, projection, and update, plus the `ToAny` /
-//! `FromAny` conversions used to encode "Any" template payloads.
+//! 3.8d adds the lambda-calculus variants: application
+//! (`App`, `TyApp`), abstraction (`Abs`, `TyAbs`), case-of (`Case`
+//! plus the `CaseAlt::Sum` sub-oneof), let-block (`Let`), list cons
+//! (`Cons`), and `OptionalSome`. Together with 3.8b leaves and
+//! 3.8c data-shaped variants, the entire expression sub-language
+//! that does *not* involve effects (Update), exceptions, or
+//! interfaces is now covered.
 //!
 //! Per-checkpoint scope:
 //!  - 3.8b: leaves.
-//!  - 3.8c: record / variant / enum / struct construction +
-//!    projection + update + To/FromAny (this checkpoint).
-//!  - 3.8d: application / abstraction / case / let / cons /
-//!    optional-some.
+//!  - 3.8c: record / variant / enum / struct + To/FromAny.
+//!  - 3.8d: App / Abs / Case / Let / Cons / OptionalSome
+//!    (this checkpoint).
 //!  - 3.8e: exception expressions (Throw, ToAnyException,
 //!    FromAnyException).
 //!  - 3.8f: interface expressions (ToInterface, FromInterface,
@@ -31,15 +34,19 @@ use std::borrow::Cow;
 use crate::convert::interned::PackageInternedResolver;
 use crate::convert::package_payload::DamlPackagePayload;
 use crate::convert::type_payload::{convert_tycon_id, convert_type, convert_type_con};
+use crate::convert::typevar_payload::convert_typevar_with_kind;
 use crate::convert::util::Required;
 use crate::element::{
-    DamlBuiltinFunction, DamlEnumCon, DamlExpr, DamlFieldWithExpr, DamlFromAny, DamlLocalValueName, DamlPrimCon,
-    DamlPrimLit, DamlRecCon, DamlRecProj, DamlRecUpd, DamlStructCon, DamlStructProj, DamlStructUpd, DamlToAny,
-    DamlValueName, DamlVariantCon,
+    DamlAbs, DamlApp, DamlBinding, DamlBlock, DamlBuiltinFunction, DamlCase, DamlCaseAlt, DamlCaseAltCons,
+    DamlCaseAltEnum, DamlCaseAltOptionalSome, DamlCaseAltSum, DamlCaseAltVariant, DamlCons, DamlEnumCon, DamlExpr,
+    DamlFieldWithExpr, DamlFromAny, DamlLocalValueName, DamlOptionalSome, DamlPrimCon, DamlPrimLit, DamlRecCon,
+    DamlRecProj, DamlRecUpd, DamlStructCon, DamlStructProj, DamlStructUpd, DamlToAny, DamlTyAbs, DamlTyApp,
+    DamlValueName, DamlVarWithType, DamlVariantCon,
 };
 use crate::error::{DamlLfConvertError, DamlLfConvertResult};
 use crate::lf_protobuf::daml_lf_2;
 use crate::lf_protobuf::daml_lf_2::builtin_lit::Sum as BuiltinLitSum;
+use crate::lf_protobuf::daml_lf_2::case_alt::Sum as CaseAltSum;
 use crate::lf_protobuf::daml_lf_2::expr::Sum as ExprSum;
 use crate::lf_protobuf::daml_lf_2::self_or_imported_package_id::Sum as PackageRefSum;
 use crate::lf_protobuf::daml_lf_2::{BuiltinCon as BuiltinConProto, BuiltinFunction as BuiltinFunctionProto};
@@ -137,15 +144,54 @@ pub fn convert_expr<'a>(
             let expr = convert_expr(fa.expr.as_deref().req()?, package)?;
             Ok(DamlExpr::FromAny(DamlFromAny::new(ty, Box::new(expr))))
         },
-        // 3.8d: App / Case / Let / Cons / OptionalSome.
-        ExprSum::App(_)
-        | ExprSum::TyApp(_)
-        | ExprSum::Abs(_)
-        | ExprSum::TyAbs(_)
-        | ExprSum::Case(_)
-        | ExprSum::Let(_)
-        | ExprSum::Cons(_)
-        | ExprSum::OptionalSome(_)
+        ExprSum::App(app) => {
+            let fun = convert_expr(app.fun.as_deref().req()?, package)?;
+            let args = app.args.iter().map(|a| convert_expr(a, package)).collect::<DamlLfConvertResult<Vec<_>>>()?;
+            Ok(DamlExpr::App(DamlApp::new(Box::new(fun), args)))
+        },
+        ExprSum::TyApp(ta) => {
+            let expr = convert_expr(ta.expr.as_deref().req()?, package)?;
+            let types =
+                ta.types.iter().map(|t| convert_type(t, package)).collect::<DamlLfConvertResult<Vec<_>>>()?;
+            Ok(DamlExpr::TyApp(DamlTyApp::new(Box::new(expr), types)))
+        },
+        ExprSum::Abs(abs) => {
+            let params = abs
+                .param
+                .iter()
+                .map(|p| convert_var_with_type(p, package))
+                .collect::<DamlLfConvertResult<Vec<_>>>()?;
+            let body = convert_expr(abs.body.as_deref().req()?, package)?;
+            Ok(DamlExpr::Abs(DamlAbs::new(params, Box::new(body))))
+        },
+        ExprSum::TyAbs(ta) => {
+            let params = ta
+                .param
+                .iter()
+                .map(|p| convert_typevar_with_kind(p, package, package.interned_kinds_raw()))
+                .collect::<DamlLfConvertResult<Vec<_>>>()?;
+            let body = convert_expr(ta.body.as_deref().req()?, package)?;
+            Ok(DamlExpr::TyAbs(DamlTyAbs::new(params, Box::new(body))))
+        },
+        ExprSum::Case(case) => {
+            let scrut = convert_expr(case.scrut.as_deref().req()?, package)?;
+            let alts =
+                case.alts.iter().map(|a| convert_case_alt(a, package)).collect::<DamlLfConvertResult<Vec<_>>>()?;
+            Ok(DamlExpr::Case(DamlCase::new(Box::new(scrut), alts)))
+        },
+        ExprSum::Let(block) => Ok(DamlExpr::Let(convert_block(block, package)?)),
+        ExprSum::Cons(cons) => {
+            let ty = convert_type(cons.r#type.as_ref().req()?, package)?;
+            let front =
+                cons.front.iter().map(|e| convert_expr(e, package)).collect::<DamlLfConvertResult<Vec<_>>>()?;
+            let tail = convert_expr(cons.tail.as_deref().req()?, package)?;
+            Ok(DamlExpr::Cons(DamlCons::new(ty, front, Box::new(tail))))
+        },
+        ExprSum::OptionalSome(os) => {
+            let ty = convert_type(os.r#type.as_ref().req()?, package)?;
+            let body = convert_expr(os.value.as_deref().req()?, package)?;
+            Ok(DamlExpr::OptionalSome(DamlOptionalSome::new(ty, Box::new(body))))
+        },
         // 3.8e: exceptions.
         | ExprSum::ToAnyException(_)
         | ExprSum::FromAnyException(_)
@@ -170,6 +216,69 @@ pub fn convert_expr<'a>(
         // 2.dev experimental — out of scope.
         | ExprSum::Experimental(_) => Err(DamlLfConvertError::MissingRequiredField),
     }
+}
+
+/// Convert an LF2 `VarWithType` into a [`DamlVarWithType`].
+fn convert_var_with_type<'a>(
+    proto: &daml_lf_2::VarWithType,
+    package: &'a DamlPackagePayload<'a>,
+) -> DamlLfConvertResult<DamlVarWithType<'a>> {
+    let var = package.resolve_string(proto.var_interned_str)?;
+    let ty = convert_type(proto.r#type.as_ref().req()?, package)?;
+    Ok(DamlVarWithType::new(ty, Cow::Borrowed(var)))
+}
+
+/// Convert an LF2 `Block` (used by both `Let` and `Update::Block`).
+fn convert_block<'a>(
+    proto: &daml_lf_2::Block,
+    package: &'a DamlPackagePayload<'a>,
+) -> DamlLfConvertResult<DamlBlock<'a>> {
+    let bindings = proto
+        .bindings
+        .iter()
+        .map(|b| {
+            let binder = convert_var_with_type(b.binder.as_ref().req()?, package)?;
+            let bound = convert_expr(b.bound.as_ref().req()?, package)?;
+            Ok(DamlBinding::new(binder, bound))
+        })
+        .collect::<DamlLfConvertResult<Vec<_>>>()?;
+    let body = convert_expr(proto.body.as_deref().req()?, package)?;
+    Ok(DamlBlock::new(bindings, Box::new(body)))
+}
+
+/// Convert an LF2 `CaseAlt` (pattern + result body).
+fn convert_case_alt<'a>(
+    proto: &daml_lf_2::CaseAlt,
+    package: &'a DamlPackagePayload<'a>,
+) -> DamlLfConvertResult<DamlCaseAlt<'a>> {
+    let body = convert_expr(proto.body.as_ref().req()?, package)?;
+    let sum = match proto.sum.as_ref().req()? {
+        CaseAltSum::Default(_) => DamlCaseAltSum::Default,
+        CaseAltSum::Variant(v) => {
+            let con = convert_tycon_id(v.con.as_ref().req()?, package)?;
+            let variant = package.resolve_string(v.variant_interned_str)?;
+            let binder = package.resolve_string(v.binder_interned_str)?;
+            DamlCaseAltSum::Variant(DamlCaseAltVariant::new(con, Cow::Borrowed(variant), Cow::Borrowed(binder)))
+        },
+        CaseAltSum::BuiltinCon(code) => DamlCaseAltSum::PrimCon(convert_builtin_con(*code)?),
+        CaseAltSum::Nil(_) => DamlCaseAltSum::Nil,
+        CaseAltSum::Cons(c) => {
+            let var_head = package.resolve_string(c.var_head_interned_str)?;
+            let var_tail = package.resolve_string(c.var_tail_interned_str)?;
+            DamlCaseAltSum::Cons(DamlCaseAltCons::new(Cow::Borrowed(var_head), Cow::Borrowed(var_tail)))
+        },
+        CaseAltSum::OptionalNone(_) => DamlCaseAltSum::OptionalNone,
+        CaseAltSum::OptionalSome(os) => {
+            let var_body = package.resolve_string(os.var_body_interned_str)?;
+            DamlCaseAltSum::OptionalSome(DamlCaseAltOptionalSome::new(Cow::Borrowed(var_body)))
+        },
+        CaseAltSum::Enum(e) => {
+            let con = convert_tycon_id(e.con.as_ref().req()?, package)?;
+            let constructor = package.resolve_string(e.constructor_interned_str)?;
+            DamlCaseAltSum::Enum(DamlCaseAltEnum::new(con, Cow::Borrowed(constructor)))
+        },
+    };
+    Ok(DamlCaseAlt::new(body, sum))
 }
 
 /// Convert a slice of LF2 `FieldWithExpr` into the element-layer
