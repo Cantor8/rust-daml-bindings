@@ -1,8 +1,8 @@
 use crate::data::value::{DamlEnum, DamlRecord, DamlVariant};
 use crate::data::{DamlError, DamlResult};
-use crate::grpc_protobuf::com::daml::ledger::api::v1::value::Sum;
-use crate::grpc_protobuf::com::daml::ledger::api::v1::{
-    gen_map, map, Enum, GenMap, List, Map, Optional, Record, Value, Variant,
+use crate::grpc_protobuf::com::daml::ledger::api::v2::value::Sum;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::{
+    gen_map, text_map, Enum, GenMap, List, Optional, Record, TextMap, Value, Variant,
 };
 use crate::util;
 use crate::util::Required;
@@ -59,9 +59,9 @@ pub enum DamlValue {
     Date(DamlDate),
     /// A Daml [optional value.
     Optional(Option<Box<DamlValue>>),
-    /// A Daml [`Map`](https://docs.daml.com/app-dev/grpc/proto-docs.html#map) value.
-    Map(DamlTextMap<DamlValue>),
-    /// A Daml [`GenMap`](https://docs.daml.com/app-dev/grpc/proto-docs.html#genmap) value.
+    /// A Daml `TextMap` value — a homogeneous map keyed by `Text`.
+    TextMap(DamlTextMap<DamlValue>),
+    /// A Daml `GenMap` value — a homogeneous map keyed by any `DamlValue`.
     GenMap(DamlGenMap<DamlValue, DamlValue>),
 }
 
@@ -136,9 +136,9 @@ impl DamlValue {
         DamlValue::Optional(optional.map(Box::new))
     }
 
-    /// Construct a new [`DamlValue::Map`] from an existing [`DamlTextMap<DamlValue>`].
-    pub fn new_map(map: impl Into<DamlTextMap<Self>>) -> Self {
-        DamlValue::Map(map.into())
+    /// Construct a new [`DamlValue::TextMap`] from an existing [`DamlTextMap<DamlValue>`].
+    pub fn new_text_map(map: impl Into<DamlTextMap<Self>>) -> Self {
+        DamlValue::TextMap(map.into())
     }
 
     /// Construct a new [`DamlValue::GenMap`] from an existing [`DamlGenMap<DamlValue, DamlValue>`].
@@ -368,12 +368,12 @@ impl DamlValue {
 
     /// Try to extract an &[`DamlTextMap<DamlValue>`] value from the [`DamlValue`].
     ///
-    /// if `self` is a [`DamlValue::Map`] then &[`DamlTextMap<DamlValue>`] is returned, otherwise a
+    /// if `self` is a [`DamlValue::TextMap`] then &[`DamlTextMap<DamlValue>`] is returned, otherwise a
     /// [`DamlError::UnexpectedType`] is returned.
-    pub fn try_map(&self) -> DamlResult<&DamlTextMap<Self>> {
+    pub fn try_text_map(&self) -> DamlResult<&DamlTextMap<Self>> {
         match self {
-            DamlValue::Map(m) => Ok(m),
-            _ => Err(self.make_unexpected_type_error("Map")),
+            DamlValue::TextMap(m) => Ok(m),
+            _ => Err(self.make_unexpected_type_error("TextMap")),
         }
     }
 
@@ -434,12 +434,12 @@ impl DamlValue {
 
     /// Try to take an [`DamlTextMap<DamlValue>`] value from the [`DamlValue`].
     ///
-    /// if `self` is a [`DamlValue::Map`] then [`DamlTextMap<DamlValue>`] is returned, otherwise a
+    /// if `self` is a [`DamlValue::TextMap`] then [`DamlTextMap<DamlValue>`] is returned, otherwise a
     /// [`DamlError::UnexpectedType`] is returned.
-    pub fn try_take_map(self) -> DamlResult<DamlTextMap<Self>> {
+    pub fn try_take_text_map(self) -> DamlResult<DamlTextMap<Self>> {
         match self {
-            DamlValue::Map(m) => Ok(m),
-            _ => Err(self.make_unexpected_type_error("Map")),
+            DamlValue::TextMap(m) => Ok(m),
+            _ => Err(self.make_unexpected_type_error("TextMap")),
         }
     }
 
@@ -482,7 +482,7 @@ impl DamlValue {
             DamlValue::Unit => "Unit",
             DamlValue::Date(_) => "Date",
             DamlValue::Optional(_) => "Optional",
-            DamlValue::Map(_) => "Map",
+            DamlValue::TextMap(_) => "TextMap",
             DamlValue::GenMap(_) => "GenMap",
         }
     }
@@ -726,7 +726,9 @@ where
     V: DamlSerializableType + DamlSerializeInto<DamlValue>,
 {
     fn serialize_from(text_map: DamlTextMap<V>) -> DamlValue {
-        DamlValue::new_map(text_map.0.into_iter().map(|(k, v)| (k, V::serialize_into(v))).collect::<DamlTextMap<_>>())
+        DamlValue::new_text_map(
+            text_map.0.into_iter().map(|(k, v)| (k, V::serialize_into(v))).collect::<DamlTextMap<_>>(),
+        )
     }
 }
 
@@ -853,11 +855,11 @@ where
 {
     fn deserialize_from(value: DamlValue) -> DamlResult<Self> {
         match value {
-            DamlValue::Map(text_map) => Ok(text_map
+            DamlValue::TextMap(text_map) => Ok(text_map
                 .into_iter()
                 .map(|(k, v)| Ok((k, V::deserialize_from(v)?)))
                 .collect::<DamlResult<DamlTextMap<_>>>()?),
-            _ => Err(value.make_unexpected_type_error("Map")),
+            _ => Err(value.make_unexpected_type_error("TextMap")),
         }
     }
 }
@@ -899,7 +901,7 @@ impl TryFrom<Value> for DamlValue {
             Sum::Date(v) => DamlValue::Date(util::date_from_days(v)?),
             Sum::Optional(v) =>
                 DamlValue::Optional(v.value.map(|v| DamlValue::try_from(*v)).transpose()?.map(Box::new)),
-            Sum::Map(v) => DamlValue::Map(
+            Sum::TextMap(v) => DamlValue::TextMap(
                 v.entries
                     .into_iter()
                     .map(|v| Ok((v.key, v.value.req().and_then(DamlValue::try_from)?)))
@@ -943,10 +945,10 @@ impl From<DamlValue> for Value {
                 DamlValue::Optional(None) => Some(Sum::Optional(Box::new(Optional {
                     value: None,
                 }))),
-                DamlValue::Map(v) => Some(Sum::Map(Map {
+                DamlValue::TextMap(v) => Some(Sum::TextMap(TextMap {
                     entries: v
                         .into_iter()
-                        .map(|(key, val)| map::Entry {
+                        .map(|(key, val)| text_map::Entry {
                             key,
                             value: Some(val.into()),
                         })
@@ -986,7 +988,7 @@ impl PartialOrd for DamlValue {
             (DamlValue::Unit, DamlValue::Unit) => Some(Ordering::Equal),
             (DamlValue::Date(v1), DamlValue::Date(v2)) => v1.partial_cmp(v2),
             (DamlValue::Optional(v1), DamlValue::Optional(v2)) => v1.partial_cmp(v2),
-            (DamlValue::Map(v1), DamlValue::Map(v2)) =>
+            (DamlValue::TextMap(v1), DamlValue::TextMap(v2)) =>
                 if v1.len() == v2.len() {
                     v1.keys().sorted().partial_cmp(v2.keys().sorted())
                 } else {
@@ -1047,8 +1049,8 @@ mod tests {
     fn test_eq_for_textmap() {
         let items =
             vec![(String::from("text1"), DamlValue::Int64(100)), (String::from("text2"), DamlValue::Int64(200))];
-        let value1 = DamlValue::Map(items.clone().into_iter().collect::<DamlTextMap<DamlValue>>());
-        let value2 = DamlValue::Map(items.into_iter().collect::<DamlTextMap<DamlValue>>());
+        let value1 = DamlValue::TextMap(items.clone().into_iter().collect::<DamlTextMap<DamlValue>>());
+        let value2 = DamlValue::TextMap(items.into_iter().collect::<DamlTextMap<DamlValue>>());
         assert_eq!(value1, value2);
     }
 
@@ -1060,9 +1062,9 @@ mod tests {
             vec![(String::from("text2"), DamlValue::Int64(100)), (String::from("text3"), DamlValue::Int64(200))];
         let items3 =
             vec![(String::from("text1"), DamlValue::Int64(100)), (String::from("text2"), DamlValue::Int64(200))];
-        let value1 = DamlValue::Map(items1.into_iter().collect::<DamlTextMap<DamlValue>>());
-        let value2 = DamlValue::Map(items2.into_iter().collect::<DamlTextMap<DamlValue>>());
-        let value3 = DamlValue::Map(items3.into_iter().collect::<DamlTextMap<DamlValue>>());
+        let value1 = DamlValue::TextMap(items1.into_iter().collect::<DamlTextMap<DamlValue>>());
+        let value2 = DamlValue::TextMap(items2.into_iter().collect::<DamlTextMap<DamlValue>>());
+        let value3 = DamlValue::TextMap(items3.into_iter().collect::<DamlTextMap<DamlValue>>());
         assert_eq!(value1.cmp(&value2), Ordering::Less);
         assert_eq!(value2.cmp(&value1), Ordering::Greater);
         assert_eq!(value1.cmp(&value3), Ordering::Equal);

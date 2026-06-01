@@ -1,6 +1,6 @@
 use crate::data::value::{DamlRecordField, DamlValue};
 use crate::data::{DamlError, DamlIdentifier, DamlResult};
-use crate::grpc_protobuf::com::daml::ledger::api::v1::{Identifier, Record, RecordField};
+use crate::grpc_protobuf::com::daml::ledger::api::v2::{Identifier, Record, RecordField};
 use std::convert::{TryFrom, TryInto};
 
 /// A representation of the fields on a Daml `template` or `data` construct.

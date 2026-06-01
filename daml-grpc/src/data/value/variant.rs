@@ -1,6 +1,6 @@
 use crate::data::value::DamlValue;
 use crate::data::{DamlError, DamlIdentifier};
-use crate::grpc_protobuf::com::daml::ledger::api::v1::{Enum, Identifier, Value, Variant};
+use crate::grpc_protobuf::com::daml::ledger::api::v2::{Enum, Identifier, Value, Variant};
 use crate::util::Required;
 use std::convert::TryFrom;
 
