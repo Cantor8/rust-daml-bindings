@@ -4,29 +4,33 @@ use std::fmt::Debug;
 use tonic::transport::Channel;
 use tracing::{instrument, trace};
 
+use crate::data::filter::DamlTransactionFormat;
 use crate::data::offset::DamlLedgerOffset;
+use crate::data::transaction::DamlTransaction;
 use crate::data::{DamlCommands, DamlResult};
 use crate::grpc_protobuf::com::daml::ledger::api::v2::command_service_client::CommandServiceClient;
-use crate::grpc_protobuf::com::daml::ledger::api::v2::{Commands, SubmitAndWaitRequest};
+use crate::grpc_protobuf::com::daml::ledger::api::v2::{
+    Commands, SubmitAndWaitForTransactionRequest, SubmitAndWaitRequest,
+};
 use crate::service::common::make_request;
+use crate::util::Required;
 
 /// Submit a composite command to a v2 participant and wait synchronously
 /// for the participant's verdict (success or rejection).
 ///
 /// v2 reshaped the v1 surface:
-/// - `SubmitAndWait` now returns the `update_id` and `completion_offset`
+/// - `SubmitAndWait` returns the `update_id` and `completion_offset`
 ///   (v1 had a separate `SubmitAndWaitForTransactionId` RPC for that —
 ///   the consolidated response makes that variant redundant).
+/// - `SubmitAndWaitForTransaction` now takes an optional
+///   `TransactionFormat` that selects shape, parties, and the
+///   `verbose` flag.
 /// - `SubmitAndWaitForTransactionTree` is gone; the tree shape is now
-///   selectable via `TransactionFormat` on the transaction-returning
-///   variant.
+///   selectable via `TransactionFormat::transaction_shape =
+///   LedgerEffects`.
 /// - A new `SubmitAndWaitForReassignment` covers cross-synchronizer
-///   contract movements.
-///
-/// This checkpoint wires up only `submit_and_wait`. The two
-/// transaction- and reassignment-returning variants need the new
-/// `Transaction` / `Reassignment` wrappers, which come with the
-/// UpdateService and reassignment checkpoints respectively.
+///   contract movements; not wired up here — see the upcoming
+///   reassignment checkpoint.
 #[derive(Debug)]
 pub struct DamlCommandService<'a> {
     channel: Channel,
@@ -82,6 +86,37 @@ impl<'a> DamlCommandService<'a> {
             update_id: response.update_id,
             completion_offset: DamlLedgerOffset::new(response.completion_offset),
         })
+    }
+
+    /// Submit a [`DamlCommands`] payload and wait for the resulting
+    /// transaction.
+    ///
+    /// `transaction_format` selects the event shape, the per-party
+    /// filters, and the `verbose` flag. Passing `None` lets the
+    /// participant pick a default: `transaction_shape = AcsDelta`,
+    /// `event_format` with wildcard-template filters for every
+    /// `act_as` and `read_as` party in the submission, `verbose = true`.
+    /// That default is fine for "give me what I just submitted" use
+    /// cases; build a custom `DamlTransactionFormat` to switch shapes
+    /// or scope to specific parties.
+    #[instrument(skip(self))]
+    pub async fn submit_and_wait_for_transaction(
+        &self,
+        commands: impl Into<DamlCommands> + Debug,
+        transaction_format: Option<DamlTransactionFormat>,
+    ) -> DamlResult<DamlTransaction> {
+        let payload = SubmitAndWaitForTransactionRequest {
+            commands: Some(Commands::try_from(commands.into())?),
+            transaction_format: transaction_format.map(Into::into),
+        };
+        trace!(payload = ?payload, token = ?self.auth_token);
+        let response = self
+            .client()
+            .submit_and_wait_for_transaction(make_request(payload, self.auth_token)?)
+            .await?
+            .into_inner();
+        trace!(?response);
+        DamlTransaction::try_from(response.transaction.req()?)
     }
 
     fn client(&self) -> CommandServiceClient<Channel> {

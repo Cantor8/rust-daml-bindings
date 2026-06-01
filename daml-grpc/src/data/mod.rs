@@ -78,9 +78,6 @@ pub use self::identifier::DamlIdentifier;
 mod transaction;
 pub use self::transaction::DamlTransaction;
 
-mod transaction_tree;
-pub use self::transaction_tree::DamlTransactionTree;
-
 mod configuration;
 pub use self::configuration::DamlLedgerConfiguration;
 
