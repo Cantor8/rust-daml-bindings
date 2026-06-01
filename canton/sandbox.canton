@@ -1,0 +1,13 @@
+// Bootstrap script for the rust-daml-bindings local sandbox.
+// Starts the in-memory nodes defined in sandbox.conf, initializes the
+// synchronizer, and connects the participant to it.
+
+nodes.local.start()
+
+bootstrap.synchronizer_local()
+
+sandbox.synchronizers.connect_local(sequencer1, alias = "da")
+
+utils.retry_until_true {
+  sandbox.synchronizers.active("da")
+}
