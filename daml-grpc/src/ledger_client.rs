@@ -287,7 +287,10 @@ impl DamlGrpcClient {
         DamlVersionService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
-    /// DOCME
+    /// Retrieve a [`DamlPackageManagementService`] for inspecting known
+    /// packages, uploading DARs (optionally with synchronizer-scoped
+    /// vetting), validating DARs without uploading, and adjusting the
+    /// participant's package-vetting topology.
     #[cfg(feature = "admin")]
     pub fn package_management_service(&self) -> DamlPackageManagementService<'_> {
         DamlPackageManagementService::new(self.channel.clone(), self.config.auth_token.as_deref())

@@ -3,10 +3,15 @@ use std::convert::TryFrom;
 use chrono::{DateTime, Utc};
 
 use crate::data::{DamlError, DamlResult};
-use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::PackageDetails;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::upload_dar_file_request::VettingChange;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::vetted_packages_change::{Operation, Unvet, Vet};
+use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::{
+    PackageDetails, UpdateVettedPackagesForceFlag, VettedPackagesChange, VettedPackagesRef,
+};
+use crate::grpc_protobuf::com::daml::ledger::api::v2::prior_topology_serial::Serial;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::{
-    GetPackageResponse, HashFunction, PackageMetadataFilter, PackageReference, PackageStatus, TopologyStateFilter,
-    VettedPackage, VettedPackages,
+    GetPackageResponse, HashFunction, PackageMetadataFilter, PackageReference, PackageStatus, PriorTopologySerial,
+    TopologyStateFilter, VettedPackage, VettedPackages,
 };
 use crate::util;
 use crate::util::Required;
@@ -233,4 +238,154 @@ impl From<DamlTopologyStateFilter> for TopologyStateFilter {
 pub struct DamlVettedPackagesPage {
     pub vetted_packages: Vec<DamlVettedPackages>,
     pub next_page_token: String,
+}
+
+// ---------------------------------------------------------------------------
+// PackageManagementService: DAR upload + vetting administration
+// ---------------------------------------------------------------------------
+
+/// How the participant should treat packages contained in an uploaded DAR
+/// w.r.t. vetting. `Unspecified` defers to the server default, which is
+/// "vet everything".
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Default)]
+pub enum DamlVettingChange {
+    #[default]
+    Unspecified,
+    VetAllPackages,
+    DontVetAnyPackages,
+}
+
+impl From<DamlVettingChange> for VettingChange {
+    fn from(v: DamlVettingChange) -> Self {
+        match v {
+            DamlVettingChange::Unspecified => VettingChange::Unspecified,
+            DamlVettingChange::VetAllPackages => VettingChange::VetAllPackages,
+            DamlVettingChange::DontVetAnyPackages => VettingChange::DontVetAnyPackages,
+        }
+    }
+}
+
+/// A reference matching one or more vetted packages. At least one of
+/// `package_id` or `package_name` must be set; empty fields act as
+/// wildcards. `Vet` operations require unique matches; `Unvet`
+/// operations may match multiple.
+#[derive(Debug, Eq, PartialEq, Clone, Default)]
+pub struct DamlVettedPackagesRef {
+    pub package_id: String,
+    pub package_name: String,
+    pub package_version: String,
+}
+
+impl From<DamlVettedPackagesRef> for VettedPackagesRef {
+    fn from(r: DamlVettedPackagesRef) -> Self {
+        Self {
+            package_id: r.package_id,
+            package_name: r.package_name,
+            package_version: r.package_version,
+        }
+    }
+}
+
+/// One step in an `UpdateVettedPackages` request. `Vet` adds or extends
+/// vetting bounds; `Unvet` removes packages from the vetted set. Changes
+/// are applied in order and either all succeed or all fail.
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub enum DamlVettedPackagesChange {
+    Vet {
+        packages: Vec<DamlVettedPackagesRef>,
+        /// `None` removes the lower bound (vetted from the beginning of
+        /// time); `Some(t)` overwrites any prior lower bound.
+        new_valid_from_inclusive: Option<DateTime<Utc>>,
+        /// `None` removes the upper bound (vetted indefinitely);
+        /// `Some(t)` overwrites any prior upper bound.
+        new_valid_until_exclusive: Option<DateTime<Utc>>,
+    },
+    Unvet {
+        packages: Vec<DamlVettedPackagesRef>,
+    },
+}
+
+impl TryFrom<DamlVettedPackagesChange> for VettedPackagesChange {
+    type Error = DamlError;
+
+    fn try_from(c: DamlVettedPackagesChange) -> DamlResult<Self> {
+        let op = match c {
+            DamlVettedPackagesChange::Vet {
+                packages,
+                new_valid_from_inclusive,
+                new_valid_until_exclusive,
+            } => Operation::Vet(Vet {
+                packages: packages.into_iter().map(Into::into).collect(),
+                new_valid_from_inclusive: new_valid_from_inclusive.map(util::to_grpc_timestamp).transpose()?,
+                new_valid_until_exclusive: new_valid_until_exclusive.map(util::to_grpc_timestamp).transpose()?,
+            }),
+            DamlVettedPackagesChange::Unvet {
+                packages,
+            } => Operation::Unvet(Unvet {
+                packages: packages.into_iter().map(Into::into).collect(),
+            }),
+        };
+        Ok(Self {
+            operation: Some(op),
+        })
+    }
+}
+
+/// Concurrency-control token for `UpdateVettedPackages`. The participant
+/// rejects the update if its current topology-transaction serial doesn't
+/// match the supplied value.
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+pub enum DamlPriorTopologySerial {
+    /// The participant must currently be at this serial.
+    Prior(u32),
+    /// The participant must have no prior vetting transactions on this
+    /// (participant, synchronizer) pair.
+    NoPrior,
+}
+
+impl From<DamlPriorTopologySerial> for PriorTopologySerial {
+    fn from(s: DamlPriorTopologySerial) -> Self {
+        let serial = match s {
+            DamlPriorTopologySerial::Prior(v) => Serial::Prior(v),
+            DamlPriorTopologySerial::NoPrior => Serial::NoPrior(()),
+        };
+        Self {
+            serial: Some(serial),
+        }
+    }
+}
+
+/// Opt-in escapes for vetting updates that are normally rejected because
+/// they would compromise upgrade safety. Use sparingly.
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+pub enum DamlUpdateVettedPackagesForceFlag {
+    AllowVetIncompatibleUpgrades,
+    AllowUnvettedDependencies,
+}
+
+impl From<DamlUpdateVettedPackagesForceFlag> for i32 {
+    fn from(f: DamlUpdateVettedPackagesForceFlag) -> Self {
+        let v: UpdateVettedPackagesForceFlag = f.into();
+        v as i32
+    }
+}
+
+impl From<DamlUpdateVettedPackagesForceFlag> for UpdateVettedPackagesForceFlag {
+    fn from(f: DamlUpdateVettedPackagesForceFlag) -> Self {
+        match f {
+            DamlUpdateVettedPackagesForceFlag::AllowVetIncompatibleUpgrades =>
+                UpdateVettedPackagesForceFlag::AllowVetIncompatibleUpgrades,
+            DamlUpdateVettedPackagesForceFlag::AllowUnvettedDependencies =>
+                UpdateVettedPackagesForceFlag::AllowUnvettedDependencies,
+        }
+    }
+}
+
+/// Outcome of `UpdateVettedPackages`. `past_vetted_packages` is `None`
+/// when no prior vetting topology existed for this participant on the
+/// target synchronizer.
+#[derive(Debug, Eq, PartialEq, Clone, Default)]
+pub struct DamlUpdateVettedPackagesOutcome {
+    pub past_vetted_packages: Option<DamlVettedPackages>,
+    pub new_vetted_packages: Option<DamlVettedPackages>,
 }
