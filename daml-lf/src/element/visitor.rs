@@ -4,11 +4,12 @@ use crate::element::daml_expr::DamlScenario;
 use crate::element::{
     DamlAbs, DamlApp, DamlBinding, DamlBlock, DamlBuiltinFunction, DamlCase, DamlCaseAlt, DamlCaseAltCons,
     DamlCaseAltEnum, DamlCaseAltOptionalSome, DamlCaseAltSum, DamlCaseAltVariant, DamlCommit, DamlCons, DamlCreate,
-    DamlDefValue, DamlEnumCon, DamlExercise, DamlExerciseByKey, DamlExpr, DamlFetch, DamlFieldWithExpr, DamlFromAny,
-    DamlFromAnyException, DamlInterfaceExpr, DamlLocalValueName, DamlNonLocalValueName, DamlOptionalSome,
-    DamlPrimCon, DamlPrimLit, DamlPure, DamlRecCon, DamlRecProj, DamlRecUpd, DamlRetrieveByKey, DamlScenarioEmbedExpr,
-    DamlStructCon, DamlStructProj, DamlStructUpd, DamlThrow, DamlToAny, DamlToAnyException, DamlTryCatch, DamlTyAbs,
-    DamlTyApp, DamlUpdate, DamlUpdateEmbedExpr, DamlValueName, DamlVarWithType, DamlVariantCon, RoundingMode,
+    DamlCreateInterface, DamlDefValue, DamlEnumCon, DamlExercise, DamlExerciseByKey, DamlExerciseInterface, DamlExpr,
+    DamlFetch, DamlFetchInterface, DamlFieldWithExpr, DamlFromAny, DamlFromAnyException, DamlInterfaceExpr,
+    DamlLocalValueName, DamlNonLocalValueName, DamlOptionalSome, DamlPrimCon, DamlPrimLit, DamlPure, DamlQueryNByKey,
+    DamlRecCon, DamlRecProj, DamlRecUpd, DamlRetrieveByKey, DamlScenarioEmbedExpr, DamlStructCon, DamlStructProj,
+    DamlStructUpd, DamlThrow, DamlToAny, DamlToAnyException, DamlTryCatch, DamlTyAbs, DamlTyApp, DamlUpdate,
+    DamlUpdateEmbedExpr, DamlValueName, DamlVarWithType, DamlVariantCon, RoundingMode,
 };
 use crate::element::{
     DamlAbsoluteTyCon, DamlArchive, DamlArrow, DamlChoice, DamlData, DamlDefKey, DamlDefTypeSyn, DamlEnum,
@@ -324,4 +325,20 @@ pub trait DamlElementVisitor {
     fn pre_visit_interface_expr<'a>(&mut self, iexpr: &DamlInterfaceExpr<'a>) {}
     #[cfg(feature = "full")]
     fn post_visit_interface_expr<'a>(&mut self, iexpr: &DamlInterfaceExpr<'a>) {}
+    #[cfg(feature = "full")]
+    fn pre_visit_query_n_by_key<'a>(&mut self, qbk: &DamlQueryNByKey<'a>) {}
+    #[cfg(feature = "full")]
+    fn post_visit_query_n_by_key<'a>(&mut self, qbk: &DamlQueryNByKey<'a>) {}
+    #[cfg(feature = "full")]
+    fn pre_visit_create_interface<'a>(&mut self, ci: &DamlCreateInterface<'a>) {}
+    #[cfg(feature = "full")]
+    fn post_visit_create_interface<'a>(&mut self, ci: &DamlCreateInterface<'a>) {}
+    #[cfg(feature = "full")]
+    fn pre_visit_exercise_interface<'a>(&mut self, ei: &DamlExerciseInterface<'a>) {}
+    #[cfg(feature = "full")]
+    fn post_visit_exercise_interface<'a>(&mut self, ei: &DamlExerciseInterface<'a>) {}
+    #[cfg(feature = "full")]
+    fn pre_visit_fetch_interface<'a>(&mut self, fi: &DamlFetchInterface<'a>) {}
+    #[cfg(feature = "full")]
+    fn post_visit_fetch_interface<'a>(&mut self, fi: &DamlFetchInterface<'a>) {}
 }

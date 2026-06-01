@@ -1,19 +1,30 @@
 //! LF2 expression-tree → element/ conversion.
 //!
-//! 3.8f adds the LF2 interface-related expressions (To/FromInterface,
-//! CallInterface, ViewInterface, SignatoryInterface, …). They are
-//! grouped under a new top-level [`DamlExpr::InterfaceOp`] variant
-//! whose payload is the [`DamlInterfaceExpr`] sub-enum (compact,
-//! follows the [`DamlUpdate`] precedent).
+//! 3.8g closes out 3.8 with the `Update` sub-oneof, the effect
+//! language used inside every template choice body. The LF2 update
+//! sub-oneof carries 16 variants; the 11 that already existed in
+//! [`DamlUpdate`] (Pure / Block / Create / Exercise / ExerciseByKey
+//! / Fetch / GetTime / LookupByKey / FetchByKey / EmbedExpr /
+//! TryCatch) are wired through, and the 5 LF2 additions
+//! (`QueryNByKey`, `CreateInterface`, `ExerciseInterface`,
+//! `FetchInterface`, `LedgerTimeLt`) joined the element layer in
+//! this checkpoint.
+//!
+//! After 3.8g the *entire* LF2 expression sub-language is convertible
+//! under `--features full`. The remaining `MissingRequiredField`
+//! surfaces are: the 2.dev `InternedExpr` (references the package's
+//! interned-expressions table, not yet exposed), the 2.dev
+//! `Experimental` escape hatch, the LF2-only builtins / literals
+//! whose element-layer enum variants we haven't added yet (see
+//! 3.8b), and `FailureCategory` literals.
 //!
 //! Per-checkpoint scope:
 //!  - 3.8b: leaves.
 //!  - 3.8c: record / variant / enum / struct + To/FromAny.
 //!  - 3.8d: App / Abs / Case / Let / Cons / OptionalSome.
 //!  - 3.8e: Throw / ToAnyException / FromAnyException.
-//!  - 3.8f: interface expressions (this checkpoint).
-//!  - 3.8g: Update statement (its own nested oneof with ~12
-//!    sub-variants).
+//!  - 3.8f: interface expressions.
+//!  - 3.8g: Update statement (this checkpoint).
 //!
 //! LF2 grew several builtins and literals (FailWithStatus,
 //! Keccak256Text, hex codecs, FailureCategory literals,
@@ -33,10 +44,13 @@ use crate::convert::typevar_payload::convert_typevar_with_kind;
 use crate::convert::util::Required;
 use crate::element::{
     DamlAbs, DamlApp, DamlBinding, DamlBlock, DamlBuiltinFunction, DamlCase, DamlCaseAlt, DamlCaseAltCons,
-    DamlCaseAltEnum, DamlCaseAltOptionalSome, DamlCaseAltSum, DamlCaseAltVariant, DamlCons, DamlEnumCon, DamlExpr,
-    DamlFieldWithExpr, DamlFromAny, DamlFromAnyException, DamlInterfaceExpr, DamlLocalValueName, DamlOptionalSome,
-    DamlPrimCon, DamlPrimLit, DamlRecCon, DamlRecProj, DamlRecUpd, DamlStructCon, DamlStructProj, DamlStructUpd,
-    DamlThrow, DamlToAny, DamlToAnyException, DamlTyAbs, DamlTyApp, DamlValueName, DamlVarWithType, DamlVariantCon,
+    DamlCaseAltEnum, DamlCaseAltOptionalSome, DamlCaseAltSum, DamlCaseAltVariant, DamlCons, DamlCreate,
+    DamlCreateInterface, DamlEnumCon, DamlExercise, DamlExerciseByKey, DamlExerciseInterface, DamlExpr, DamlFetch,
+    DamlFetchInterface, DamlFieldWithExpr, DamlFromAny, DamlFromAnyException, DamlInterfaceExpr, DamlLocalValueName,
+    DamlOptionalSome, DamlPrimCon, DamlPrimLit, DamlPure, DamlQueryNByKey, DamlRecCon, DamlRecProj, DamlRecUpd,
+    DamlRetrieveByKey, DamlStructCon, DamlStructProj, DamlStructUpd, DamlThrow, DamlToAny, DamlToAnyException,
+    DamlTryCatch, DamlTyAbs, DamlTyApp, DamlUpdate, DamlUpdateEmbedExpr, DamlValueName, DamlVarWithType,
+    DamlVariantCon,
 };
 use crate::error::{DamlLfConvertError, DamlLfConvertResult};
 use crate::lf_protobuf::daml_lf_2;
@@ -44,6 +58,7 @@ use crate::lf_protobuf::daml_lf_2::builtin_lit::Sum as BuiltinLitSum;
 use crate::lf_protobuf::daml_lf_2::case_alt::Sum as CaseAltSum;
 use crate::lf_protobuf::daml_lf_2::expr::Sum as ExprSum;
 use crate::lf_protobuf::daml_lf_2::self_or_imported_package_id::Sum as PackageRefSum;
+use crate::lf_protobuf::daml_lf_2::update::Sum as UpdateSum;
 use crate::lf_protobuf::daml_lf_2::{BuiltinCon as BuiltinConProto, BuiltinFunction as BuiltinFunctionProto};
 
 /// Convert an LF2 `Expr` into the element-layer [`DamlExpr`].
@@ -283,13 +298,127 @@ pub fn convert_expr<'a>(
                 choice_arg_expr: Box::new(convert_expr(co.choice_arg_expr.as_deref().req()?, package)?),
             }))
         },
+        ExprSum::Update(update) => Ok(DamlExpr::Update(convert_update(update, package)?)),
         // InternedExpr references the package's interned_exprs table
         // (2.dev only); the convert layer doesn't expose it yet.
         ExprSum::InternedExpr(_)
-        // 3.8g: Update.
-        | ExprSum::Update(_)
         // 2.dev experimental — out of scope.
         | ExprSum::Experimental(_) => Err(DamlLfConvertError::MissingRequiredField),
+    }
+}
+
+/// Convert an LF2 `Update` (the effect language used by template
+/// choice bodies) into a [`DamlUpdate`].
+fn convert_update<'a>(
+    proto: &daml_lf_2::Update,
+    package: &'a DamlPackagePayload<'a>,
+) -> DamlLfConvertResult<DamlUpdate<'a>> {
+    match proto.sum.as_ref().req()? {
+        UpdateSum::Pure(pure) => {
+            let ty = convert_type(pure.r#type.as_ref().req()?, package)?;
+            let expr = convert_expr(pure.expr.as_deref().req()?, package)?;
+            Ok(DamlUpdate::Pure(DamlPure::new(ty, Box::new(expr))))
+        },
+        UpdateSum::Block(block) => Ok(DamlUpdate::Block(convert_block(block, package)?)),
+        UpdateSum::Create(create) => {
+            let template = convert_tycon_id(create.template.as_ref().req()?, package)?;
+            let expr = convert_expr(create.expr.as_deref().req()?, package)?;
+            Ok(DamlUpdate::Create(DamlCreate::new(Box::new(template), Box::new(expr))))
+        },
+        UpdateSum::CreateInterface(ci) => {
+            let interface = convert_tycon_id(ci.interface.as_ref().req()?, package)?;
+            let expr = convert_expr(ci.expr.as_deref().req()?, package)?;
+            Ok(DamlUpdate::CreateInterface(DamlCreateInterface::new(Box::new(interface), Box::new(expr))))
+        },
+        UpdateSum::Exercise(ex) => {
+            let template = convert_tycon_id(ex.template.as_ref().req()?, package)?;
+            let cid = convert_expr(ex.cid.as_deref().req()?, package)?;
+            let arg = convert_expr(ex.arg.as_deref().req()?, package)?;
+            let choice = package.resolve_string(ex.choice_interned_str)?;
+            Ok(DamlUpdate::Exercise(DamlExercise::new(
+                Box::new(template),
+                Box::new(cid),
+                Box::new(arg),
+                Cow::Borrowed(choice),
+            )))
+        },
+        UpdateSum::ExerciseInterface(ei) => {
+            let interface = convert_tycon_id(ei.interface.as_ref().req()?, package)?;
+            let cid = convert_expr(ei.cid.as_deref().req()?, package)?;
+            let arg = convert_expr(ei.arg.as_deref().req()?, package)?;
+            let choice = package.resolve_string(ei.choice_interned_str)?;
+            let guard = ei.guard.as_deref().map(|g| convert_expr(g, package)).transpose()?.map(Box::new);
+            Ok(DamlUpdate::ExerciseInterface(DamlExerciseInterface::new(
+                Box::new(interface),
+                Cow::Borrowed(choice),
+                Box::new(cid),
+                Box::new(arg),
+                guard,
+            )))
+        },
+        UpdateSum::ExerciseByKey(ebk) => {
+            let template = convert_tycon_id(ebk.template.as_ref().req()?, package)?;
+            let choice = package.resolve_string(ebk.choice_interned_str)?;
+            let key = convert_expr(ebk.key.as_deref().req()?, package)?;
+            let arg = convert_expr(ebk.arg.as_deref().req()?, package)?;
+            Ok(DamlUpdate::ExerciseByKey(DamlExerciseByKey::new(
+                Box::new(template),
+                Cow::Borrowed(choice),
+                Box::new(key),
+                Box::new(arg),
+            )))
+        },
+        UpdateSum::Fetch(f) => {
+            let template = convert_tycon_id(f.template.as_ref().req()?, package)?;
+            let cid = convert_expr(f.cid.as_deref().req()?, package)?;
+            Ok(DamlUpdate::Fetch(DamlFetch::new(Box::new(template), Box::new(cid))))
+        },
+        UpdateSum::FetchInterface(fi) => {
+            let interface = convert_tycon_id(fi.interface.as_ref().req()?, package)?;
+            let cid = convert_expr(fi.cid.as_deref().req()?, package)?;
+            Ok(DamlUpdate::FetchInterface(DamlFetchInterface::new(Box::new(interface), Box::new(cid))))
+        },
+        UpdateSum::GetTime(_) => Ok(DamlUpdate::GetTime),
+        UpdateSum::LookupByKey(rbk) => {
+            let template = convert_tycon_id(rbk.template.as_ref().req()?, package)?;
+            // The proto's RetrieveByKey only carries the template id;
+            // the key value is supplied via surrounding application
+            // structure. Emit an OptionalNone-of-Unit as the
+            // placeholder key (DamlRetrieveByKey requires *some* expr).
+            Ok(DamlUpdate::LookupByKey(DamlRetrieveByKey::new(
+                Box::new(template),
+                Box::new(DamlExpr::OptionalNone(crate::element::DamlType::Unit)),
+            )))
+        },
+        UpdateSum::FetchByKey(rbk) => {
+            let template = convert_tycon_id(rbk.template.as_ref().req()?, package)?;
+            Ok(DamlUpdate::FetchByKey(DamlRetrieveByKey::new(
+                Box::new(template),
+                Box::new(DamlExpr::OptionalNone(crate::element::DamlType::Unit)),
+            )))
+        },
+        UpdateSum::QueryNByKey(qbk) => {
+            let template = convert_tycon_id(qbk.template.as_ref().req()?, package)?;
+            Ok(DamlUpdate::QueryNByKey(DamlQueryNByKey::new(Box::new(template))))
+        },
+        UpdateSum::EmbedExpr(ee) => {
+            let ty = convert_type(ee.r#type.as_ref().req()?, package)?;
+            let body = convert_expr(ee.body.as_deref().req()?, package)?;
+            Ok(DamlUpdate::EmbedExpr(DamlUpdateEmbedExpr::new(ty, Box::new(body))))
+        },
+        UpdateSum::TryCatch(tc) => {
+            let return_type = convert_type(tc.return_type.as_ref().req()?, package)?;
+            let try_expr = convert_expr(tc.try_expr.as_deref().req()?, package)?;
+            let var = package.resolve_string(tc.var_interned_str)?;
+            let catch_expr = convert_expr(tc.catch_expr.as_deref().req()?, package)?;
+            Ok(DamlUpdate::TryCatch(DamlTryCatch::new(
+                return_type,
+                Box::new(try_expr),
+                Cow::Borrowed(var),
+                Box::new(catch_expr),
+            )))
+        },
+        UpdateSum::LedgerTimeLt(expr) => Ok(DamlUpdate::LedgerTimeLt(Box::new(convert_expr(expr, package)?))),
     }
 }
 

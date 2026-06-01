@@ -1398,8 +1398,18 @@ pub enum DamlUpdate<'a> {
     GetTime,
     LookupByKey(DamlRetrieveByKey<'a>),
     FetchByKey(DamlRetrieveByKey<'a>),
+    /// LF2: count contracts matching a key (introduced 2.3).
+    QueryNByKey(DamlQueryNByKey<'a>),
     EmbedExpr(DamlUpdateEmbedExpr<'a>),
     TryCatch(DamlTryCatch<'a>),
+    /// LF2: create a contract using an interface payload.
+    CreateInterface(DamlCreateInterface<'a>),
+    /// LF2: exercise a choice via an interface payload.
+    ExerciseInterface(DamlExerciseInterface<'a>),
+    /// LF2: fetch a contract through an interface.
+    FetchInterface(DamlFetchInterface<'a>),
+    /// LF2 2.dev: compare ledger time against a given expression.
+    LedgerTimeLt(Box<DamlExpr<'a>>),
 }
 
 impl<'a> DamlVisitableElement<'a> for DamlUpdate<'a> {
@@ -1414,8 +1424,13 @@ impl<'a> DamlVisitableElement<'a> for DamlUpdate<'a> {
             DamlUpdate::Fetch(fetch) => fetch.accept(visitor),
             DamlUpdate::LookupByKey(retrieve_by_key) | DamlUpdate::FetchByKey(retrieve_by_key) =>
                 retrieve_by_key.accept(visitor),
+            DamlUpdate::QueryNByKey(qbk) => qbk.accept(visitor),
             DamlUpdate::EmbedExpr(embed_expr) => embed_expr.accept(visitor),
             DamlUpdate::TryCatch(try_catch) => try_catch.accept(visitor),
+            DamlUpdate::CreateInterface(ci) => ci.accept(visitor),
+            DamlUpdate::ExerciseInterface(ei) => ei.accept(visitor),
+            DamlUpdate::FetchInterface(fi) => fi.accept(visitor),
+            DamlUpdate::LedgerTimeLt(expr) => expr.accept(visitor),
             DamlUpdate::GetTime => {},
         }
         visitor.post_visit_update(self);
@@ -1944,6 +1959,163 @@ impl<'a> DamlVisitableElement<'a> for DamlTryCatch<'a> {
         self.try_expr.accept(visitor);
         self.catch_expr.accept(visitor);
         visitor.post_visit_try_catch(self);
+    }
+}
+
+/// LF2 `QueryNByKey` -- count contracts matching a key. Carries
+/// only the template tycon; the key value is supplied at runtime.
+#[derive(Debug, Serialize, Clone, ToStatic)]
+pub struct DamlQueryNByKey<'a> {
+    template: Box<DamlTyConName<'a>>,
+}
+
+impl<'a> DamlQueryNByKey<'a> {
+    pub fn new(template: Box<DamlTyConName<'a>>) -> Self {
+        Self {
+            template,
+        }
+    }
+
+    pub fn template(&self) -> &DamlTyConName<'a> {
+        &self.template
+    }
+}
+
+impl<'a> DamlVisitableElement<'a> for DamlQueryNByKey<'a> {
+    fn accept(&'a self, visitor: &'a mut impl DamlElementVisitor) {
+        visitor.pre_visit_query_n_by_key(self);
+        self.template.accept(visitor);
+        visitor.post_visit_query_n_by_key(self);
+    }
+}
+
+/// LF2 `CreateInterface` -- create a contract from an interface
+/// payload (rather than a template payload).
+#[derive(Debug, Serialize, Clone, ToStatic)]
+pub struct DamlCreateInterface<'a> {
+    interface: Box<DamlTyConName<'a>>,
+    expr: Box<DamlExpr<'a>>,
+}
+
+impl<'a> DamlCreateInterface<'a> {
+    pub fn new(interface: Box<DamlTyConName<'a>>, expr: Box<DamlExpr<'a>>) -> Self {
+        Self {
+            interface,
+            expr,
+        }
+    }
+
+    pub fn interface(&self) -> &DamlTyConName<'a> {
+        &self.interface
+    }
+
+    pub fn expr(&self) -> &DamlExpr<'a> {
+        self.expr.as_ref()
+    }
+}
+
+impl<'a> DamlVisitableElement<'a> for DamlCreateInterface<'a> {
+    fn accept(&'a self, visitor: &'a mut impl DamlElementVisitor) {
+        visitor.pre_visit_create_interface(self);
+        self.interface.accept(visitor);
+        self.expr.accept(visitor);
+        visitor.post_visit_create_interface(self);
+    }
+}
+
+/// LF2 `ExerciseInterface` -- exercise a choice on a contract via
+/// an interface, with an optional guard expression (2.dev).
+#[derive(Debug, Serialize, Clone, ToStatic)]
+pub struct DamlExerciseInterface<'a> {
+    interface: Box<DamlTyConName<'a>>,
+    choice: Cow<'a, str>,
+    cid: Box<DamlExpr<'a>>,
+    arg: Box<DamlExpr<'a>>,
+    guard: Option<Box<DamlExpr<'a>>>,
+}
+
+impl<'a> DamlExerciseInterface<'a> {
+    pub fn new(
+        interface: Box<DamlTyConName<'a>>,
+        choice: Cow<'a, str>,
+        cid: Box<DamlExpr<'a>>,
+        arg: Box<DamlExpr<'a>>,
+        guard: Option<Box<DamlExpr<'a>>>,
+    ) -> Self {
+        Self {
+            interface,
+            choice,
+            cid,
+            arg,
+            guard,
+        }
+    }
+
+    pub fn interface(&self) -> &DamlTyConName<'a> {
+        &self.interface
+    }
+
+    pub fn choice(&self) -> &str {
+        &self.choice
+    }
+
+    pub fn cid(&self) -> &DamlExpr<'a> {
+        self.cid.as_ref()
+    }
+
+    pub fn arg(&self) -> &DamlExpr<'a> {
+        self.arg.as_ref()
+    }
+
+    pub fn guard(&self) -> Option<&DamlExpr<'a>> {
+        self.guard.as_deref()
+    }
+}
+
+impl<'a> DamlVisitableElement<'a> for DamlExerciseInterface<'a> {
+    fn accept(&'a self, visitor: &'a mut impl DamlElementVisitor) {
+        visitor.pre_visit_exercise_interface(self);
+        self.interface.accept(visitor);
+        self.cid.accept(visitor);
+        self.arg.accept(visitor);
+        if let Some(g) = self.guard.as_deref() {
+            g.accept(visitor);
+        }
+        visitor.post_visit_exercise_interface(self);
+    }
+}
+
+/// LF2 `FetchInterface` -- fetch a contract through an interface
+/// tycon.
+#[derive(Debug, Serialize, Clone, ToStatic)]
+pub struct DamlFetchInterface<'a> {
+    interface: Box<DamlTyConName<'a>>,
+    cid: Box<DamlExpr<'a>>,
+}
+
+impl<'a> DamlFetchInterface<'a> {
+    pub fn new(interface: Box<DamlTyConName<'a>>, cid: Box<DamlExpr<'a>>) -> Self {
+        Self {
+            interface,
+            cid,
+        }
+    }
+
+    pub fn interface(&self) -> &DamlTyConName<'a> {
+        &self.interface
+    }
+
+    pub fn cid(&self) -> &DamlExpr<'a> {
+        self.cid.as_ref()
+    }
+}
+
+impl<'a> DamlVisitableElement<'a> for DamlFetchInterface<'a> {
+    fn accept(&'a self, visitor: &'a mut impl DamlElementVisitor) {
+        visitor.pre_visit_fetch_interface(self);
+        self.interface.accept(visitor);
+        self.cid.accept(visitor);
+        visitor.post_visit_fetch_interface(self);
     }
 }
 
