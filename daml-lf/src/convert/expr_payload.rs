@@ -1,20 +1,15 @@
 //! LF2 expression-tree → element/ conversion.
 //!
-//! 3.8d adds the lambda-calculus variants: application
-//! (`App`, `TyApp`), abstraction (`Abs`, `TyAbs`), case-of (`Case`
-//! plus the `CaseAlt::Sum` sub-oneof), let-block (`Let`), list cons
-//! (`Cons`), and `OptionalSome`. Together with 3.8b leaves and
-//! 3.8c data-shaped variants, the entire expression sub-language
-//! that does *not* involve effects (Update), exceptions, or
-//! interfaces is now covered.
+//! 3.8e adds the exception-construction variants: `Throw`,
+//! `ToAnyException`, and `FromAnyException`. `TryCatch` is part of
+//! the `Update` sub-oneof and lands with 3.8g.
 //!
 //! Per-checkpoint scope:
 //!  - 3.8b: leaves.
 //!  - 3.8c: record / variant / enum / struct + To/FromAny.
-//!  - 3.8d: App / Abs / Case / Let / Cons / OptionalSome
+//!  - 3.8d: App / Abs / Case / Let / Cons / OptionalSome.
+//!  - 3.8e: Throw / ToAnyException / FromAnyException
 //!    (this checkpoint).
-//!  - 3.8e: exception expressions (Throw, ToAnyException,
-//!    FromAnyException).
 //!  - 3.8f: interface expressions (ToInterface, FromInterface,
 //!    CallInterface, ViewInterface, …).
 //!  - 3.8g: Update statement (its own nested oneof with ~12
@@ -39,9 +34,9 @@ use crate::convert::util::Required;
 use crate::element::{
     DamlAbs, DamlApp, DamlBinding, DamlBlock, DamlBuiltinFunction, DamlCase, DamlCaseAlt, DamlCaseAltCons,
     DamlCaseAltEnum, DamlCaseAltOptionalSome, DamlCaseAltSum, DamlCaseAltVariant, DamlCons, DamlEnumCon, DamlExpr,
-    DamlFieldWithExpr, DamlFromAny, DamlLocalValueName, DamlOptionalSome, DamlPrimCon, DamlPrimLit, DamlRecCon,
-    DamlRecProj, DamlRecUpd, DamlStructCon, DamlStructProj, DamlStructUpd, DamlToAny, DamlTyAbs, DamlTyApp,
-    DamlValueName, DamlVarWithType, DamlVariantCon,
+    DamlFieldWithExpr, DamlFromAny, DamlFromAnyException, DamlLocalValueName, DamlOptionalSome, DamlPrimCon,
+    DamlPrimLit, DamlRecCon, DamlRecProj, DamlRecUpd, DamlStructCon, DamlStructProj, DamlStructUpd, DamlThrow,
+    DamlToAny, DamlToAnyException, DamlTyAbs, DamlTyApp, DamlValueName, DamlVarWithType, DamlVariantCon,
 };
 use crate::error::{DamlLfConvertError, DamlLfConvertResult};
 use crate::lf_protobuf::daml_lf_2;
@@ -192,12 +187,24 @@ pub fn convert_expr<'a>(
             let body = convert_expr(os.value.as_deref().req()?, package)?;
             Ok(DamlExpr::OptionalSome(DamlOptionalSome::new(ty, Box::new(body))))
         },
-        // 3.8e: exceptions.
-        | ExprSum::ToAnyException(_)
-        | ExprSum::FromAnyException(_)
-        | ExprSum::Throw(_)
+        ExprSum::ToAnyException(tae) => {
+            let ty = convert_type(tae.r#type.as_ref().req()?, package)?;
+            let expr = convert_expr(tae.expr.as_deref().req()?, package)?;
+            Ok(DamlExpr::ToAnyException(DamlToAnyException::new(ty, Box::new(expr))))
+        },
+        ExprSum::FromAnyException(fae) => {
+            let ty = convert_type(fae.r#type.as_ref().req()?, package)?;
+            let expr = convert_expr(fae.expr.as_deref().req()?, package)?;
+            Ok(DamlExpr::FromAnyException(DamlFromAnyException::new(ty, Box::new(expr))))
+        },
+        ExprSum::Throw(throw) => {
+            let return_type = convert_type(throw.return_type.as_ref().req()?, package)?;
+            let exception_type = convert_type(throw.exception_type.as_ref().req()?, package)?;
+            let exception_expr = convert_expr(throw.exception_expr.as_deref().req()?, package)?;
+            Ok(DamlExpr::Throw(DamlThrow::new(return_type, exception_type, Box::new(exception_expr))))
+        },
         // 3.8f: interfaces.
-        | ExprSum::ToInterface(_)
+        ExprSum::ToInterface(_)
         | ExprSum::FromInterface(_)
         | ExprSum::CallInterface(_)
         | ExprSum::ViewInterface(_)
