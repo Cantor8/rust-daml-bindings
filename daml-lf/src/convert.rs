@@ -1,16 +1,19 @@
 //! LF2 → element/ conversion layer.
 //!
-//! As of sub-checkpoint 3.2, this layer walks down to modules with
-//! resolved dotted-name paths and feature flags. Modules contain no
-//! data types yet — those land in 3.3 (records / variants / enums /
-//! type-syns), 3.4 (types), 3.5 (templates), 3.6 (interfaces), 3.7
-//! (exceptions), and 3.8 (values / expressions).
+//! As of sub-checkpoint 3.4, the layer covers modules, data types
+//! (records / variants / enums with their fields and type parameters
+//! fully populated), and type synonyms. Templates land in 3.5,
+//! interfaces in 3.6, exceptions in 3.7, and values + expressions
+//! in 3.8.
 
 mod archive_payload;
 mod data_payload;
+mod field_payload;
 mod interned;
 mod module_payload;
 mod package_payload;
+mod type_payload;
+mod typevar_payload;
 mod util;
 
 use std::borrow::Cow;
@@ -21,10 +24,14 @@ use bounded_static::ToBoundedStatic;
 
 use crate::convert::archive_payload::DamlArchivePayload;
 use crate::convert::data_payload::DamlDataPayload;
+use crate::convert::field_payload::convert_field;
 use crate::convert::interned::PackageInternedResolver;
 use crate::convert::module_payload::DamlModulePayload;
 use crate::convert::package_payload::DamlPackagePayload;
-use crate::element::{DamlArchive, DamlData, DamlEnum, DamlFeatureFlags, DamlModule, DamlPackage, DamlRecord, DamlVariant};
+use crate::convert::type_payload::{convert_type, convert_type_params};
+use crate::element::{
+    DamlData, DamlDefTypeSyn, DamlEnum, DamlFeatureFlags, DamlArchive, DamlModule, DamlPackage, DamlRecord, DamlVariant,
+};
 use crate::lf_protobuf::daml_lf_2::def_data_type::DataCons;
 use crate::{DamlLfArchive, DamlLfArchivePayload, DamlLfHashFunction, DamlLfResult, DarFile};
 
@@ -115,6 +122,7 @@ fn insert_module<'a>(
     }
     let leaf_path = path.iter().map(|s| Cow::Borrowed(*s)).collect::<Vec<_>>();
     let data_types = build_data_types(module, package, &leaf_path)?;
+    let synonyms = build_synonyms(module, package, &leaf_path)?;
     let leaf = DamlModule::new_leaf(
         leaf_path,
         DamlFeatureFlags::new(
@@ -122,13 +130,38 @@ fn insert_module<'a>(
             module.flags.dont_divulge_contract_ids_in_create_arguments,
             module.flags.dont_disclose_non_consuming_choices_to_observers,
         ),
-        Vec::new(),
+        synonyms,
         data_types,
         #[cfg(feature = "full")]
         HashMap::new(),
     );
     cursor.take_from(leaf);
     Ok(())
+}
+
+fn build_synonyms<'a>(
+    module: &DamlModulePayload<'a>,
+    package: &'a DamlPackagePayload<'a>,
+    module_path: &[Cow<'a, str>],
+) -> DamlLfResult<Vec<DamlDefTypeSyn<'a>>> {
+    module
+        .synonyms()
+        .iter()
+        .map(|syn| {
+            let name_segments = package.resolve_dotted(syn.name_interned_dname)?;
+            let name_cow: Vec<Cow<'a, str>> = module_path
+                .iter()
+                .cloned()
+                .chain(name_segments.iter().copied().map(Cow::Borrowed))
+                .collect();
+            let params = convert_type_params(&syn.params, package)?;
+            let ty = convert_type(
+                syn.r#type.as_ref().ok_or(crate::error::DamlLfConvertError::MissingRequiredField)?,
+                package,
+            )?;
+            Ok(DamlDefTypeSyn::new(params, ty, name_cow))
+        })
+        .collect()
 }
 
 /// Convert every `DefDataType` in `module` into a `DamlData` keyed
@@ -170,23 +203,38 @@ fn build_data_type<'a>(
     let name_cow = Cow::Borrowed(name);
     let package_id_cow = Cow::Borrowed(package.package_id);
     let module_path_owned = module_path.to_vec();
+    let type_params = convert_type_params(payload.params(), package)?;
     let data = match payload.data_cons() {
-        Some(DataCons::Record(_)) => DamlData::Record(DamlRecord::new(
-            name_cow,
-            package_id_cow,
-            module_path_owned,
-            Vec::new(), // fields wired up in 3.4 once DamlType lands
-            Vec::new(), // type params likewise
-            payload.serializable(),
-        )),
-        Some(DataCons::Variant(_)) => DamlData::Variant(DamlVariant::new(
-            name_cow,
-            package_id_cow,
-            module_path_owned,
-            Vec::new(),
-            Vec::new(),
-            payload.serializable(),
-        )),
+        Some(DataCons::Record(fields)) => {
+            let daml_fields = fields
+                .fields
+                .iter()
+                .map(|f| convert_field(f, package))
+                .collect::<crate::error::DamlLfConvertResult<_>>()?;
+            DamlData::Record(DamlRecord::new(
+                name_cow,
+                package_id_cow,
+                module_path_owned,
+                daml_fields,
+                type_params,
+                payload.serializable(),
+            ))
+        },
+        Some(DataCons::Variant(fields)) => {
+            let daml_fields = fields
+                .fields
+                .iter()
+                .map(|f| convert_field(f, package))
+                .collect::<crate::error::DamlLfConvertResult<_>>()?;
+            DamlData::Variant(DamlVariant::new(
+                name_cow,
+                package_id_cow,
+                module_path_owned,
+                daml_fields,
+                type_params,
+                payload.serializable(),
+            ))
+        },
         Some(DataCons::Enum(ec)) => {
             let constructors: Vec<Cow<'a, str>> =
                 package.resolve_strings(&ec.constructors_interned_str)?.into_iter().map(Cow::Borrowed).collect();
@@ -195,7 +243,7 @@ fn build_data_type<'a>(
                 package_id_cow,
                 module_path_owned,
                 constructors,
-                Vec::new(),
+                type_params,
                 payload.serializable(),
             ))
         },

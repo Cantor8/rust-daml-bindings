@@ -55,4 +55,9 @@ impl<'a> DamlModulePayload<'a> {
     pub fn data_types(&self) -> impl Iterator<Item = DamlDataPayload<'a>> + '_ {
         self.module.data_types.iter().map(DamlDataPayload::new)
     }
+
+    /// Slice of the type-synonym definitions in this module.
+    pub fn synonyms(&self) -> &'a [daml_lf_2::DefTypeSyn] {
+        &self.module.synonyms
+    }
 }

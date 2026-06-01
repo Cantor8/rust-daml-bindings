@@ -34,4 +34,8 @@ impl<'a> DamlDataPayload<'a> {
     pub fn data_cons(&self) -> Option<&'a DataCons> {
         self.def.data_cons.as_ref()
     }
+
+    pub fn params(&self) -> &'a [daml_lf_2::TypeVarWithKind] {
+        &self.def.params
+    }
 }
