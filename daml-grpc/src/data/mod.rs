@@ -44,9 +44,8 @@ pub mod event {
     mod event_types;
     mod exercised;
     pub use self::archived::DamlArchivedEvent;
-    pub use self::created::DamlCreatedEvent;
+    pub use self::created::{DamlCreatedEvent, DamlInterfaceView};
     pub use self::event_types::DamlEvent;
-    pub use self::event_types::DamlTreeEvent;
     pub use self::exercised::DamlExercisedEvent;
 }
 

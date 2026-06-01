@@ -1,112 +1,73 @@
-use crate::data::value::DamlValue;
-use crate::data::{DamlError, DamlIdentifier};
-use crate::grpc_protobuf::com::daml::ledger::api::v1::ExercisedEvent;
-use crate::util::Required;
 use std::convert::TryFrom;
 
-/// An event which represents exercising of a choice on a contract on a Daml ledger.
+use crate::data::identifier::DamlIdentifier;
+use crate::data::offset::DamlLedgerOffset;
+use crate::data::value::DamlValue;
+use crate::data::{DamlError, DamlResult};
+use crate::grpc_protobuf::com::daml::ledger::api::v2::ExercisedEvent;
+use crate::util::Required;
+
+/// Records that a choice was exercised on a contract.
+///
+/// v2 changes from v1:
+///   - `event_id` is gone; events are addressed by `(offset, node_id)`.
+///   - `child_event_ids` is replaced by `last_descendant_node_id`,
+///     which lets clients identify the whole subtree without
+///     enumerating it explicitly.
+///   - `exercise_result` is now optional (a non-consuming exercise
+///     can return Unit, which the wire treats as missing).
+///   - `interface_id`, `implemented_interfaces`, `package_name`, and
+///     `acs_delta` are new.
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct DamlExercisedEvent {
-    event_id: String,
-    contract_id: String,
-    template_id: DamlIdentifier,
-    choice: String,
-    choice_argument: DamlValue,
-    acting_parties: Vec<String>,
-    consuming: bool,
-    witness_parties: Vec<String>,
-    child_event_ids: Vec<String>,
-    exercise_result: DamlValue,
-}
-
-impl DamlExercisedEvent {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        event_id: impl Into<String>,
-        contract_id: impl Into<String>,
-        template_id: impl Into<DamlIdentifier>,
-        choice: impl Into<String>,
-        choice_argument: impl Into<DamlValue>,
-        acting_parties: impl Into<Vec<String>>,
-        consuming: bool,
-        witness_parties: impl Into<Vec<String>>,
-        child_event_ids: impl Into<Vec<String>>,
-        exercise_result: impl Into<DamlValue>,
-    ) -> Self {
-        Self {
-            event_id: event_id.into(),
-            contract_id: contract_id.into(),
-            template_id: template_id.into(),
-            choice: choice.into(),
-            choice_argument: choice_argument.into(),
-            acting_parties: acting_parties.into(),
-            consuming,
-            witness_parties: witness_parties.into(),
-            child_event_ids: child_event_ids.into(),
-            exercise_result: exercise_result.into(),
-        }
-    }
-
-    pub fn event_id(&self) -> &str {
-        &self.event_id
-    }
-
-    pub fn contract_id(&self) -> &str {
-        &self.contract_id
-    }
-
-    pub const fn template_id(&self) -> &DamlIdentifier {
-        &self.template_id
-    }
-
-    pub fn choice(&self) -> &str {
-        &self.choice
-    }
-
-    pub const fn choice_argument(&self) -> &DamlValue {
-        &self.choice_argument
-    }
-
-    pub fn acting_parties(&self) -> &[String] {
-        &self.acting_parties
-    }
-
-    pub const fn consuming(&self) -> bool {
-        self.consuming
-    }
-
-    pub fn witness_parties(&self) -> &[String] {
-        &self.witness_parties
-    }
-
-    pub fn child_event_ids(&self) -> &[String] {
-        &self.child_event_ids
-    }
-
-    pub const fn exercise_result(&self) -> &DamlValue {
-        &self.exercise_result
-    }
-
-    pub fn take_exercise_result(self) -> DamlValue {
-        self.exercise_result
-    }
+    pub offset: DamlLedgerOffset,
+    pub node_id: i32,
+    pub contract_id: String,
+    pub template_id: DamlIdentifier,
+    /// Set when the choice was exercised via an interface; identifies
+    /// the interface in which the choice is defined. `None` when the
+    /// choice was exercised directly on the template.
+    pub interface_id: Option<DamlIdentifier>,
+    pub choice: String,
+    pub choice_argument: DamlValue,
+    pub acting_parties: Vec<String>,
+    pub consuming: bool,
+    pub witness_parties: Vec<String>,
+    /// Upper bound (inclusive) on node ids of events in the same
+    /// transaction that descend from this exercise — i.e. the rooted
+    /// subtree spans `[node_id, last_descendant_node_id]`.
+    pub last_descendant_node_id: i32,
+    /// Result of the exercise. `None` when the choice returned Unit
+    /// (the wire omits the field in that case).
+    pub exercise_result: Option<DamlValue>,
+    pub package_name: String,
+    /// Interfaces implemented by the target template that matched the
+    /// transaction filter's interface filters. Only populated when the
+    /// exercise was consuming and `include_interface_view` was set.
+    pub implemented_interfaces: Vec<DamlIdentifier>,
+    pub acs_delta: bool,
 }
 
 impl TryFrom<ExercisedEvent> for DamlExercisedEvent {
     type Error = DamlError;
 
-    fn try_from(event: ExercisedEvent) -> Result<Self, Self::Error> {
-        Ok(Self::new(
-            event.event_id,
-            event.contract_id,
-            event.template_id.req().map(DamlIdentifier::from)?,
-            event.choice,
-            event.choice_argument.req().and_then(DamlValue::try_from)?,
-            event.acting_parties,
-            event.consuming,
-            event.witness_parties,
-            event.child_event_ids,
-            event.exercise_result.req().and_then(DamlValue::try_from)?,
-        ))
+    fn try_from(e: ExercisedEvent) -> DamlResult<Self> {
+        Ok(Self {
+            offset: DamlLedgerOffset::new(e.offset),
+            node_id: e.node_id,
+            contract_id: e.contract_id,
+            template_id: DamlIdentifier::from(e.template_id.req()?),
+            interface_id: e.interface_id.map(DamlIdentifier::from),
+            choice: e.choice,
+            choice_argument: DamlValue::try_from(e.choice_argument.req()?)?,
+            acting_parties: e.acting_parties,
+            consuming: e.consuming,
+            witness_parties: e.witness_parties,
+            last_descendant_node_id: e.last_descendant_node_id,
+            exercise_result: e.exercise_result.map(DamlValue::try_from).transpose()?,
+            package_name: e.package_name,
+            implemented_interfaces: e.implemented_interfaces.into_iter().map(DamlIdentifier::from).collect(),
+            acs_delta: e.acs_delta,
+        })
     }
 }
