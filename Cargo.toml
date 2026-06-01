@@ -9,4 +9,4 @@ members = [
   "daml-util",
   "daml-lf"
 ]
-exclude = ["examples", "daml-json", "daml-bridge"]
+exclude = ["examples"]

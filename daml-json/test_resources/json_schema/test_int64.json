@@ -1,7 +1,0 @@
-{
-  "type": [
-    "integer",
-    "string"
-  ],
-  "description": "Int64"
-}
