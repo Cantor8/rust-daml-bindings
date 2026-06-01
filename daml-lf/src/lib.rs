@@ -70,8 +70,9 @@
 //!
 //! # Versions
 //!
-//! This library supports all Daml-LF [`LanguageVersion`] from [`LanguageVersion::V1_0`] up to
-//! [`LanguageVersion::V1_14`].
+//! This library supports Daml-LF [`LanguageVersion::V2_1`] onwards. LF1 is
+//! no longer supported — passing an LF1 archive surfaces a
+//! [`DamlLfError::UnknownVersion`] from [`DamlLfArchivePayload::from_bytes`].
 //!
 //! [`daml-util`]: https://docs.rs/daml-util/0.2.2/daml_util/
 //! [`DamlPackages`]: https://docs.rs/daml-util/0.2.2/daml_util/package/struct.DamlPackages.html
@@ -110,4 +111,4 @@ pub use error::{DamlLfError, DamlLfResult};
 pub use manifest::{DarEncryptionType, DarManifest, DarManifestFormat, DarManifestVersion};
 pub use package_info::PackageInfo;
 pub use payload::{DamlLfArchivePayload, DamlLfPackage};
-pub use version::{LanguageFeatureVersion, LanguageV1MinorVersion, LanguageVersion};
+pub use version::{LanguageV2MinorVersion, LanguageVersion};

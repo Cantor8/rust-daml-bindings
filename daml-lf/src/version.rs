@@ -1,207 +1,66 @@
-use crate::DamlLfError;
-use bounded_static::ToStatic;
-use serde::Serialize;
 use std::convert::TryFrom;
 use std::fmt::{Display, Error, Formatter};
 
-/// Daml Ledger Fragment language version.
+use bounded_static::ToStatic;
+use serde::Serialize;
+
+use crate::DamlLfError;
+
+/// Daml-LF language version. v2 of this crate dropped support for the
+/// LF1 line of minor versions; `Lv2` is the only major-version variant
+/// the enum needs today. The enum shape is preserved so a future LF3
+/// can slot in alongside without breaking the public API.
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Serialize, ToStatic)]
 pub enum LanguageVersion {
-    Lv0,
-    Lv1(LanguageV1MinorVersion),
+    Lv2(LanguageV2MinorVersion),
 }
 
 impl LanguageVersion {
-    pub const V0: LanguageVersion = LanguageVersion::Lv0;
-    pub const V1_0: LanguageVersion = LanguageVersion::Lv1(LanguageV1MinorVersion::V0);
-    pub const V1_1: LanguageVersion = LanguageVersion::Lv1(LanguageV1MinorVersion::V1);
-    pub const V1_11: LanguageVersion = LanguageVersion::Lv1(LanguageV1MinorVersion::V11);
-    pub const V1_12: LanguageVersion = LanguageVersion::Lv1(LanguageV1MinorVersion::V12);
-    pub const V1_13: LanguageVersion = LanguageVersion::Lv1(LanguageV1MinorVersion::V13);
-    pub const V1_14: LanguageVersion = LanguageVersion::Lv1(LanguageV1MinorVersion::V14);
-    pub const V1_2: LanguageVersion = LanguageVersion::Lv1(LanguageV1MinorVersion::V2);
-    pub const V1_3: LanguageVersion = LanguageVersion::Lv1(LanguageV1MinorVersion::V3);
-    pub const V1_4: LanguageVersion = LanguageVersion::Lv1(LanguageV1MinorVersion::V4);
-    pub const V1_5: LanguageVersion = LanguageVersion::Lv1(LanguageV1MinorVersion::V5);
-    pub const V1_6: LanguageVersion = LanguageVersion::Lv1(LanguageV1MinorVersion::V6);
-    pub const V1_7: LanguageVersion = LanguageVersion::Lv1(LanguageV1MinorVersion::V7);
-    pub const V1_8: LanguageVersion = LanguageVersion::Lv1(LanguageV1MinorVersion::V8);
-    pub const V1_DEV: LanguageVersion = LanguageVersion::Lv1(LanguageV1MinorVersion::Dev);
+    /// LF 2.1 — the first stable LF2 minor version.
+    pub const V2_1: LanguageVersion = LanguageVersion::Lv2(LanguageV2MinorVersion::V1);
+    /// LF 2.dev — staging area for the next LF2 minor version.
+    pub const V2_DEV: LanguageVersion = LanguageVersion::Lv2(LanguageV2MinorVersion::Dev);
 
-    pub fn new_v1(minor: LanguageV1MinorVersion) -> Self {
-        LanguageVersion::Lv1(minor)
-    }
-
-    pub fn supports_feature(self, feature_version: &LanguageFeatureVersion) -> bool {
-        self >= feature_version.min_version
+    pub fn new_v2(minor: LanguageV2MinorVersion) -> Self {
+        LanguageVersion::Lv2(minor)
     }
 }
 
 impl Display for LanguageVersion {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match *self {
-            LanguageVersion::Lv0 => write!(f, "v0"),
-            LanguageVersion::Lv1(minor) => write!(f, "v1.{}", minor),
+            LanguageVersion::Lv2(minor) => write!(f, "v2.{}", minor),
         }
     }
 }
 
-/// Minimum Daml LF language version support for a feature.
-pub struct LanguageFeatureVersion {
-    pub name: &'static str,
-    pub min_version: LanguageVersion,
-}
-
-impl LanguageFeatureVersion {
-    pub const ANY_TYPE: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "ANY_TYPE",
-        min_version: LanguageVersion::V1_7,
-    };
-    pub const ARROW_TYPE: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "ARROW_TYPE",
-        min_version: LanguageVersion::V1_1,
-    };
-    pub const CHOICE_OBSERVERS: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "CHOICE_OBSERVERS",
-        min_version: LanguageVersion::V1_11,
-    };
-    pub const COERCE_CONTRACT_ID: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "COERCE_CONTRACT_ID",
-        min_version: LanguageVersion::V1_5,
-    };
-    pub const COMPLEX_CONTACT_KEYS: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "COMPLEX_CONTACT_KEYS",
-        min_version: LanguageVersion::V1_4,
-    };
-    pub const CONTRACT_KEYS: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "CONTRACT_KEYS",
-        min_version: LanguageVersion::V1_3,
-    };
-    pub const DEFAULT: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "DEFAULT",
-        min_version: LanguageVersion::V1_0,
-    };
-    pub const ENUM: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "ENUM",
-        min_version: LanguageVersion::V1_6,
-    };
-    pub const INTERNED_DOTTED_NAMES: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "INTERNED_DOTTED_NAMES",
-        min_version: LanguageVersion::V1_7,
-    };
-    pub const INTERNED_PACKAGE_ID: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "INTERNED_PACKAGE_ID",
-        min_version: LanguageVersion::V1_6,
-    };
-    pub const INTERNED_STRINGS: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "INTERNED_STRINGS",
-        min_version: LanguageVersion::V1_7,
-    };
-    pub const NUMBER_PARSING: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "NUMBER_PARSING",
-        min_version: LanguageVersion::V1_5,
-    };
-    pub const NUMERIC: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "NUMERIC",
-        min_version: LanguageVersion::V1_7,
-    };
-    pub const OPTIONAL: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "OPTIONAL",
-        min_version: LanguageVersion::V1_1,
-    };
-    pub const OPTIONAL_EXERCISE_ACTOR: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "OPTIONAL_EXERCISE_ACTOR",
-        min_version: LanguageVersion::V1_5,
-    };
-    pub const PACKAGE_METADATA: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "PACKAGE_METADATA",
-        min_version: LanguageVersion::V1_8,
-    };
-    pub const PARTY_ORDERING: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "PARTY_ORDERING",
-        min_version: LanguageVersion::V1_1,
-    };
-    pub const PARTY_TEXT_CONVERSIONS: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "PARTY_TEXT_CONVERSIONS",
-        min_version: LanguageVersion::V1_2,
-    };
-    pub const SHA_TEXT: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "SHA_TEXT",
-        min_version: LanguageVersion::V1_2,
-    };
-    pub const TEXTMAP: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "TEXTMAP",
-        min_version: LanguageVersion::V1_3,
-    };
-    pub const TEXT_PACKING: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "TEXT_PACKING",
-        min_version: LanguageVersion::V1_6,
-    };
-    pub const TYPE_REP: LanguageFeatureVersion = LanguageFeatureVersion {
-        name: "TYPE_REP",
-        min_version: LanguageVersion::V1_7,
-    };
-}
-
-/// Daml Ledger Fragment language V1 minor version.
+/// LF2 minor version.
+///
+/// Per `daml_lf2.proto`, LF2 started at minor `2.1` (no `2.0` exists).
+/// New minor versions are added by extending this enum; the ordering
+/// of variants must be ascending so the derived `Ord` works.
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Serialize, ToStatic)]
-pub enum LanguageV1MinorVersion {
-    V0,
+pub enum LanguageV2MinorVersion {
     V1,
-    V2,
-    V3,
-    V4,
-    V5,
-    V6,
-    V7,
-    V8,
-    V11,
-    V12,
-    V13,
-    V14,
     Dev,
 }
 
-impl Display for LanguageV1MinorVersion {
+impl Display for LanguageV2MinorVersion {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match *self {
-            LanguageV1MinorVersion::V0 => write!(f, "0"),
-            LanguageV1MinorVersion::V1 => write!(f, "1"),
-            LanguageV1MinorVersion::V2 => write!(f, "2"),
-            LanguageV1MinorVersion::V3 => write!(f, "3"),
-            LanguageV1MinorVersion::V4 => write!(f, "4"),
-            LanguageV1MinorVersion::V5 => write!(f, "5"),
-            LanguageV1MinorVersion::V6 => write!(f, "6"),
-            LanguageV1MinorVersion::V7 => write!(f, "7"),
-            LanguageV1MinorVersion::V8 => write!(f, "8"),
-            LanguageV1MinorVersion::V11 => write!(f, "11"),
-            LanguageV1MinorVersion::V12 => write!(f, "12"),
-            LanguageV1MinorVersion::V13 => write!(f, "13"),
-            LanguageV1MinorVersion::V14 => write!(f, "14"),
-            LanguageV1MinorVersion::Dev => write!(f, "dev"),
+            LanguageV2MinorVersion::V1 => write!(f, "1"),
+            LanguageV2MinorVersion::Dev => write!(f, "dev"),
         }
     }
 }
 
-impl TryFrom<&str> for LanguageV1MinorVersion {
+impl TryFrom<&str> for LanguageV2MinorVersion {
     type Error = DamlLfError;
 
     fn try_from(minor_version: &str) -> Result<Self, Self::Error> {
         match minor_version {
-            "0" => Ok(LanguageV1MinorVersion::V0),
-            "1" => Ok(LanguageV1MinorVersion::V1),
-            "2" => Ok(LanguageV1MinorVersion::V2),
-            "3" => Ok(LanguageV1MinorVersion::V3),
-            "4" => Ok(LanguageV1MinorVersion::V4),
-            "5" => Ok(LanguageV1MinorVersion::V5),
-            "6" => Ok(LanguageV1MinorVersion::V6),
-            "7" => Ok(LanguageV1MinorVersion::V7),
-            "8" => Ok(LanguageV1MinorVersion::V8),
-            "11" => Ok(LanguageV1MinorVersion::V11),
-            "12" => Ok(LanguageV1MinorVersion::V12),
-            "13" => Ok(LanguageV1MinorVersion::V13),
-            "14" => Ok(LanguageV1MinorVersion::V14),
-            "dev" => Ok(LanguageV1MinorVersion::Dev),
+            "1" => Ok(LanguageV2MinorVersion::V1),
+            "dev" => Ok(LanguageV2MinorVersion::Dev),
             _ => Err(DamlLfError::new_unknown_version(minor_version)),
         }
     }
@@ -209,53 +68,22 @@ impl TryFrom<&str> for LanguageV1MinorVersion {
 
 #[cfg(test)]
 mod tests {
-    use super::{LanguageV1MinorVersion, LanguageVersion};
+    use super::{LanguageV2MinorVersion, LanguageVersion};
 
     #[test]
-    fn test_minor_version_ordering() {
-        assert!(LanguageV1MinorVersion::V0 < LanguageV1MinorVersion::V1);
-        assert!(LanguageV1MinorVersion::V1 < LanguageV1MinorVersion::V2);
-        assert!(LanguageV1MinorVersion::V2 < LanguageV1MinorVersion::V3);
-        assert!(LanguageV1MinorVersion::V3 < LanguageV1MinorVersion::V4);
-        assert!(LanguageV1MinorVersion::V4 < LanguageV1MinorVersion::V5);
-        assert!(LanguageV1MinorVersion::V5 < LanguageV1MinorVersion::V6);
-        assert!(LanguageV1MinorVersion::V6 < LanguageV1MinorVersion::V7);
-        assert!(LanguageV1MinorVersion::V7 < LanguageV1MinorVersion::V8);
-        assert!(LanguageV1MinorVersion::V8 < LanguageV1MinorVersion::V11);
-        assert!(LanguageV1MinorVersion::V11 < LanguageV1MinorVersion::V12);
-        assert!(LanguageV1MinorVersion::V12 < LanguageV1MinorVersion::V13);
-        assert!(LanguageV1MinorVersion::V13 < LanguageV1MinorVersion::V14);
-        assert!(LanguageV1MinorVersion::V14 < LanguageV1MinorVersion::Dev);
+    fn minor_version_ordering() {
+        assert!(LanguageV2MinorVersion::V1 < LanguageV2MinorVersion::Dev);
     }
 
     #[test]
-    fn test_version_matches() {
-        assert_eq!(LanguageVersion::V1_7, LanguageVersion::Lv1(LanguageV1MinorVersion::V7));
-        assert_ne!(LanguageVersion::V1_7, LanguageVersion::V1_6);
+    fn version_matches() {
+        assert_eq!(LanguageVersion::V2_1, LanguageVersion::Lv2(LanguageV2MinorVersion::V1));
+        assert_ne!(LanguageVersion::V2_1, LanguageVersion::V2_DEV);
     }
 
     #[test]
-    fn test_version_ordering() {
-        assert!(LanguageVersion::V0 < LanguageVersion::V1_0);
-        assert!(LanguageVersion::V1_0 < LanguageVersion::V1_1);
-        assert!(LanguageVersion::V1_1 < LanguageVersion::V1_2);
-        assert!(LanguageVersion::V1_2 < LanguageVersion::V1_3);
-        assert!(LanguageVersion::V1_3 < LanguageVersion::V1_4);
-        assert!(LanguageVersion::V1_4 < LanguageVersion::V1_5);
-        assert!(LanguageVersion::V1_5 < LanguageVersion::V1_6);
-        assert!(LanguageVersion::V1_6 < LanguageVersion::V1_7);
-        assert!(LanguageVersion::V1_7 < LanguageVersion::V1_8);
-        assert!(LanguageVersion::V1_8 < LanguageVersion::V1_11);
-        assert!(LanguageVersion::V1_11 < LanguageVersion::V1_12);
-        assert!(LanguageVersion::V1_12 < LanguageVersion::V1_13);
-        assert!(LanguageVersion::V1_13 < LanguageVersion::V1_14);
-        assert!(LanguageVersion::V1_14 < LanguageVersion::V1_DEV);
-    }
-
-    #[test]
-    fn test_display_version() {
-        assert_eq!("v0", LanguageVersion::V0.to_string());
-        assert_eq!("v1.7", LanguageVersion::V1_7.to_string());
-        assert_eq!("v1.dev", LanguageVersion::V1_DEV.to_string());
+    fn display_version() {
+        assert_eq!("v2.1", LanguageVersion::V2_1.to_string());
+        assert_eq!("v2.dev", LanguageVersion::V2_DEV.to_string());
     }
 }
