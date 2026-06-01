@@ -16,6 +16,9 @@ pub mod party;
 /// Participant users and their rights.
 pub mod user;
 
+/// Identity-provider configuration.
+pub mod identity_provider;
+
 /// Daml values, records, enums & variants.
 pub mod value {
     mod record;

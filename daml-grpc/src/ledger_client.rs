@@ -6,7 +6,8 @@ use crate::service::{
 };
 #[cfg(feature = "admin")]
 use crate::service::{
-    DamlConfigManagementService, DamlPackageManagementService, DamlPartyManagementService, DamlUserManagementService,
+    DamlConfigManagementService, DamlIdentityProviderConfigService, DamlPackageManagementService,
+    DamlPartyManagementService, DamlUserManagementService,
 };
 #[cfg(feature = "sandbox")]
 use crate::service::{DamlResetService, DamlTimeService};
@@ -310,6 +311,13 @@ impl DamlGrpcClient {
     #[cfg(feature = "admin")]
     pub fn user_management_service(&self) -> DamlUserManagementService<'_> {
         DamlUserManagementService::new(self.channel.clone(), self.config.auth_token.as_deref())
+    }
+
+    /// Retrieve a [`DamlIdentityProviderConfigService`] for managing
+    /// runtime-configured Identity Provider configurations.
+    #[cfg(feature = "admin")]
+    pub fn identity_provider_config_service(&self) -> DamlIdentityProviderConfigService<'_> {
+        DamlIdentityProviderConfigService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
     /// DOCME
