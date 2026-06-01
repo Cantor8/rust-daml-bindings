@@ -1,7 +1,7 @@
 use crate::renderer::data_renderer::full::quote_contract_struct::{
     quote_contract_id_struct_name, quote_contract_struct_and_impl, quote_contract_struct_name,
 };
-use crate::renderer::data_renderer::full::quote_interface::quote_interface_trait_path;
+use crate::renderer::data_renderer::full::quote_interface::{quote_interface_choices, quote_interface_trait_path};
 use crate::renderer::data_renderer::full::{quote_choice, quote_daml_record_and_impl};
 use crate::renderer::{quote_escaped_ident, to_module_path, RenderContext};
 use daml_lf::element::DamlTemplate;
@@ -20,6 +20,7 @@ pub fn quote_daml_template(ctx: &RenderContext<'_>, daml_template: &DamlTemplate
     let contract_struct_and_impl_tokens = quote_contract_struct_and_impl(daml_template.name());
     let choices_impl_tokens = quote_choice(ctx, daml_template.name(), daml_template.choices());
     let interface_impls_tokens = quote_interface_impls(daml_template);
+    let interface_choice_tokens = quote_implemented_interface_choices(ctx, daml_template);
     quote!(
         #struct_and_impl_tokens
         #template_id_method_tokens
@@ -27,7 +28,21 @@ pub fn quote_daml_template(ctx: &RenderContext<'_>, daml_template: &DamlTemplate
         #contract_struct_and_impl_tokens
         #choices_impl_tokens
         #interface_impls_tokens
+        #interface_choice_tokens
     )
+}
+
+/// For each interface this template implements, look up the
+/// [`DamlInterface`] in the archive and emit its choice methods as
+/// inherent methods on the template's contract id struct.
+fn quote_implemented_interface_choices(ctx: &RenderContext<'_>, daml_template: &DamlTemplate<'_>) -> TokenStream {
+    let blocks: Vec<_> = daml_template
+        .implements()
+        .iter()
+        .filter_map(|iface_name| ctx.archive().interface_by_tycon_name(iface_name))
+        .map(|iface| quote_interface_choices(ctx, daml_template.name(), iface))
+        .collect();
+    quote!(#( #blocks )*)
 }
 
 /// Emit `impl <Interface> for FooContractId {}` blocks for each

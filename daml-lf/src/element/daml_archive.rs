@@ -91,6 +91,37 @@ impl<'a> DamlArchive<'a> {
             .data_type(data_name.as_ref())
     }
 
+    /// Retrieve a [`DamlInterface`] by its tycon name, or `None` if
+    /// no such interface exists in the archive.
+    pub fn interface_by_tycon_name<'b>(
+        &'a self,
+        tycon_name: &'b crate::element::DamlTyConName<'_>,
+    ) -> Option<&'a crate::element::DamlInterface<'a>> {
+        let (package_id, module_path, name) = tycon_name.reference_parts();
+        self.interface(package_id, module_path, name)
+    }
+
+    /// Retrieve a [`DamlInterface`] by package-id, module path, and
+    /// interface name, or `None` if no such interface exists.
+    pub fn interface<P, M, D>(
+        &'a self,
+        package_id: P,
+        module_path: &[M],
+        name: D,
+    ) -> Option<&'a crate::element::DamlInterface<'a>>
+    where
+        P: AsRef<str>,
+        M: AsRef<str>,
+        D: AsRef<str>,
+    {
+        self.packages
+            .get(package_id.as_ref())?
+            .root_module()
+            .child_module_path(module_path)?
+            .interfaces()
+            .find(|i| i.name() == name.as_ref())
+    }
+
     /// Retrieve a `DamlDefValue` for a given `DamlValueName` or `None` if no such value exists in this `DamlArchive`.
     ///
     /// DOCME

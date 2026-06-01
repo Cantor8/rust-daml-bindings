@@ -14,9 +14,13 @@
 //! `<FooContract as <IName>>::do_thing_command(...)`) is deferred
 //! to 4c.
 
+use crate::renderer::data_renderer::full::quote_contract_struct::quote_contract_id_struct_name;
+use crate::renderer::data_renderer::full::quote_method_params::quote_method_arguments;
+use crate::renderer::renderable::IsRenderable;
 use crate::renderer::renderer_utils::quote_escaped_ident;
+use crate::renderer::type_renderer::quote_type;
 use crate::renderer::{to_module_path, RenderContext};
-use daml_lf::element::{DamlInterface, DamlTyConName};
+use daml_lf::element::{DamlField, DamlInterface, DamlTyConName, DamlType};
 use heck::ToSnakeCase;
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -47,6 +51,115 @@ pub fn quote_interface_trait_path(tycon: &DamlTyConName<'_>) -> TokenStream {
     let segments: Vec<_> = path.into_iter().map(ToSnakeCase::to_snake_case).map(quote_escaped_ident).collect();
     let name_tokens = quote_escaped_ident(data_name);
     quote!(crate :: #( #segments :: )* #name_tokens)
+}
+
+/// Render the absolute `crate::pkg::module::Iface` path for an
+/// interface given its package-name, module-path, and entity-name.
+/// Used when we have the [`DamlInterface`] directly (not a tycon
+/// name) — e.g. when generating interface-choice methods on a
+/// template's contract id.
+fn quote_interface_path_from_parts<'a, M: IntoIterator<Item = &'a str>>(
+    package_name: Option<&'a str>,
+    module_path: M,
+    entity_name: &str,
+) -> TokenStream {
+    let path: Vec<&str> = match package_name {
+        Some(name) if !name.is_empty() => iter::once(name).chain(module_path).collect(),
+        _ => module_path.into_iter().collect(),
+    };
+    let segments: Vec<_> = path.into_iter().map(ToSnakeCase::to_snake_case).map(quote_escaped_ident).collect();
+    let name_tokens = quote_escaped_ident(entity_name);
+    quote!(crate :: #( #segments :: )* #name_tokens)
+}
+
+/// Emit interface-choice exercise methods on a template's contract
+/// id struct. For each choice declared on the interface, generate
+///
+/// ```ignore
+/// pub fn <iface_snake>_<choice_snake>_command(&self, ...) -> DamlExerciseCommand {
+///     let template_id = <Iface>::interface_id();
+///     ...
+///     DamlExerciseCommand::new(template_id, self.contract_id().as_str(), "Choice", params)
+/// }
+/// ```
+///
+/// The interface-name prefix avoids collisions with the template's
+/// own choice methods (and with choices from other implemented
+/// interfaces).
+pub fn quote_interface_choices(
+    ctx: &RenderContext<'_>,
+    template_name: &str,
+    interface: &DamlInterface<'_>,
+) -> TokenStream {
+    let contract_id_struct = quote_contract_id_struct_name(template_name);
+    let iface_path = quote_interface_path_from_parts(
+        ctx.package_name_for(interface.package_id()),
+        interface.module_path(),
+        interface.name(),
+    );
+    let iface_prefix = interface.name().to_snake_case();
+    let method_tokens: Vec<_> = interface
+        .choices()
+        .iter()
+        .map(|choice| {
+            let choice_name_lit = choice.name();
+            let method_name = format!("{}_{}_command", iface_prefix, choice.name().to_snake_case());
+            let method_ident = quote_escaped_ident(method_name);
+            let choice_args = quote_method_arguments(&choice.fields().iter().collect::<Vec<_>>());
+            let supported: Vec<_> =
+                choice.fields().iter().filter(|f| IsRenderable::new(ctx).check_type(f.ty())).collect();
+            let body_fields = quote_choice_field_body(&supported);
+            quote!(
+                pub fn #method_ident(&self, #choice_args) -> DamlExerciseCommand {
+                    let template_id = #iface_path::interface_id();
+                    #body_fields
+                    DamlExerciseCommand::new(
+                        template_id,
+                        self.contract_id().as_str(),
+                        #choice_name_lit,
+                        params
+                    )
+                }
+            )
+        })
+        .collect();
+    if method_tokens.is_empty() {
+        quote!()
+    } else {
+        quote!(
+            impl #contract_id_struct {
+                #( #method_tokens )*
+            }
+        )
+    }
+}
+
+/// Mirror of `quote_choices::quote_all_choice_fields` — builds the
+/// `params` record from a slice of `DamlField`s. Inlined here to
+/// avoid making the choice-body helpers public.
+fn quote_choice_field_body(fields: &[&DamlField<'_>]) -> TokenStream {
+    if fields.is_empty() {
+        quote!(let params = DamlValue::Record(DamlRecord::new(vec![], None::<DamlIdentifier>));)
+    } else {
+        let field_stmts: Vec<_> = fields.iter().map(|f| quote_choice_field(f.name(), f.ty())).collect();
+        quote!(
+            let mut records = vec![];
+            #( #field_stmts )*
+            let params = DamlValue::Record(DamlRecord::new(records, None::<DamlIdentifier>));
+        )
+    }
+}
+
+fn quote_choice_field(field_name: &str, field_type: &DamlType<'_>) -> TokenStream {
+    let field_ident = quote_escaped_ident(field_name);
+    let ty_tokens = quote_type(field_type);
+    let name_lit = quote!(#field_name);
+    quote!(
+        records.push(DamlRecordField::new(
+            Some(#name_lit),
+            <#ty_tokens as DamlSerializeInto<DamlValue>>::serialize_into(#field_ident.into()),
+        ));
+    )
 }
 
 pub fn quote_daml_interface(ctx: &RenderContext<'_>, interface: &DamlInterface<'_>) -> TokenStream {
