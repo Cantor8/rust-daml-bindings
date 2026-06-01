@@ -81,6 +81,10 @@ pub use self::transaction::DamlTransaction;
 /// Cross-synchronizer contract reassignment: data + commands.
 pub mod reassignment;
 
+/// Topology transactions: party-to-participant authorization changes
+/// observed on a synchronizer.
+pub mod topology;
+
 mod configuration;
 pub use self::configuration::DamlLedgerConfiguration;
 
