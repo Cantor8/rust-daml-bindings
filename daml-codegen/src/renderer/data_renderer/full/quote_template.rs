@@ -9,8 +9,9 @@ use quote::quote;
 
 pub fn quote_daml_template(ctx: &RenderContext<'_>, daml_template: &DamlTemplate<'_>) -> TokenStream {
     let struct_and_impl_tokens = quote_daml_record_and_impl(ctx, daml_template.name(), daml_template.fields(), &[]);
-    let package_id_method_tokens = quote_package_id_method(
+    let template_id_method_tokens = quote_template_id_method(
         daml_template.name(),
+        ctx.package_name_for(daml_template.package_id()),
         daml_template.package_id(),
         to_module_path(daml_template.module_path()),
     );
@@ -19,22 +20,34 @@ pub fn quote_daml_template(ctx: &RenderContext<'_>, daml_template: &DamlTemplate
     let choices_impl_tokens = quote_choice(ctx, daml_template.name(), daml_template.choices());
     quote!(
         #struct_and_impl_tokens
-        #package_id_method_tokens
+        #template_id_method_tokens
         #make_create_method_tokens
         #contract_struct_and_impl_tokens
         #choices_impl_tokens
     )
 }
 
-/// Generate the `pub fn package_id(...) -> DamlIdentifier` method.
-pub fn quote_package_id_method(struct_name: &str, package_id: &str, module_name: String) -> TokenStream {
+/// Generate the `pub fn template_id() -> DamlIdentifier` method.
+///
+/// Prefers package-name addressing (the v2 Ledger API convention)
+/// when the containing package has a name; falls back to addressing
+/// by package-id otherwise (older LF archives, anonymous packages).
+pub fn quote_template_id_method(
+    struct_name: &str,
+    package_name: Option<&str>,
+    package_id: &str,
+    module_name: String,
+) -> TokenStream {
     let struct_name_tokens = quote_escaped_ident(struct_name);
-    let package_id = package_id;
     let entity_name = struct_name;
+    let identifier_ctor = match package_name {
+        Some(name) => quote!(DamlIdentifier::from_package_name(#name, #module_name, #entity_name)),
+        None => quote!(DamlIdentifier::new(#package_id, #module_name, #entity_name)),
+    };
     quote!(
         impl #struct_name_tokens {
-            pub fn package_id() -> DamlIdentifier {
-                DamlIdentifier::new(#package_id, #module_name, #entity_name)
+            pub fn template_id() -> DamlIdentifier {
+                #identifier_ctor
             }
         }
     )
@@ -47,7 +60,7 @@ pub fn quote_make_create_command_method(struct_name: &str) -> TokenStream {
     quote!(
         impl #struct_name_tokens {
             pub fn create_command(&self) -> DamlCreateCommand {
-                let template_id = Self::package_id();
+                let template_id = Self::template_id();
                 let value: DamlValue = self.to_owned().serialize_into();
                 DamlCreateCommand::new(template_id, value.try_take_record().unwrap())
             }

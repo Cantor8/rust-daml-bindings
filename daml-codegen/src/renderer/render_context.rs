@@ -26,6 +26,20 @@ impl<'a> RenderContext<'a> {
     pub const fn filter_mode(&self) -> RenderFilterMode {
         self.filter_mode
     }
+
+    /// Look up the package-name for the package with the given
+    /// package-id, returning `None` when the archive doesn't contain
+    /// such a package or the package has no name (older LF archives
+    /// produced before LF2 made PackageMetadata mandatory).
+    pub fn package_name_for(&self, package_id: &str) -> Option<&str> {
+        let pkg = self.archive().packages().find(|p| p.package_id() == package_id)?;
+        let name = pkg.name();
+        if name.is_empty() {
+            None
+        } else {
+            Some(name)
+        }
+    }
 }
 
 /// Rendering mode.

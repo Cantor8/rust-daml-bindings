@@ -40,7 +40,7 @@ fn quote_choice_method(ctx: &RenderContext<'_>, struct_name: &str, choice: &Daml
     let all_choice_fields = quote_all_choice_fields(&supported_fields);
     quote!(
         pub fn #method_name_command_tokens(&self, #choice_argument_tokens) -> DamlExerciseCommand {
-            let template_id = #struct_name_tokens::package_id();
+            let template_id = #struct_name_tokens::template_id();
             #all_choice_fields
             DamlExerciseCommand::new(
                 template_id,
