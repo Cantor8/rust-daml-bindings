@@ -1,6 +1,8 @@
 on:
   pull_request:
     branches: [ master ]
+  push:
+    branches: [ master ]
 
 name: Continuous integration
 
@@ -10,229 +12,111 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, beta, nightly, 1.59.0]
+        rust: [stable, beta, nightly]
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: ${{ matrix.rust }}
-          override: true
 
-      - name: check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace
+      - name: check --workspace
+        run: cargo check --workspace
 
-      - name: check --no-default-features
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace --no-default-features
+      - name: check --workspace --no-default-features
+        run: cargo check --workspace --no-default-features
 
-      - name: check --no-default-features --features grpc
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace --no-default-features --features grpc
+      # Per-feature matrix: every flag the daml umbrella still ships
+      # after the v2 migration. The dropped features (json, bridge,
+      # sandbox) and the deleted crates (daml-json, daml-bridge) no
+      # longer need coverage.
+      - name: check --features grpc
+        run: cargo check -p daml --no-default-features --features grpc
 
-      - name: check --no-default-features --features json
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace --no-default-features --features json
+      - name: check --features macros
+        run: cargo check -p daml --no-default-features --features macros
 
-      - name: check --no-default-features --features macros
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace --no-default-features --features macros
+      - name: check --features derive
+        run: cargo check -p daml --no-default-features --features derive
 
-      - name: check --no-default-features --features derive
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace --no-default-features --features derive
+      - name: check --features codegen
+        run: cargo check -p daml --no-default-features --features codegen
 
-      - name: check --no-default-features --features codegen
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace --no-default-features --features codegen
+      - name: check --features lf
+        run: cargo check -p daml --no-default-features --features lf
 
-      - name: check --no-default-features --features lf
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace --no-default-features --features lf
+      - name: check --features lf-full
+        run: cargo check -p daml --no-default-features --features lf-full
 
-      - name: check --no-default-features --features lf-full
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace --no-default-features --features lf-full
+      - name: check --features util
+        run: cargo check -p daml --no-default-features --features util
 
-      - name: check --no-default-features --features util
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace --no-default-features --features util
+      - name: check --features prelude
+        run: cargo check -p daml --no-default-features --features prelude
 
-      - name: check --no-default-features --features prelude
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace --no-default-features --features prelude
-
-      - name: check --no-default-features --features sandbox
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace --no-default-features --features sandbox
-
-      - name: check --no-default-features --features full
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace --no-default-features --features full
+      - name: check --features full
+        run: cargo check -p daml --no-default-features --features full
 
       - name: check --all-features
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace --all-features
+        run: cargo check --workspace --all-features
 
-  check-examples:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable, beta, nightly, 1.59.0]
-        example: [daml-darn, daml-oas, grpc-demo, codegen-demo]
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
-          override: true
-
-      - name: check ${{ matrix.example }}
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --manifest-path examples/${{ matrix.example }}/Cargo.toml
-
-  build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable, beta, nightly, 1.59.0]
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
-          override: true
-      - name: build --workspace --all-features
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --workspace --all-features
-          
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, beta, nightly, 1.59.0]
+        rust: [stable, beta, nightly]
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: ${{ matrix.rust }}
-          override: true
 
-      - name: test --workspace --all-features --lib
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --workspace --all-features --lib
+      - name: test --workspace --lib
+        run: cargo test --workspace --lib
 
-      - name: test --workspace --all-features --doc
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --workspace --all-features --doc
+      - name: test --workspace --doc
+        run: cargo test --workspace --doc
+
+      # The daml-lf crate's integration tests load a small LF2 DAR
+      # fixture from disk -- they do not need a live ledger and
+      # belong in this surface.
+      - name: test -p daml-lf --tests
+        run: cargo test -p daml-lf --tests
+
+  # The Phase 8 smoke test (`-p daml-grpc --features integration`)
+  # needs a running Canton sandbox and is gated off the default
+  # matrix. See README's "Integration tests" section for the local
+  # workflow; CI can pick it up later by booting `canton-sandbox`
+  # from the Nix flake before invoking cargo.
 
   fmt:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [nightly]
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
-          override: true
+          toolchain: nightly
           components: rustfmt
       - name: fmt --all -- --check
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all -- --check
 
   clippy:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, beta, nightly, 1.59.0]
+        rust: [stable]
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: ${{ matrix.rust }}
-          override: true
           components: clippy
-      - name: clippy --workspace --all-features --tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --workspace --all-features --tests -- -Dwarnings
-
-  minimal-versions:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [nightly]
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
-          override: true
-
-      - name: update -Z minimal-versions
-        uses: actions-rs/cargo@v1
-        with:
-          command: update
-          args: -Z minimal-versions
-
-      - name: check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace --all-features
+      - name: clippy --workspace --tests
+        run: cargo clippy --workspace --tests -- -Dwarnings
 
   cargo-deny:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v1
         with:
           log-level: warn

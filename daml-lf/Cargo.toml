@@ -1,6 +1,6 @@
 [package]
 name = "daml-lf"
-version = "0.2.2"
+version = "0.3.0"
 authors = ["FujiApple <fujiapple852@gmail.com>"]
 description = "API for working with Daml-LF data"
 readme = "README.md"
@@ -9,7 +9,7 @@ license = "Apache-2.0"
 keywords = ["daml", "api", "ledger"]
 categories = ["development-tools"]
 edition = "2021"
-rust-version = "1.59.0"
+rust-version = "1.75"
 build = "build.rs"
 
 [features]
