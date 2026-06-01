@@ -291,7 +291,10 @@ impl DamlGrpcClient {
         DamlPackageManagementService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
-    /// DOCME
+    /// Retrieve a [`DamlPartyManagementService`] for inspecting and
+    /// administering participant-local party state: allocate parties,
+    /// list/page-through known parties, update party metadata, and
+    /// move parties between identity providers.
     #[cfg(feature = "admin")]
     pub fn party_management_service(&self) -> DamlPartyManagementService<'_> {
         DamlPartyManagementService::new(self.channel.clone(), self.config.auth_token.as_deref())
