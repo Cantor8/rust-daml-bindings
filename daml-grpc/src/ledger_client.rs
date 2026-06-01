@@ -318,7 +318,8 @@ impl DamlGrpcClient {
         DamlConfigManagementService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
-    /// DOCME
+    /// Retrieve a [`DamlParticipantPruningService`] for truncating
+    /// older portions of the participant-local ledger view.
     #[cfg(feature = "admin")]
     pub fn participant_pruning_service(&self) -> DamlParticipantPruningService<'_> {
         DamlParticipantPruningService::new(self.channel.clone(), self.config.auth_token.as_deref())
