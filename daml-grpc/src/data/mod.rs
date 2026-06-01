@@ -90,6 +90,10 @@ pub mod topology;
 /// OffsetCheckpoint markers.
 pub mod update;
 
+/// StateService data types — active-contract snapshots,
+/// connected-synchronizer views, prune offsets.
+pub mod state;
+
 mod configuration;
 pub use self::configuration::DamlLedgerConfiguration;
 

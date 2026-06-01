@@ -2,7 +2,7 @@ use crate::data::{DamlError, DamlResult};
 use crate::service::{
     DamlActiveContractsService, DamlCommandCompletionService, DamlCommandService, DamlCommandSubmissionService,
     DamlLedgerConfigurationService, DamlLedgerIdentityService, DamlPackageService, DamlParticipantPruningService,
-    DamlTransactionService, DamlUpdateService, DamlVersionService,
+    DamlStateService, DamlTransactionService, DamlUpdateService, DamlVersionService,
 };
 #[cfg(feature = "admin")]
 use crate::service::{
@@ -269,6 +269,14 @@ impl DamlGrpcClient {
     /// v1's TransactionService.
     pub fn update_service(&self) -> DamlUpdateService<'_> {
         DamlUpdateService::new(self.channel.clone(), self.config.auth_token.as_deref())
+    }
+
+    /// Retrieve a [`DamlStateService`] for snapshotting the active
+    /// contract set, listing connected synchronizers, reading the
+    /// ledger end, and querying pruning watermarks. v2's
+    /// replacement for v1's ActiveContractsService.
+    pub fn state_service(&self) -> DamlStateService<'_> {
+        DamlStateService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
     /// Retrieve a [`DamlCommandService`] for synchronous command
