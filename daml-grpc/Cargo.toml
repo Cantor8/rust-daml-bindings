@@ -15,7 +15,6 @@ build = "build.rs"
 [features]
 default = [ "admin" ]
 admin = []
-sandbox = []
 
 [dependencies]
 futures = "0.3.21"
@@ -33,7 +32,7 @@ itertools = "0.10.3"
 tracing = "0.1.31"
 
 [dev-dependencies]
-daml = { path = "../daml", features = [ "lf", "sandbox", "util" ] }
+daml = { path = "../daml", features = [ "lf", "util" ] }
 tokio = { version = "1.17.0", features = [ "macros" ] }
 lazy_static = "1.4.0"
 anyhow = "1.0.55"

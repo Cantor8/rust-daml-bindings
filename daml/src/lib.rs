@@ -7,21 +7,18 @@
 //! | crate                          | description                                                               |
 //! |--------------------------------|---------------------------------------------------------------------------|
 //! | [daml](self)                   | Daml prelude & common entry point                                         |
-//! | [daml-grpc](::daml_grpc)       | Daml Ledger GRPC API bindings                                             |
-//! | [daml-json](::daml_json)       | Daml Ledger JSON API bindings                                             |
+//! | [daml-grpc](::daml_grpc)       | Daml Ledger GRPC API bindings (v2)                                        |
 //! | [daml-codegen](::daml_codegen) | Library for generate Rust GRPC API bindings from Daml archives            |
 //! | [daml-derive](::daml_derive)   | Attribute macros for generating Rust GRPC API bindings from Daml archives |
 //! | [daml-macro](::daml_macro)     | Helper macros for working with Daml GRPC values                           |
 //! | [daml-util](::daml_util)       | Utilities for working with Daml ledgers                                   |
-//! | [daml-lf](::daml_lf)           | Library for working with Daml-LF archives                                 |
-//! | [daml-bridge]                  | Library for Daml JSON <> GRPC Ledger bridging                             |
+//! | [daml-lf](::daml_lf)           | Library for working with Daml-LF 2.x archives                             |
 //!
 //! # Features
 //!
 //! The following feature may be enabled:
 //!
 //! - `grpc` - enable the `daml-grpc` library
-//! - `json` - enable the `daml-json` library
 //! - `codegen` - enable the `daml-codegen` library
 //! - `derive` - enable the `daml-derive` library
 //! - `macros` - enable the `daml-macros` library
@@ -29,8 +26,7 @@
 //! - `lf` - enable the `daml-lf` library (excludes expressions)
 //! - `lf-full` - enable the `daml-lf` library (includes expressions)
 //! - `prelude` - enable the `daml` prelude
-//! - `full` - enables: `grpc`, `json`, `macros`, `derive`, `codegen`, `lf-full`, `util`, `prelude`
-//! - `sandbox` - enable sandbox testing features
+//! - `full` - enables: `grpc`, `macros`, `derive`, `codegen`, `lf-full`, `util`, `prelude`
 //!
 //! # Usage
 //!
@@ -68,29 +64,6 @@
 //! [`grpc-demo` example](https://github.com/fujiapple852/rust-daml-bindings/tree/master/examples/grpc-demo).  See also
 //! the [`integration_tests`](https://github.com/fujiapple852/rust-daml-bindings/tree/master/daml-grpc/tests/grpc) in
 //! the [`daml-grpc`](::daml_grpc) crate for comprehensive usage examples.
-//!
-//! ## Working with JSON
-//!
-//! To connect to a Daml ledger via the JSON API you can use the [DamlJsonClient](daml_json::service::DamlJsonClient)
-//! which can be created using the [DamlJsonClientBuilder](daml_json::service::DamlJsonClientBuilder).  This client
-//! exposes the full Daml JSON API [`service`](daml_json::service) which all make use of the generic JSON `Value` type.
-//!
-//! Conversion between the generic GRPC [`DamlValue`](`daml_grpc::data::value::DamlValue`) and the generic JSON
-//! `Value` representations is provided by [JsonValueEncoder](daml_json::value_encode::JsonValueEncoder) and
-//! [JsonValueDecoder](daml_json::value_decode::JsonValueDecoder).
-//!
-//! It is also possible to convert A Daml JSON API [`request`](daml_json::request) to a GRPC API
-//! [`command`](daml_grpc::data::command) using
-//! [JsonToGrpcRequestConverter](daml_json::request_converter::JsonToGrpcRequestConverter) and A Daml GRPC API
-//! [`event`](daml_grpc::data::event) to a JSON API [`response`](daml_json::request) using
-//! [GrpcToJsonResponseConverter](daml_json::response_converter::GrpcToJsonResponseConverter).
-//!
-//! A [JsonSchemaEncoder](daml_json::schema_encoder::JsonSchemaEncoder) is provided to generate JSON Schema documents
-//! from Daml elements and archives.
-//!
-//! See the
-//! [`integration_tests`](https://github.com/fujiapple852/rust-daml-bindings/blob/master/daml-json/tests/json/all_json_api_tests.rs)
-//! in the [`daml_json`](::daml_json) crate for comprehensive usage examples.
 //!
 //! ## Working with Daml LF
 //!
@@ -143,16 +116,12 @@
 //! | crate                          | description                                                       |
 //! |--------------------------------|-------------------------------------------------------------------|
 //! | [daml-codegen](::daml_codegen) | Generate Rust GRPC API bindings from Daml archives                |
-//! | [daml-bridge]                  | Daml JSON <> GRPC Ledger bridge                                   |
-//! | [daml-oas]                     | Generate OpenAPI and AsyncAPI specifications from Daml dar files  |
 //! | [daml-darn]                    | Daml Archive cli tool                                             |
 //!
 //! # Examples
 //!
 //! Further examples are available in the [`examples`](https://github.com/fujiapple852/rust-daml-bindings/tree/master/examples) directory.
 //!
-//! [daml-bridge]: https://docs.rs/daml-bridge/0.2.2/daml_bridge
-//! [daml-oas]: https://docs.rs/daml-oas/0.2.2/daml-oas
 //! [daml-darn]: https://docs.rs/daml-darn/0.2.2/daml-darn
 
 #![warn(clippy::all, clippy::pedantic, clippy::nursery, rust_2018_idioms)]
@@ -177,12 +146,6 @@ pub mod prelude;
 #[doc(hidden)]
 pub mod grpc_api {
     pub use daml_grpc::*;
-}
-
-#[cfg(feature = "json")]
-#[doc(hidden)]
-pub mod json_api {
-    pub use daml_json::*;
 }
 
 #[cfg(feature = "codegen")]

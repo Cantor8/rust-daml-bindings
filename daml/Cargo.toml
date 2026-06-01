@@ -13,13 +13,10 @@ rust-version = "1.59.0"
 
 [features]
 default = []
-full = [ "grpc", "json", "macros", "derive", "codegen", "lf-full", "util", "prelude" ]
+full = [ "grpc", "macros", "derive", "codegen", "lf-full", "util", "prelude" ]
 
 # Enable ledger GRPC API feature.
 grpc = [ "daml-grpc" ]
-
-# Enable ledger JSON API feature.
-json = [ "daml-json" ]
 
 # Enable helper macros feature.
 macros = [ "daml-macro" ]
@@ -42,12 +39,8 @@ util = [ "daml-util" ]
 # Enable the Daml prelude feature (required to use code produced by the code generator).
 prelude = [ "daml-grpc", "daml-derive" ]
 
-# Enable ledger API features which are only supported on the sandbox.
-sandbox = [ "daml-util/sandbox", "daml-grpc/sandbox" ]
-
 [dependencies]
 daml-grpc = { version = "0.2.2", path = "../daml-grpc", optional = true }
-daml-json = { version = "0.2.2", path = "../daml-json", optional = true }
 daml-macro = { version = "0.2.2", path = "../daml-macro", optional = true }
 daml-lf = { version = "0.2.2", path = "../daml-lf", optional = true }
 daml-util = { version = "0.2.2", path = "../daml-util", optional = true }
