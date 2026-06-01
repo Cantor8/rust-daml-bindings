@@ -13,12 +13,9 @@ rust-version = "1.59.0"
 publish = false
 
 [dependencies]
-daml = { path = "../../daml", features = [ "grpc", "sandbox", "util", "macros" ] }
-tokio = { version = "1.17.0", features = [ "macros", "rt-multi-thread" ] }
-futures = "0.3.21"
-chrono = "0.4.19"
-tracing = "0.1.31"
-tracing-subscriber = { version = "0.3.9", features = ["env-filter", "json"] }
-anyhow = "1.0.55"
+# The stub doesn't pull anything from the daml crate; the deps are
+# kept here as breadcrumbs for the v2 rewrite landing alongside the
+# Phase 7 LF2 fixtures + Phase 8 integration harness.
+daml = { path = "../../daml", features = [ "grpc", "util", "macros" ] }
 
 [workspace]
