@@ -260,9 +260,12 @@ impl DamlGrpcClient {
         DamlCommandCompletionService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
-    /// DOCME
+    /// Retrieve a [`DamlCommandService`] for synchronous command
+    /// submission: submit and wait for the participant's verdict in a
+    /// single RPC. Returns the resulting `update_id` and completion
+    /// offset.
     pub fn command_service(&self) -> DamlCommandService<'_> {
-        DamlCommandService::new(self.channel.clone(), &self.ledger_identity, self.config.auth_token.as_deref())
+        DamlCommandService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
     /// DOCME
