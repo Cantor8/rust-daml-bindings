@@ -1,3 +1,4 @@
+use crate::convert::data_payload::DamlDataPayload;
 use crate::convert::interned::PackageInternedResolver;
 use crate::lf_protobuf::daml_lf_2;
 
@@ -46,5 +47,12 @@ impl<'a> DamlModulePayload<'a> {
         resolver: &'b R,
     ) -> crate::error::DamlLfConvertResult<Vec<&'b str>> {
         resolver.resolve_dotted(self.name_index)
+    }
+
+    /// Iterate over the data-type definitions in this module
+    /// (records, variants, enums, plus the LF2 marker entries that
+    /// correspond to interface view-types).
+    pub fn data_types(&self) -> impl Iterator<Item = DamlDataPayload<'a>> + '_ {
+        self.module.data_types.iter().map(DamlDataPayload::new)
     }
 }

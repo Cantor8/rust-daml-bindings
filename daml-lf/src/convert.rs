@@ -7,6 +7,7 @@
 //! (exceptions), and 3.8 (values / expressions).
 
 mod archive_payload;
+mod data_payload;
 mod interned;
 mod module_payload;
 mod package_payload;
@@ -19,10 +20,12 @@ use std::convert::TryFrom;
 use bounded_static::ToBoundedStatic;
 
 use crate::convert::archive_payload::DamlArchivePayload;
+use crate::convert::data_payload::DamlDataPayload;
 use crate::convert::interned::PackageInternedResolver;
 use crate::convert::module_payload::DamlModulePayload;
 use crate::convert::package_payload::DamlPackagePayload;
-use crate::element::{DamlArchive, DamlFeatureFlags, DamlModule, DamlPackage};
+use crate::element::{DamlArchive, DamlData, DamlEnum, DamlFeatureFlags, DamlModule, DamlPackage, DamlRecord, DamlVariant};
+use crate::lf_protobuf::daml_lf_2::def_data_type::DataCons;
 use crate::{DamlLfArchive, DamlLfArchivePayload, DamlLfHashFunction, DamlLfResult, DarFile};
 
 /// Create an owned [`DamlArchive`] from a [`DarFile`].
@@ -87,35 +90,126 @@ fn build_package<'a>(payload: &'a DamlPackagePayload<'a>) -> DamlLfResult<DamlPa
 
 /// Walk the package's flat list of modules and build a nested
 /// [`DamlModule`] tree keyed by dotted-name segment. Each module's
-/// feature flags and path are filled in; everything below
-/// (data_types, synonyms, values, …) stays empty until the
-/// corresponding sub-checkpoint lands.
+/// feature flags, path, and data-type names are filled in; type
+/// synonyms (and the type-system content of each data type) land
+/// with 3.4; templates with 3.5; interfaces with 3.6; exceptions
+/// with 3.7; values with 3.8.
 fn build_module_tree<'a>(payload: &'a DamlPackagePayload<'a>) -> DamlLfResult<DamlModule<'a>> {
     let mut root = DamlModule::new_root();
     for module in &payload.modules {
         let path = module.path(payload)?;
-        insert_module(&mut root, &path, module);
+        insert_module(&mut root, &path, module, payload)?;
     }
     Ok(root)
 }
 
-fn insert_module<'a>(root: &mut DamlModule<'a>, path: &[&'a str], payload: &DamlModulePayload<'a>) {
+fn insert_module<'a>(
+    root: &mut DamlModule<'a>,
+    path: &[&'a str],
+    module: &DamlModulePayload<'a>,
+    package: &'a DamlPackagePayload<'a>,
+) -> DamlLfResult<()> {
     let mut cursor = root;
     for segment in path {
         cursor = cursor.child_module_or_new(segment);
     }
     let leaf_path = path.iter().map(|s| Cow::Borrowed(*s)).collect::<Vec<_>>();
+    let data_types = build_data_types(module, package, &leaf_path)?;
     let leaf = DamlModule::new_leaf(
         leaf_path,
         DamlFeatureFlags::new(
-            payload.flags.forbid_party_literals,
-            payload.flags.dont_divulge_contract_ids_in_create_arguments,
-            payload.flags.dont_disclose_non_consuming_choices_to_observers,
+            module.flags.forbid_party_literals,
+            module.flags.dont_divulge_contract_ids_in_create_arguments,
+            module.flags.dont_disclose_non_consuming_choices_to_observers,
         ),
         Vec::new(),
-        HashMap::new(),
+        data_types,
         #[cfg(feature = "full")]
         HashMap::new(),
     );
     cursor.take_from(leaf);
+    Ok(())
+}
+
+/// Convert every `DefDataType` in `module` into a `DamlData` keyed
+/// by its (final-segment) name.
+///
+/// 3.3 leaves field types, type-parameter kinds, and synonym bodies
+/// empty — those need the [`crate::element::DamlType`] machinery
+/// that 3.4 lands. Enum constructors *are* fully populated; they
+/// carry interned strings only and don't need the type system.
+///
+/// DefDataType entries whose `data_cons` is the `Interface` marker
+/// are filtered out — the actual interface definitions live on the
+/// module's `interfaces` list and 3.6 will wire those into
+/// `element/`.
+fn build_data_types<'a>(
+    module: &DamlModulePayload<'a>,
+    package: &'a DamlPackagePayload<'a>,
+    module_path: &[Cow<'a, str>],
+) -> DamlLfResult<HashMap<Cow<'a, str>, DamlData<'a>>> {
+    let mut out = HashMap::new();
+    for payload in module.data_types() {
+        if let Some(data) = build_data_type(payload, package, module_path)? {
+            out.insert(data_key(&data), data);
+        }
+    }
+    Ok(out)
+}
+
+fn build_data_type<'a>(
+    payload: DamlDataPayload<'a>,
+    package: &'a DamlPackagePayload<'a>,
+    module_path: &[Cow<'a, str>],
+) -> DamlLfResult<Option<DamlData<'a>>> {
+    let path = package.resolve_dotted(payload.name_index())?;
+    let name = path
+        .last()
+        .copied()
+        .ok_or_else(|| crate::error::DamlLfConvertError::MissingRequiredField)?;
+    let name_cow = Cow::Borrowed(name);
+    let package_id_cow = Cow::Borrowed(package.package_id);
+    let module_path_owned = module_path.to_vec();
+    let data = match payload.data_cons() {
+        Some(DataCons::Record(_)) => DamlData::Record(DamlRecord::new(
+            name_cow,
+            package_id_cow,
+            module_path_owned,
+            Vec::new(), // fields wired up in 3.4 once DamlType lands
+            Vec::new(), // type params likewise
+            payload.serializable(),
+        )),
+        Some(DataCons::Variant(_)) => DamlData::Variant(DamlVariant::new(
+            name_cow,
+            package_id_cow,
+            module_path_owned,
+            Vec::new(),
+            Vec::new(),
+            payload.serializable(),
+        )),
+        Some(DataCons::Enum(ec)) => {
+            let constructors: Vec<Cow<'a, str>> =
+                package.resolve_strings(&ec.constructors_interned_str)?.into_iter().map(Cow::Borrowed).collect();
+            DamlData::Enum(DamlEnum::new(
+                name_cow,
+                package_id_cow,
+                module_path_owned,
+                constructors,
+                Vec::new(),
+                payload.serializable(),
+            ))
+        },
+        // Interface marker — DefInterface carries the real surface; 3.6 wires it up.
+        Some(DataCons::Interface(_)) => return Ok(None),
+        None => return Err(crate::error::DamlLfConvertError::MissingRequiredField.into()),
+    };
+    Ok(Some(data))
+}
+
+/// Pull the (final) dotted-name segment as the key under which a
+/// DamlData lives in its module's `data_types` map. The element
+/// layer keys by single name, not by full path, so we strip the
+/// module prefix.
+fn data_key<'a>(data: &DamlData<'a>) -> Cow<'a, str> {
+    Cow::Owned(data.name().to_owned())
 }
