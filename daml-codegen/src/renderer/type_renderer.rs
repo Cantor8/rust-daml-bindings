@@ -58,6 +58,7 @@ pub fn quote_type(daml_type: &DamlType<'_>) -> TokenStream {
         | DamlType::Bignumeric
         | DamlType::RoundingMode
         | DamlType::AnyException
+        | DamlType::FailureCategory
         | DamlType::Forall(_)
         | DamlType::Struct(_)
         | DamlType::Syn(_) => panic!("cannot render unsupported type: {}", daml_type.name()),

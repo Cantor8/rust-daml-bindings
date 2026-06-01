@@ -1,0 +1,16 @@
+sdk-version: 3.4.11
+name: TestingTypes
+version: 3.0.0
+source: daml
+parties:
+  - Alice
+  - Bob
+dependencies:
+  - daml-prim
+  - daml-stdlib
+build-options:
+  - --target=2.1
+  # The fixture deliberately defines the Holding interface and
+  # implements it in the same package; we don't ship upgradeable
+  # versions of this fixture, so the upgradeability check is noise.
+  - -Wno-upgrade-interfaces

@@ -118,6 +118,7 @@ fn convert_builtin<'a>(
         BuiltinType::Arrow => DamlType::Arrow,
         BuiltinType::Update => DamlType::Update,
         BuiltinType::Bignumeric => DamlType::Bignumeric,
+        BuiltinType::FailureCategory => DamlType::FailureCategory,
         BuiltinType::RoundingMode => DamlType::RoundingMode,
         // FailureCategory was added to LF2 after the current
         // element-layer DamlType enum was last updated; surfaces as

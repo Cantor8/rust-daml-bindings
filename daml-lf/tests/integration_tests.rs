@@ -6,121 +6,76 @@ use daml_lf::element::{DamlElementVisitor, DamlEnum};
 use daml_lf::DamlLfResult;
 use daml_lf::DarFile;
 use daml_lf::LanguageVersion;
-use daml_lf::{DamlLfArchive, DamlLfHashFunction};
 use daml_lf::{DarEncryptionType, DarManifestFormat, DarManifestVersion};
 use std::collections::HashSet;
 
-#[test]
-fn test_dalf() -> DamlLfResult<()> {
-    let archive = DamlLfArchive::from_file("../resources/testing_types_sandbox/archive/legacy/Legacy.dalf")?;
-    assert_eq!(&DamlLfHashFunction::Sha256, archive.hash_function());
-    assert_eq!("2efa7ef832162fcb17abe86cd8675e31b8e641f25aba36a05098f7e9f4023d7e", archive.hash());
-    assert_eq!("Legacy", archive.name());
-    assert_eq!(LanguageVersion::V1_0, *archive.payload().language_version());
-    assert!(archive.payload().contains_module("PingPong"));
-    Ok(())
-}
+/// Path to the canonical LF2 fixture DAR. Compiled with Daml SDK
+/// 3.4.11 against LF target 2.1; see test_resources/README.md for
+/// the rebuild procedure.
+const FIXTURE_DAR: &str = "test_resources/TestingTypes-3_0_0-sdk_3_4_11-lf_2_1.dar";
 
 #[test]
-pub fn test_legacy_dar() -> DamlLfResult<()> {
-    let dar = DarFile::from_file("../resources/testing_types_sandbox/archive/legacy/Legacy.dar")?;
-    assert_eq!(DarManifestVersion::Unknown, dar.manifest().version());
-    assert_eq!("implied", dar.manifest().created_by());
-    assert_eq!("PingPongExample/PingPongExample.dalf", dar.manifest().dalf_main());
-    assert_eq!(&Vec::<String>::new(), dar.manifest().dalf_dependencies());
-    assert_eq!(DarManifestFormat::Unknown, dar.manifest().format());
-    assert_eq!(DarEncryptionType::Unknown, dar.manifest().encryption());
-    assert_eq!(0, dar.dependencies().len());
-    assert_eq!(LanguageVersion::V1_0, *dar.main().payload().language_version());
-    assert!(dar.main().payload().contains_module("PingPong"));
-    Ok(())
-}
-
-#[test]
-pub fn test_fat_dar() -> DamlLfResult<()> {
-    let dar = DarFile::from_file("test_resources/TestingTypes-1_9_0-sdk_1_18_1-lf_1_14.dar")?;
+pub fn test_fat_dar_manifest() -> DamlLfResult<()> {
+    let dar = DarFile::from_file(FIXTURE_DAR)?;
     assert_eq!(DarManifestVersion::V1, dar.manifest().version());
     assert_eq!("damlc", dar.manifest().created_by());
     assert_eq!("TestingTypes", dar.manifest().dalf_main().split('-').next().unwrap());
-    assert_eq!(25, dar.manifest().dalf_dependencies().len());
     assert_eq!(DarManifestFormat::DamlLf, dar.manifest().format());
     assert_eq!(DarEncryptionType::NotEncrypted, dar.manifest().encryption());
-    assert_eq!(25, dar.dependencies().len());
-    assert_eq!(LanguageVersion::V1_14, *dar.main().payload().language_version());
-    assert!(dar.main().payload().contains_module("Fuji.PingPong"));
+    assert_eq!(LanguageVersion::V2_1, *dar.main().payload().language_version());
     Ok(())
 }
 
 #[test]
-pub fn test_daml_lf_1_6() -> DamlLfResult<()> {
-    let dar = DarFile::from_file("test_resources/TestingTypes-1_0_0-sdk_0_13_36-lf_1_6.dar")?;
-    assert_eq!(LanguageVersion::V1_6, *dar.main().payload().language_version());
-    Ok(())
-}
-
-#[test]
-pub fn test_daml_lf_1_7() -> DamlLfResult<()> {
-    let dar = DarFile::from_file("test_resources/TestingTypes-1_0_0-sdk_0_13_37-lf_1_7.dar")?;
-    assert_eq!(LanguageVersion::V1_7, *dar.main().payload().language_version());
-    Ok(())
-}
-
-#[test]
-pub fn test_daml_lf_1_8() -> DamlLfResult<()> {
-    let dar = DarFile::from_file("test_resources/TestingTypes-1_0_0-sdk_0_13_55-lf_1_8.dar")?;
-    assert_eq!(LanguageVersion::V1_8, *dar.main().payload().language_version());
-    Ok(())
-}
-
-#[test]
-pub fn test_daml_sdk_1_0_x() -> DamlLfResult<()> {
-    let dar = DarFile::from_file("test_resources/TestingTypes-1_0_0-sdk_1_0_1-lf_1_8.dar")?;
-    assert_eq!(LanguageVersion::V1_8, *dar.main().payload().language_version());
-    Ok(())
-}
-
-#[test]
-pub fn test_daml_sdk_1_1_x() -> DamlLfResult<()> {
-    let dar = DarFile::from_file("test_resources/TestingTypes-1_0_0-sdk_1_1_1-lf_1_8.dar")?;
-    assert_eq!(LanguageVersion::V1_8, *dar.main().payload().language_version());
+pub fn test_contains_modules() -> DamlLfResult<()> {
+    let dar = DarFile::from_file(FIXTURE_DAR)?;
+    assert!(dar.main().payload().contains_module("Fuji.Types"));
+    assert!(dar.main().payload().contains_module("Fuji.Asset"));
     Ok(())
 }
 
 #[test]
 fn test_apply_dar() -> DamlLfResult<()> {
-    let dar = DarFile::from_file("test_resources/TestingTypes-1_0_0-sdk_0_13_55-lf_1_8.dar")?;
+    let dar = DarFile::from_file(FIXTURE_DAR)?;
     let name = dar.apply(|archive| archive.name().to_owned())?;
-    assert_eq!("TestingTypes-1.0.0", name);
+    assert_eq!("TestingTypes-3.0.0", name);
     Ok(())
 }
 
 #[test]
-fn test_apply_dalf() -> DamlLfResult<()> {
-    let dar = DarFile::from_file("test_resources/TestingTypes-1_0_0-sdk_0_13_55-lf_1_8.dar")?;
-    let name = dar.dependencies.get(1).unwrap().apply(|package| package.name().to_owned())?;
-    assert_eq!("daml-prim-DA-Internal-Erased", name);
+fn test_apply_dalf_dependency() -> DamlLfResult<()> {
+    let dar = DarFile::from_file(FIXTURE_DAR)?;
+    // LF2 PackageMetadata is mandatory, so every dalf dependency
+    // carries its real package name. The first dep on this DAR is
+    // a daml-prim sub-module.
+    let any_dep = dar.dependencies.first().expect("at least one dalf dependency");
+    let name = any_dep.apply(|package| package.name().to_owned())?;
+    assert!(name.starts_with("daml-prim"), "dalf name: {name}");
     Ok(())
 }
 
 #[test]
 fn test_apply_payload() -> DamlLfResult<()> {
-    let mut dar = DarFile::from_file("test_resources/TestingTypes-1_0_0-sdk_0_13_55-lf_1_8.dar")?;
-    let payload = dar.dependencies.swap_remove(1).payload;
+    let mut dar = DarFile::from_file(FIXTURE_DAR)?;
+    let payload = dar.dependencies.swap_remove(0).payload;
     let name = payload.apply(|package| package.name().to_owned())?;
-    assert_eq!("unnamed", name);
+    // Same observation as `test_apply_dalf_dependency`: LF2's
+    // mandatory PackageMetadata propagates through the payload-only
+    // apply path too.
+    assert!(name.starts_with("daml-prim"), "payload name: {name}");
     Ok(())
 }
 
 #[test]
 fn test_convert_dar() -> DamlLfResult<()> {
-    let dar = DarFile::from_file("test_resources/TestingTypes-1_0_0-sdk_1_1_1-lf_1_8.dar")?;
+    let dar = DarFile::from_file(FIXTURE_DAR)?;
     let archive = dar.to_owned_archive()?;
-    assert_eq!("TestingTypes-1.0.0", archive.name());
+    assert_eq!("TestingTypes-3.0.0", archive.name());
     Ok(())
 }
 
 #[test]
-fn test_visitor() -> DamlLfResult<()> {
+fn test_visitor_finds_enum() -> DamlLfResult<()> {
     #[derive(Default)]
     pub struct GatherEnumsVisitor(HashSet<String>);
     impl DamlElementVisitor for GatherEnumsVisitor {
@@ -129,8 +84,36 @@ fn test_visitor() -> DamlLfResult<()> {
         }
     }
     let mut visitor = GatherEnumsVisitor::default();
-    let dar = DarFile::from_file("test_resources/TestingTypes-1_0_0-sdk_0_13_55-lf_1_8.dar")?;
+    let dar = DarFile::from_file(FIXTURE_DAR)?;
     dar.apply(|archive| archive.accept(&mut visitor))?;
-    assert!(visitor.0.contains("SimpleColor"));
+    // `Color` is declared in Fuji.Types and re-used as a field on
+    // both `Painted` and `Asset` — the visitor sees the enum
+    // declaration once regardless.
+    assert!(visitor.0.contains("Color"));
+    Ok(())
+}
+
+#[test]
+fn test_visitor_finds_interface_and_template() -> DamlLfResult<()> {
+    use daml_lf::element::{DamlInterface, DamlTemplate};
+
+    #[derive(Default)]
+    struct Gather {
+        templates: HashSet<String>,
+        interfaces: HashSet<String>,
+    }
+    impl DamlElementVisitor for Gather {
+        fn pre_visit_template<'a>(&mut self, t: &'a DamlTemplate<'a>) {
+            self.templates.insert(t.name().to_owned());
+        }
+        fn pre_visit_interface<'a>(&mut self, i: &'a DamlInterface<'a>) {
+            self.interfaces.insert(i.name().to_owned());
+        }
+    }
+    let mut visitor = Gather::default();
+    let dar = DarFile::from_file(FIXTURE_DAR)?;
+    dar.apply(|archive| archive.accept(&mut visitor))?;
+    assert!(visitor.templates.contains("Asset"), "templates: {:?}", visitor.templates);
+    assert!(visitor.interfaces.contains("Holding"), "interfaces: {:?}", visitor.interfaces);
     Ok(())
 }

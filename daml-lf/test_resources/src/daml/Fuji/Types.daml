@@ -1,0 +1,35 @@
+-- LF2 type-system exercise module: records, variants, enums.
+-- Read by the `daml-lf` conversion-layer integration tests to
+-- confirm the data-type round-trip for the v2 DAR format.
+
+module Fuji.Types where
+
+-- A simple record with mixed primitive fields.
+data Profile = Profile
+  with
+    name : Text
+    age : Int
+    nickname : Optional Text
+    tags : [Text]
+  deriving (Eq, Show)
+
+-- Discriminated union (variant). Each constructor carries an
+-- argument; one of them is a record-shaped payload.
+data Shape
+  = Circle { radius : Decimal }
+  | Rectangle { width : Decimal, height : Decimal }
+  | Polygon [Decimal]
+  deriving (Eq, Show)
+
+-- Enum (constructors-only variant).
+data Color = Red | Green | Blue
+  deriving (Eq, Show)
+
+-- A record nesting both variants and enums to exercise the
+-- field-type conversion path.
+data Painted = Painted
+  with
+    shape : Shape
+    fill : Color
+    outline : Optional Color
+  deriving (Eq, Show)

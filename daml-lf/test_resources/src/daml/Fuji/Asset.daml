@@ -1,0 +1,62 @@
+-- LF2 template + interface exercise module.
+--
+-- Covers the contracting surface that Phase 3.5–3.7 wired into
+-- the element layer:
+--   * a template with a contract key + a fixed choice,
+--   * an interface with a view + a fixed choice,
+--   * a template implementing that interface.
+
+module Fuji.Asset where
+
+import Fuji.Types (Color)
+
+-- View type for the `Holding` interface.
+data HoldingView = HoldingView
+  with
+    holder : Party
+    description : Text
+  deriving (Eq, Show)
+
+-- A simple interface with one view value and one fixed choice.
+-- Implementations inherit the choice automatically.
+interface Holding where
+  viewtype HoldingView
+
+  getHolder : Party
+
+  choice Reassign : ContractId Holding
+    with
+      target : Party
+    controller getHolder this
+    do
+      pure (toInterfaceContractId @Holding self)
+
+-- An asset template with an interface instance implementing
+-- `Holding`. (Contract keys were dropped in LF 2.1, so the
+-- template's "natural id" is just (issuer, ref) inline.)
+template Asset
+  with
+    issuer : Party
+    owner : Party
+    ref : Text
+    quantity : Int
+    color : Color
+  where
+    signatory issuer
+    observer owner
+
+    -- Consuming choice exercised by the owner; returns the new
+    -- contract id after the transfer.
+    choice Transfer : ContractId Asset
+      with
+        newOwner : Party
+      controller owner
+      do
+        create this with owner = newOwner
+
+    -- This is the path Phase 4b/4c exercise in codegen.
+    interface instance Holding for Asset where
+      view = HoldingView with
+        holder = owner
+        description = ref
+      getHolder = owner

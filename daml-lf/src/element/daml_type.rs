@@ -62,6 +62,8 @@ pub enum DamlType<'a> {
     Update,
     /// A scenario effect.
     Scenario,
+    /// LF2 builtin: opaque category tag for `failWithStatus`.
+    FailureCategory,
     /// Universal qualifier.
     Forall(DamlForall<'a>),
     /// A struct type.
@@ -88,6 +90,7 @@ impl<'a> DamlType<'a> {
             DamlType::Optional(_) => "DamlOptional",
             DamlType::Update => "None (Update)",
             DamlType::Scenario => "None (Scenario)",
+            DamlType::FailureCategory => "None (FailureCategory)",
             DamlType::TyCon(_) => "None (TyCon)",
             DamlType::BoxedTyCon(_) => "None (BoxedTyCon)",
             DamlType::Var(_) => "None (Var)",
@@ -137,6 +140,7 @@ impl<'a> DamlType<'a> {
             | DamlType::Bignumeric
             | DamlType::RoundingMode
             | DamlType::AnyException
+            | DamlType::FailureCategory
             | DamlType::Nat(_) => false,
         }
     }
@@ -187,6 +191,7 @@ impl<'a> DamlVisitableElement<'a> for DamlType<'a> {
             | DamlType::Bignumeric
             | DamlType::RoundingMode
             | DamlType::AnyException
+            | DamlType::FailureCategory
             | DamlType::Nat(_) => {},
         }
         visitor.post_visit_type(self);
