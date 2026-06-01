@@ -1,5 +1,6 @@
 pub use self::daml_active_contracts_service::*;
 pub use self::daml_command_completion_service::*;
+pub use self::daml_command_inspection_service::*;
 pub use self::daml_command_service::*;
 pub use self::daml_command_submission_service::*;
 pub use self::daml_config_management_service::*;
@@ -20,6 +21,7 @@ pub use self::daml_version_service::*;
 mod common;
 mod daml_active_contracts_service;
 mod daml_command_completion_service;
+mod daml_command_inspection_service;
 mod daml_command_service;
 mod daml_command_submission_service;
 mod daml_config_management_service;

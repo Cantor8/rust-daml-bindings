@@ -1,7 +1,11 @@
+use std::convert::TryFrom;
+
 use crate::data::identifier::DamlIdentifier;
 use crate::data::value::DamlValue;
+use crate::data::{DamlError, DamlResult};
 use crate::grpc_protobuf::com::daml::ledger::api::v2::command::Command;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::ExerciseCommand;
+use crate::util::Required;
 
 /// Exercise a choice on an existing contract.
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -60,5 +64,18 @@ impl From<DamlExerciseCommand> for Command {
             choice: daml_exercise_command.choice,
             choice_argument: Some(daml_exercise_command.choice_argument.into()),
         })
+    }
+}
+
+impl TryFrom<ExerciseCommand> for DamlExerciseCommand {
+    type Error = DamlError;
+
+    fn try_from(c: ExerciseCommand) -> DamlResult<Self> {
+        Ok(Self::new(
+            DamlIdentifier::from(c.template_id.req()?),
+            c.contract_id,
+            c.choice,
+            DamlValue::try_from(c.choice_argument.req()?)?,
+        ))
     }
 }

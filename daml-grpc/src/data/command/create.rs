@@ -1,7 +1,11 @@
+use std::convert::TryFrom;
+
 use crate::data::identifier::DamlIdentifier;
 use crate::data::value::DamlRecord;
+use crate::data::{DamlError, DamlResult};
 use crate::grpc_protobuf::com::daml::ledger::api::v2::command::Command;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::CreateCommand;
+use crate::util::Required;
 
 /// Create a new contract instance based on a template.
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -36,5 +40,13 @@ impl From<DamlCreateCommand> for Command {
             template_id: Some(daml_create_command.template_id.into()),
             create_arguments: Some(daml_create_command.create_arguments.into()),
         })
+    }
+}
+
+impl TryFrom<CreateCommand> for DamlCreateCommand {
+    type Error = DamlError;
+
+    fn try_from(c: CreateCommand) -> DamlResult<Self> {
+        Ok(Self::new(DamlIdentifier::from(c.template_id.req()?), DamlRecord::try_from(c.create_arguments.req()?)?))
     }
 }

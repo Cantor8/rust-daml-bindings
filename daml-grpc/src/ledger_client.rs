@@ -6,8 +6,8 @@ use crate::service::{
 };
 #[cfg(feature = "admin")]
 use crate::service::{
-    DamlConfigManagementService, DamlIdentityProviderConfigService, DamlPackageManagementService,
-    DamlPartyManagementService, DamlUserManagementService,
+    DamlCommandInspectionService, DamlConfigManagementService, DamlIdentityProviderConfigService,
+    DamlPackageManagementService, DamlPartyManagementService, DamlUserManagementService,
 };
 #[cfg(feature = "sandbox")]
 use crate::service::{DamlResetService, DamlTimeService};
@@ -318,6 +318,16 @@ impl DamlGrpcClient {
     #[cfg(feature = "admin")]
     pub fn identity_provider_config_service(&self) -> DamlIdentityProviderConfigService<'_> {
         DamlIdentityProviderConfigService::new(self.channel.clone(), self.config.auth_token.as_deref())
+    }
+
+    /// Retrieve a [`DamlCommandInspectionService`] for debugging
+    /// in-flight commands on the participant. Alpha; only available
+    /// when the participant advertises
+    /// `experimental.command_inspection_service.supported` in its
+    /// `VersionService.GetLedgerApiVersion` feature descriptor.
+    #[cfg(feature = "admin")]
+    pub fn command_inspection_service(&self) -> DamlCommandInspectionService<'_> {
+        DamlCommandInspectionService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
     /// DOCME

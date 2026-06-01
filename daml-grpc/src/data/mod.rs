@@ -19,6 +19,10 @@ pub mod user;
 /// Identity-provider configuration.
 pub mod identity_provider;
 
+/// CommandInspectionService data types — debug views of in-flight
+/// commands.
+pub mod inspection;
+
 /// Daml values, records, enums & variants.
 pub mod value {
     mod record;
