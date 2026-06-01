@@ -5,7 +5,7 @@ use quote::quote;
 
 use crate::generator::ModuleMatcher;
 use crate::generator::RenderMethod;
-use crate::renderer::{quote_all_data, quote_escaped_ident, to_module_path, RenderContext};
+use crate::renderer::{quote_all_data, quote_all_interfaces, quote_escaped_ident, to_module_path, RenderContext};
 use daml_lf::element::DamlModule;
 
 pub fn quote_module_tree(
@@ -25,7 +25,14 @@ pub fn quote_module_tree(
         quote!()
     } else {
         let module_tokens = if is_included_module {
-            quote_all_data(ctx, module.data_types().collect::<Vec<_>>().as_slice(), render_method)
+            let data_tokens =
+                quote_all_data(ctx, module.data_types().collect::<Vec<_>>().as_slice(), render_method);
+            let interfaces: Vec<_> = module.interfaces().collect();
+            let interface_tokens = quote_all_interfaces(ctx, interfaces.as_slice(), render_method);
+            quote!(
+                #data_tokens
+                #interface_tokens
+            )
         } else {
             quote!()
         };

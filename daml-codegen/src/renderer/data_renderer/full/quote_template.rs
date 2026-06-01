@@ -1,6 +1,7 @@
 use crate::renderer::data_renderer::full::quote_contract_struct::{
-    quote_contract_struct_and_impl, quote_contract_struct_name,
+    quote_contract_id_struct_name, quote_contract_struct_and_impl, quote_contract_struct_name,
 };
+use crate::renderer::data_renderer::full::quote_interface::quote_interface_trait_path;
 use crate::renderer::data_renderer::full::{quote_choice, quote_daml_record_and_impl};
 use crate::renderer::{quote_escaped_ident, to_module_path, RenderContext};
 use daml_lf::element::DamlTemplate;
@@ -18,13 +19,31 @@ pub fn quote_daml_template(ctx: &RenderContext<'_>, daml_template: &DamlTemplate
     let make_create_method_tokens = quote_make_create_command_method(daml_template.name());
     let contract_struct_and_impl_tokens = quote_contract_struct_and_impl(daml_template.name());
     let choices_impl_tokens = quote_choice(ctx, daml_template.name(), daml_template.choices());
+    let interface_impls_tokens = quote_interface_impls(daml_template);
     quote!(
         #struct_and_impl_tokens
         #template_id_method_tokens
         #make_create_method_tokens
         #contract_struct_and_impl_tokens
         #choices_impl_tokens
+        #interface_impls_tokens
     )
+}
+
+/// Emit `impl <Interface> for FooContractId {}` blocks for each
+/// interface this template implements. Exercising a choice via the
+/// interface uses `<FooContractId as Interface>::interface_id()`.
+fn quote_interface_impls(daml_template: &DamlTemplate<'_>) -> TokenStream {
+    let contract_id_struct_name_tokens = quote_contract_id_struct_name(daml_template.name());
+    let impls: Vec<_> = daml_template
+        .implements()
+        .iter()
+        .map(|iface| {
+            let trait_path = quote_interface_trait_path(iface);
+            quote!(impl #trait_path for #contract_id_struct_name_tokens {})
+        })
+        .collect();
+    quote!(#( #impls )*)
 }
 
 /// Generate the `pub fn template_id() -> DamlIdentifier` method.

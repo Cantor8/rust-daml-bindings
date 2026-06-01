@@ -1,0 +1,77 @@
+//! Render Daml-LF interfaces (LF2) as Rust marker traits.
+//!
+//! Each interface becomes a `pub trait <IName>` with a default
+//! `interface_id() -> DamlIdentifier` method that addresses the
+//! interface by package-name (matching the v2 Ledger API convention
+//! used by [`super::quote_template::quote_template_id_method`]).
+//!
+//! Templates that implement the interface receive an
+//! `impl <IName> for <FooContract> {}` block — emitted from
+//! `quote_template.rs` — making `FooContract` usable wherever an
+//! `<IName>`-bound value is expected.
+//!
+//! Choice-method emission via the interface (e.g.
+//! `<FooContract as <IName>>::do_thing_command(...)`) is deferred
+//! to 4c.
+
+use crate::renderer::renderer_utils::quote_escaped_ident;
+use crate::renderer::{to_module_path, RenderContext};
+use daml_lf::element::{DamlInterface, DamlTyConName};
+use heck::ToSnakeCase;
+use proc_macro2::TokenStream;
+use quote::quote;
+use std::iter;
+
+/// Render a `crate::pkg_name::module::path::Iface` token path for an
+/// interface's tycon name. Mirrors [`crate::renderer::type_renderer`]'s
+/// `quote_absolute_tycon`; used to refer to interface traits from
+/// implementing-template impl blocks (which may live in a different
+/// module).
+pub fn quote_interface_trait_path(tycon: &DamlTyConName<'_>) -> TokenStream {
+    let (package_name, module_path, data_name) = match tycon {
+        DamlTyConName::Absolute(abs) =>
+            (abs.package_name(), abs.module_path().collect::<Vec<_>>(), abs.data_name()),
+        DamlTyConName::Local(local) =>
+            (local.package_name(), local.module_path().collect::<Vec<_>>(), local.data_name()),
+        DamlTyConName::NonLocal(nlocal) => (
+            nlocal.target_package_name(),
+            nlocal.target_module_path().collect::<Vec<_>>(),
+            nlocal.data_name(),
+        ),
+    };
+    let path: Vec<&str> = if package_name.is_empty() {
+        module_path
+    } else {
+        iter::once(package_name).chain(module_path).collect()
+    };
+    let segments: Vec<_> = path.into_iter().map(ToSnakeCase::to_snake_case).map(quote_escaped_ident).collect();
+    let name_tokens = quote_escaped_ident(data_name);
+    quote!(crate :: #( #segments :: )* #name_tokens)
+}
+
+pub fn quote_daml_interface(ctx: &RenderContext<'_>, interface: &DamlInterface<'_>) -> TokenStream {
+    let trait_name_tokens = quote_escaped_ident(interface.name());
+    let module_name = to_module_path(interface.module_path());
+    let entity_name = interface.name();
+    let identifier_ctor = match ctx.package_name_for(interface.package_id()) {
+        Some(name) => quote!(DamlIdentifier::from_package_name(#name, #module_name, #entity_name)),
+        None => {
+            let package_id = interface.package_id();
+            quote!(DamlIdentifier::new(#package_id, #module_name, #entity_name))
+        },
+    };
+    quote!(
+        /// Marker trait for the Daml interface.
+        ///
+        /// Templates implementing this interface receive a generated
+        /// `impl` block; address them in exercise commands by
+        /// `<Template as #trait_name_tokens>::interface_id()`.
+        pub trait #trait_name_tokens {
+            /// Returns the interface's `DamlIdentifier`, addressed
+            /// by package-name when the source package is named.
+            fn interface_id() -> DamlIdentifier {
+                #identifier_ctor
+            }
+        }
+    )
+}

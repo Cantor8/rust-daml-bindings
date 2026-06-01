@@ -1,6 +1,7 @@
 use proc_macro2::TokenStream;
 
 use self::full::quote_daml_enum as quote_daml_enum_full;
+use self::full::quote_daml_interface as quote_daml_interface_full;
 use self::full::quote_daml_record as quote_daml_record_full;
 use self::full::quote_daml_template as quote_daml_template_full;
 use self::full::quote_daml_variant as quote_daml_variant_full;
@@ -9,7 +10,7 @@ use self::intermediate::quote_daml_record as quote_daml_record_intermediate;
 use self::intermediate::quote_daml_template as quote_daml_template_intermediate;
 use self::intermediate::quote_daml_variant as quote_daml_variant_intermediate;
 use crate::generator::RenderMethod;
-use daml_lf::element::DamlData;
+use daml_lf::element::{DamlData, DamlInterface};
 
 use crate::renderer::RenderContext;
 use quote::quote;
@@ -19,6 +20,7 @@ pub mod full {
     mod quote_contract_struct;
     mod quote_enum;
     mod quote_generic_common;
+    mod quote_interface;
     mod quote_main_struct;
     mod quote_method_params;
     mod quote_template;
@@ -27,6 +29,7 @@ pub mod full {
     pub use quote_choices::*;
     pub use quote_enum::*;
     pub use quote_generic_common::*;
+    pub use quote_interface::*;
     pub use quote_main_struct::*;
     pub use quote_method_params::*;
     pub use quote_template::*;
@@ -49,6 +52,23 @@ pub fn quote_all_data(
     quote!(
         #( #all_data_tokens )*
     )
+}
+
+/// Render all interfaces in a module as marker traits.
+/// Only emitted under [`RenderMethod::Full`]; the intermediate
+/// renderer is schema-only and ignores interfaces.
+pub fn quote_all_interfaces(
+    ctx: &RenderContext<'_>,
+    all_interfaces: &[&DamlInterface<'_>],
+    render_method: &RenderMethod,
+) -> TokenStream {
+    match render_method {
+        RenderMethod::Full => {
+            let all_tokens: Vec<_> = all_interfaces.iter().map(|&i| quote_daml_interface_full(ctx, i)).collect();
+            quote!(#( #all_tokens )*)
+        },
+        RenderMethod::Intermediate => quote!(),
+    }
 }
 
 pub fn quote_data(ctx: &RenderContext<'_>, data_type: &DamlData<'_>, render_method: &RenderMethod) -> TokenStream {
