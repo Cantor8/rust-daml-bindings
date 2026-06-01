@@ -98,15 +98,6 @@ pub mod state;
 /// (Created / Archived halves scoped to a synchronizer).
 pub mod event_query;
 
-mod configuration;
-pub use self::configuration::DamlLedgerConfiguration;
-
-mod active;
-pub use active::DamlActiveContracts;
-
-mod time_model;
-pub use time_model::DamlTimeModel;
-
 mod features;
 pub use features::{
     DamlExperimentalCommandInspectionService, DamlExperimentalFeatures, DamlExperimentalStaticTime,

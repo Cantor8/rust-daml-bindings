@@ -1,40 +1,39 @@
+use std::time::Duration;
+
+use hyper::client::HttpConnector;
+use tonic::transport::{Certificate, Channel, ClientTlsConfig};
+#[cfg(test)]
+use tonic::transport::Uri;
+use tracing::{debug, instrument};
+
 use crate::data::{DamlError, DamlResult};
 use crate::service::{
-    DamlActiveContractsService, DamlCommandCompletionService, DamlCommandService, DamlCommandSubmissionService,
-    DamlContractService, DamlEventQueryService, DamlLedgerConfigurationService, DamlLedgerIdentityService,
-    DamlPackageService, DamlParticipantPruningService, DamlStateService, DamlTransactionService, DamlUpdateService,
+    DamlCommandCompletionService, DamlCommandService, DamlCommandSubmissionService, DamlContractService,
+    DamlEventQueryService, DamlPackageService, DamlParticipantPruningService, DamlStateService, DamlUpdateService,
     DamlVersionService,
 };
 #[cfg(feature = "admin")]
 use crate::service::{
-    DamlCommandInspectionService, DamlConfigManagementService, DamlIdentityProviderConfigService,
-    DamlPackageManagementService, DamlPartyManagementService, DamlUserManagementService,
+    DamlCommandInspectionService, DamlIdentityProviderConfigService, DamlPackageManagementService,
+    DamlPartyManagementService, DamlUserManagementService,
 };
 #[cfg(feature = "sandbox")]
-use crate::service::{DamlResetService, DamlTimeService};
-use std::time::Duration;
-#[cfg(feature = "sandbox")]
-use std::time::Instant;
-use tonic::transport::{Certificate, Channel, ClientTlsConfig};
-use tracing::{debug, instrument};
-
-use hyper::client::HttpConnector;
-#[cfg(test)]
-use tonic::transport::Uri;
+use crate::service::DamlTimeService;
 
 const DEFAULT_TIMEOUT_SECS: u64 = 5;
 const DEFAULT_CONNECT_TIMEOUT_SECS: u64 = 5;
-#[cfg(feature = "sandbox")]
-const DEFAULT_RESET_TIMEOUT_SECS: u64 = 5;
 
-/// DOCME
+/// Connection configuration for a [`DamlGrpcClient`].
+///
+/// v2 dropped v1's `ledger_id` discovery flow — every request runs
+/// against the connected participant directly, so there's no
+/// `LedgerIdentityService` round-trip at connect time and no
+/// reset-and-wait timeout needed for that flow.
 #[derive(Debug, Default)]
 pub struct DamlGrpcClientConfig {
     uri: String,
     timeout: Duration,
     connect_timeout: Option<Duration>,
-    #[cfg(feature = "sandbox")]
-    reset_timeout: Duration,
     concurrency_limit: Option<usize>,
     rate_limit: Option<(u64, Duration)>,
     initial_stream_window_size: Option<u32>,
@@ -45,7 +44,6 @@ pub struct DamlGrpcClientConfig {
     auth_token: Option<String>,
 }
 
-/// DOCME
 #[derive(Debug)]
 pub struct DamlGrpcTlsConfig {
     ca_cert: Option<Vec<u8>>,
@@ -57,15 +55,12 @@ pub struct DamlGrpcClientBuilder {
 }
 
 impl DamlGrpcClientBuilder {
-    /// DOCME
     pub fn uri(uri: impl Into<String>) -> Self {
         Self {
             config: DamlGrpcClientConfig {
                 uri: uri.into(),
                 timeout: Duration::from_secs(DEFAULT_TIMEOUT_SECS),
                 connect_timeout: Some(Duration::from_secs(DEFAULT_CONNECT_TIMEOUT_SECS)),
-                #[cfg(feature = "sandbox")]
-                reset_timeout: Duration::from_secs(DEFAULT_RESET_TIMEOUT_SECS),
                 ..DamlGrpcClientConfig::default()
             },
         }
@@ -91,18 +86,6 @@ impl DamlGrpcClientBuilder {
         }
     }
 
-    #[cfg(feature = "sandbox")]
-    /// The sandbox reset timeout.
-    pub fn reset_timeout(self, reset_timeout: Duration) -> Self {
-        Self {
-            config: DamlGrpcClientConfig {
-                reset_timeout,
-                ..self.config
-            },
-        }
-    }
-
-    /// DOCME
     pub fn concurrency_limit(self, concurrency_limit: usize) -> Self {
         Self {
             config: DamlGrpcClientConfig {
@@ -112,7 +95,6 @@ impl DamlGrpcClientBuilder {
         }
     }
 
-    /// DOCME
     pub fn rate_limit(self, rate_limit: (u64, Duration)) -> Self {
         Self {
             config: DamlGrpcClientConfig {
@@ -122,7 +104,6 @@ impl DamlGrpcClientBuilder {
         }
     }
 
-    /// DOCME
     pub fn initial_stream_window_size(self, initial_stream_window_size: u32) -> Self {
         Self {
             config: DamlGrpcClientConfig {
@@ -132,7 +113,6 @@ impl DamlGrpcClientBuilder {
         }
     }
 
-    /// DOCME
     pub fn initial_connection_window_size(self, initial_connection_window_size: u32) -> Self {
         Self {
             config: DamlGrpcClientConfig {
@@ -142,7 +122,6 @@ impl DamlGrpcClientBuilder {
         }
     }
 
-    /// DOCME
     pub fn tcp_keepalive(self, tcp_keepalive: Duration) -> Self {
         Self {
             config: DamlGrpcClientConfig {
@@ -152,7 +131,6 @@ impl DamlGrpcClientBuilder {
         }
     }
 
-    /// DOCME
     pub fn tcp_nodelay(self, tcp_nodelay: bool) -> Self {
         Self {
             config: DamlGrpcClientConfig {
@@ -162,7 +140,6 @@ impl DamlGrpcClientBuilder {
         }
     }
 
-    /// DOCME
     pub fn with_tls(self, ca_cert: impl Into<Vec<u8>>) -> Self {
         Self {
             config: DamlGrpcClientConfig {
@@ -174,7 +151,6 @@ impl DamlGrpcClientBuilder {
         }
     }
 
-    /// DOCME
     pub fn with_auth(self, auth_token: String) -> Self {
         Self {
             config: DamlGrpcClientConfig {
@@ -184,82 +160,53 @@ impl DamlGrpcClientBuilder {
         }
     }
 
-    /// DOCME
     pub async fn connect(self) -> DamlResult<DamlGrpcClient> {
         DamlGrpcClient::connect(self.config).await
     }
 }
 
-/// Daml ledger client connection.
+/// Daml v2 ledger client connection. A thin handle around a tonic
+/// [`Channel`] that hands out per-service clients on demand. Cheap to
+/// hold — service factories clone the channel rather than opening
+/// new ones.
 #[derive(Debug)]
 pub struct DamlGrpcClient {
     config: DamlGrpcClientConfig,
     channel: Channel,
-    ledger_identity: String,
 }
 
 impl DamlGrpcClient {
-    /// Create a channel and connect.
+    /// Open a channel and connect.
     #[instrument]
     pub async fn connect(config: DamlGrpcClientConfig) -> DamlResult<Self> {
         debug!("connecting to {}", config.uri);
-        let channel = Self::open_channel(&config).await?;
-        Self::make_client_from_channel(channel, config).await
+        let channel = Self::make_channel(&config).await?;
+        Ok(Self {
+            config,
+            channel,
+        })
     }
 
-    /// Reset the ledger and reconnect.
-    #[cfg(feature = "sandbox")]
-    #[instrument(skip(self))]
-    pub async fn reset_and_wait(self) -> DamlResult<Self> {
-        debug!("resetting Sandbox");
-        self.reset_service().reset().await?;
-        let channel = Self::open_channel_and_wait(&self.config).await?;
-        Self::make_client_from_channel_and_wait(channel, self.config).await
-    }
-
-    /// Return the current configuration.
     pub const fn config(&self) -> &DamlGrpcClientConfig {
         &self.config
     }
 
-    /// DOCME
-    pub fn ledger_identity(&self) -> &str {
-        &self.ledger_identity
-    }
-
-    /// DOCME
-    pub fn ledger_identity_service(&self) -> DamlLedgerIdentityService<'_> {
-        DamlLedgerIdentityService::new(self.channel.clone(), self.config.auth_token.as_deref())
-    }
-
-    /// DOCME
-    pub fn ledger_configuration_service(&self) -> DamlLedgerConfigurationService<'_> {
-        DamlLedgerConfigurationService::new(
-            self.channel.clone(),
-            &self.ledger_identity,
-            self.config.auth_token.as_deref(),
-        )
-    }
-
-    /// Retrieve a [`DamlPackageService`] for querying the Daml-LF packages
-    /// supported by the participant. v2 requests no longer carry a
-    /// ledger-id.
+    /// Retrieve a [`DamlPackageService`] for querying the Daml-LF
+    /// packages supported by the participant.
     pub fn package_service(&self) -> DamlPackageService<'_> {
         DamlPackageService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
     /// Retrieve a [`DamlCommandSubmissionService`] for fire-and-forget
     /// command submissions. Completion is observed separately through
-    /// `command_completion_service()`.
+    /// [`command_completion_service`](Self::command_completion_service).
     pub fn command_submission_service(&self) -> DamlCommandSubmissionService<'_> {
         DamlCommandSubmissionService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
     /// Retrieve a [`DamlCommandCompletionService`] for observing the
     /// asynchronous outcome (success or rejection) of command
-    /// submissions, plus periodic [`OffsetCheckpoint`] markers.
-    ///
-    /// [`OffsetCheckpoint`]: crate::data::completion::DamlOffsetCheckpoint
+    /// submissions, plus periodic `OffsetCheckpoint` markers.
     pub fn command_completion_service(&self) -> DamlCommandCompletionService<'_> {
         DamlCommandCompletionService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
@@ -295,43 +242,28 @@ impl DamlGrpcClient {
     }
 
     /// Retrieve a [`DamlCommandService`] for synchronous command
-    /// submission: submit and wait for the participant's verdict in a
-    /// single RPC. Returns the resulting `update_id` and completion
-    /// offset.
+    /// submission: submit and wait for the participant's verdict in
+    /// a single RPC.
     pub fn command_service(&self) -> DamlCommandService<'_> {
         DamlCommandService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
-    /// DOCME
-    pub fn transaction_service(&self) -> DamlTransactionService<'_> {
-        DamlTransactionService::new(self.channel.clone(), &self.ledger_identity, self.config.auth_token.as_deref())
-    }
-
-    /// DOCME
-    pub fn active_contract_service(&self) -> DamlActiveContractsService<'_> {
-        DamlActiveContractsService::new(self.channel.clone(), &self.ledger_identity, self.config.auth_token.as_deref())
-    }
-
     /// Retrieve a [`DamlVersionService`] for querying the participant's
-    /// Ledger API version. The v2 request takes no ledger-id, so the
-    /// service is constructed from only the channel and auth token.
+    /// Ledger API version.
     pub fn version_service(&self) -> DamlVersionService<'_> {
         DamlVersionService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
-    /// Retrieve a [`DamlPackageManagementService`] for inspecting known
-    /// packages, uploading DARs (optionally with synchronizer-scoped
-    /// vetting), validating DARs without uploading, and adjusting the
-    /// participant's package-vetting topology.
+    /// Retrieve a [`DamlPackageManagementService`] for inspecting
+    /// known packages, uploading DARs, validating DARs, and adjusting
+    /// the participant's package-vetting topology.
     #[cfg(feature = "admin")]
     pub fn package_management_service(&self) -> DamlPackageManagementService<'_> {
         DamlPackageManagementService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
     /// Retrieve a [`DamlPartyManagementService`] for inspecting and
-    /// administering participant-local party state: allocate parties,
-    /// list/page-through known parties, update party metadata, and
-    /// move parties between identity providers.
+    /// administering participant-local party state.
     #[cfg(feature = "admin")]
     pub fn party_management_service(&self) -> DamlPartyManagementService<'_> {
         DamlPartyManagementService::new(self.channel.clone(), self.config.auth_token.as_deref())
@@ -361,23 +293,11 @@ impl DamlGrpcClient {
         DamlCommandInspectionService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
-    /// DOCME
-    #[cfg(feature = "admin")]
-    pub fn config_management_service(&self) -> DamlConfigManagementService<'_> {
-        DamlConfigManagementService::new(self.channel.clone(), self.config.auth_token.as_deref())
-    }
-
     /// Retrieve a [`DamlParticipantPruningService`] for truncating
     /// older portions of the participant-local ledger view.
     #[cfg(feature = "admin")]
     pub fn participant_pruning_service(&self) -> DamlParticipantPruningService<'_> {
         DamlParticipantPruningService::new(self.channel.clone(), self.config.auth_token.as_deref())
-    }
-
-    /// DOCME
-    #[cfg(feature = "sandbox")]
-    pub fn reset_service(&self) -> DamlResetService<'_> {
-        DamlResetService::new(self.channel.clone(), &self.ledger_identity, self.config.auth_token.as_deref())
     }
 
     /// Retrieve a [`DamlTimeService`] for reading and advancing the
@@ -388,10 +308,6 @@ impl DamlGrpcClient {
     #[cfg(feature = "sandbox")]
     pub fn time_service(&self) -> DamlTimeService<'_> {
         DamlTimeService::new(self.channel.clone(), self.config.auth_token.as_deref())
-    }
-
-    async fn open_channel(config: &DamlGrpcClientConfig) -> DamlResult<Channel> {
-        Self::make_channel(config).await
     }
 
     async fn make_channel(config: &DamlGrpcClientConfig) -> DamlResult<Channel> {
@@ -427,8 +343,9 @@ impl DamlGrpcClient {
             _ => {},
         }
 
-        // Tonic does not current allow us to set a connect timeout (see https://github.com/hyperium/tonic/issues/498)
-        // directly and so we workaround this by creating the Hyper HttpConnector directly.
+        // Tonic does not currently allow setting a connect timeout directly
+        // (see https://github.com/hyperium/tonic/issues/498); work around by
+        // building the Hyper HttpConnector explicitly.
         let mut http = HttpConnector::new();
         http.enforce_http(false);
         http.set_nodelay(config.tcp_nodelay);
@@ -437,66 +354,11 @@ impl DamlGrpcClient {
         channel.connect_with_connector(http).await.map_err(DamlError::from)
     }
 
-    async fn make_client_from_channel(channel: Channel, config: DamlGrpcClientConfig) -> DamlResult<Self> {
-        let ledger_identity_service = DamlLedgerIdentityService::new(channel.clone(), config.auth_token.as_deref());
-        let ledger_identity = ledger_identity_service.get_ledger_identity().await?;
-        Ok(Self {
-            config,
-            channel: channel.clone(),
-            ledger_identity,
-        })
-    }
-
-    #[cfg(feature = "sandbox")]
-    async fn open_channel_and_wait(config: &DamlGrpcClientConfig) -> DamlResult<Channel> {
-        let mut channel = Self::make_channel(config).await;
-        let start = Instant::now();
-        while let Err(e) = channel {
-            if start.elapsed() > config.reset_timeout {
-                return Err(DamlError::new_timeout_error(e));
-            }
-            channel = Self::make_channel(config).await;
-        }
-        channel
-    }
-
-    #[cfg(feature = "sandbox")]
-    async fn make_client_from_channel_and_wait(channel: Channel, config: DamlGrpcClientConfig) -> DamlResult<Self> {
-        let ledger_identity_service = DamlLedgerIdentityService::new(channel.clone(), config.auth_token.as_deref());
-        let ledger_identity =
-            Self::query_ledger_identity_and_wait(&config.reset_timeout, &ledger_identity_service).await?;
-        Ok(Self {
-            config,
-            channel: channel.clone(),
-            ledger_identity,
-        })
-    }
-
-    #[cfg(feature = "sandbox")]
-    async fn query_ledger_identity_and_wait(
-        reset_timeout: &Duration,
-        ledger_identity_service: &DamlLedgerIdentityService<'_>,
-    ) -> DamlResult<String> {
-        let start = Instant::now();
-        let mut ledger_identity: DamlResult<String> = ledger_identity_service.get_ledger_identity().await;
-        while let Err(e) = ledger_identity {
-            if let DamlError::GrpcPermissionError(_) = e {
-                return Err(e);
-            }
-            if start.elapsed() > *reset_timeout {
-                return Err(DamlError::new_timeout_error(e));
-            }
-            ledger_identity = ledger_identity_service.get_ledger_identity().await;
-        }
-        ledger_identity
-    }
-
     #[cfg(test)]
     pub(crate) async fn dummy_for_testing() -> Self {
         DamlGrpcClient {
             config: DamlGrpcClientConfig::default(),
             channel: Channel::builder(Uri::from_static("http://dummy.for.testing")).connect_lazy(),
-            ledger_identity: String::default(),
         }
     }
 }
