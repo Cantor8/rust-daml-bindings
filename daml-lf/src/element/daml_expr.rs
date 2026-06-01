@@ -41,6 +41,9 @@ pub enum DamlExpr<'a> {
     ToAnyException(DamlToAnyException<'a>),
     FromAnyException(DamlFromAnyException<'a>),
     Throw(DamlThrow<'a>),
+    /// Interface-related expressions (To/FromInterface,
+    /// CallInterface, ViewInterface, …) introduced in LF2.
+    InterfaceOp(DamlInterfaceExpr<'a>),
 }
 
 impl<'a> DamlVisitableElement<'a> for DamlExpr<'a> {
@@ -75,6 +78,7 @@ impl<'a> DamlVisitableElement<'a> for DamlExpr<'a> {
             DamlExpr::ToAnyException(to_any_exception) => to_any_exception.accept(visitor),
             DamlExpr::FromAnyException(from_any_exception) => from_any_exception.accept(visitor),
             DamlExpr::Throw(throw) => throw.accept(visitor),
+            DamlExpr::InterfaceOp(iexpr) => iexpr.accept(visitor),
             DamlExpr::Var(_) => {},
         }
         visitor.post_visit_expr(self);
@@ -1940,5 +1944,164 @@ impl<'a> DamlVisitableElement<'a> for DamlTryCatch<'a> {
         self.try_expr.accept(visitor);
         self.catch_expr.accept(visitor);
         visitor.post_visit_try_catch(self);
+    }
+}
+
+/// Interface-related Expr variants introduced by LF2.
+///
+/// Grouped as a sub-enum (mirroring [`DamlUpdate`]) to keep
+/// [`DamlExpr`]'s top-level shape compact. Each variant carries the
+/// proto fields verbatim: the interface and/or template type
+/// constructor, optional choice/method name, and the inner
+/// expression(s) being projected over.
+#[derive(Debug, Serialize, Clone, ToStatic)]
+pub enum DamlInterfaceExpr<'a> {
+    /// `toInterface @I @T expr` — convert a template payload to an
+    /// interface payload.
+    ToInterface {
+        interface_type: Box<DamlTyConName<'a>>,
+        template_type: Box<DamlTyConName<'a>>,
+        template_expr: Box<DamlExpr<'a>>,
+    },
+    /// `fromInterface @I @T expr` — try to extract a template payload
+    /// from an interface payload, returning `None` on mismatch.
+    FromInterface {
+        interface_type: Box<DamlTyConName<'a>>,
+        template_type: Box<DamlTyConName<'a>>,
+        interface_expr: Box<DamlExpr<'a>>,
+    },
+    /// Invoke an interface method.
+    CallInterface {
+        interface_type: Box<DamlTyConName<'a>>,
+        method: Cow<'a, str>,
+        interface_expr: Box<DamlExpr<'a>>,
+    },
+    /// Obtain an interface view value.
+    ViewInterface {
+        interface: Box<DamlTyConName<'a>>,
+        expr: Box<DamlExpr<'a>>,
+    },
+    /// Obtain the signatories of a contract through an interface.
+    SignatoryInterface {
+        interface: Box<DamlTyConName<'a>>,
+        expr: Box<DamlExpr<'a>>,
+    },
+    /// Obtain the observers of a contract through an interface.
+    ObserverInterface {
+        interface: Box<DamlTyConName<'a>>,
+        expr: Box<DamlExpr<'a>>,
+    },
+    /// `unsafeFromInterface` — extract template payload, raises
+    /// `WronglyTypedContract` on mismatch.
+    UnsafeFromInterface {
+        interface_type: Box<DamlTyConName<'a>>,
+        template_type: Box<DamlTyConName<'a>>,
+        contract_id_expr: Box<DamlExpr<'a>>,
+        interface_expr: Box<DamlExpr<'a>>,
+    },
+    /// Upcast from an interface payload to one it requires.
+    ToRequiredInterface {
+        required_interface: Box<DamlTyConName<'a>>,
+        requiring_interface: Box<DamlTyConName<'a>>,
+        expr: Box<DamlExpr<'a>>,
+    },
+    /// Downcast from an interface payload to one that requires it,
+    /// returning `None` on mismatch.
+    FromRequiredInterface {
+        required_interface: Box<DamlTyConName<'a>>,
+        requiring_interface: Box<DamlTyConName<'a>>,
+        expr: Box<DamlExpr<'a>>,
+    },
+    /// Downcast variant that raises `WronglyTypedContract` on
+    /// mismatch.
+    UnsafeFromRequiredInterface {
+        required_interface: Box<DamlTyConName<'a>>,
+        requiring_interface: Box<DamlTyConName<'a>>,
+        contract_id_expr: Box<DamlExpr<'a>>,
+        interface_expr: Box<DamlExpr<'a>>,
+    },
+    /// Obtain the type representation of a contract's underlying
+    /// template through an interface.
+    InterfaceTemplateTypeRep {
+        interface: Box<DamlTyConName<'a>>,
+        expr: Box<DamlExpr<'a>>,
+    },
+    /// 2.dev — obtain the controllers list for a given choice.
+    ChoiceController {
+        template: Box<DamlTyConName<'a>>,
+        choice: Cow<'a, str>,
+        contract_expr: Box<DamlExpr<'a>>,
+        choice_arg_expr: Box<DamlExpr<'a>>,
+    },
+    /// 2.dev — obtain the observers list for a given choice.
+    ChoiceObserver {
+        template: Box<DamlTyConName<'a>>,
+        choice: Cow<'a, str>,
+        contract_expr: Box<DamlExpr<'a>>,
+        choice_arg_expr: Box<DamlExpr<'a>>,
+    },
+}
+
+impl<'a> DamlVisitableElement<'a> for DamlInterfaceExpr<'a> {
+    fn accept(&'a self, visitor: &'a mut impl DamlElementVisitor) {
+        visitor.pre_visit_interface_expr(self);
+        match self {
+            DamlInterfaceExpr::ToInterface { interface_type, template_type, template_expr } => {
+                interface_type.accept(visitor);
+                template_type.accept(visitor);
+                template_expr.accept(visitor);
+            },
+            DamlInterfaceExpr::FromInterface { interface_type, template_type, interface_expr } => {
+                interface_type.accept(visitor);
+                template_type.accept(visitor);
+                interface_expr.accept(visitor);
+            },
+            DamlInterfaceExpr::CallInterface { interface_type, method: _, interface_expr } => {
+                interface_type.accept(visitor);
+                interface_expr.accept(visitor);
+            },
+            DamlInterfaceExpr::ViewInterface { interface, expr }
+            | DamlInterfaceExpr::SignatoryInterface { interface, expr }
+            | DamlInterfaceExpr::ObserverInterface { interface, expr }
+            | DamlInterfaceExpr::InterfaceTemplateTypeRep { interface, expr } => {
+                interface.accept(visitor);
+                expr.accept(visitor);
+            },
+            DamlInterfaceExpr::UnsafeFromInterface {
+                interface_type,
+                template_type,
+                contract_id_expr,
+                interface_expr,
+            } => {
+                interface_type.accept(visitor);
+                template_type.accept(visitor);
+                contract_id_expr.accept(visitor);
+                interface_expr.accept(visitor);
+            },
+            DamlInterfaceExpr::ToRequiredInterface { required_interface, requiring_interface, expr }
+            | DamlInterfaceExpr::FromRequiredInterface { required_interface, requiring_interface, expr } => {
+                required_interface.accept(visitor);
+                requiring_interface.accept(visitor);
+                expr.accept(visitor);
+            },
+            DamlInterfaceExpr::UnsafeFromRequiredInterface {
+                required_interface,
+                requiring_interface,
+                contract_id_expr,
+                interface_expr,
+            } => {
+                required_interface.accept(visitor);
+                requiring_interface.accept(visitor);
+                contract_id_expr.accept(visitor);
+                interface_expr.accept(visitor);
+            },
+            DamlInterfaceExpr::ChoiceController { template, choice: _, contract_expr, choice_arg_expr }
+            | DamlInterfaceExpr::ChoiceObserver { template, choice: _, contract_expr, choice_arg_expr } => {
+                template.accept(visitor);
+                contract_expr.accept(visitor);
+                choice_arg_expr.accept(visitor);
+            },
+        }
+        visitor.post_visit_interface_expr(self);
     }
 }

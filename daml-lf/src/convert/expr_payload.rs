@@ -1,17 +1,17 @@
 //! LF2 expression-tree → element/ conversion.
 //!
-//! 3.8e adds the exception-construction variants: `Throw`,
-//! `ToAnyException`, and `FromAnyException`. `TryCatch` is part of
-//! the `Update` sub-oneof and lands with 3.8g.
+//! 3.8f adds the LF2 interface-related expressions (To/FromInterface,
+//! CallInterface, ViewInterface, SignatoryInterface, …). They are
+//! grouped under a new top-level [`DamlExpr::InterfaceOp`] variant
+//! whose payload is the [`DamlInterfaceExpr`] sub-enum (compact,
+//! follows the [`DamlUpdate`] precedent).
 //!
 //! Per-checkpoint scope:
 //!  - 3.8b: leaves.
 //!  - 3.8c: record / variant / enum / struct + To/FromAny.
 //!  - 3.8d: App / Abs / Case / Let / Cons / OptionalSome.
-//!  - 3.8e: Throw / ToAnyException / FromAnyException
-//!    (this checkpoint).
-//!  - 3.8f: interface expressions (ToInterface, FromInterface,
-//!    CallInterface, ViewInterface, …).
+//!  - 3.8e: Throw / ToAnyException / FromAnyException.
+//!  - 3.8f: interface expressions (this checkpoint).
 //!  - 3.8g: Update statement (its own nested oneof with ~12
 //!    sub-variants).
 //!
@@ -34,9 +34,9 @@ use crate::convert::util::Required;
 use crate::element::{
     DamlAbs, DamlApp, DamlBinding, DamlBlock, DamlBuiltinFunction, DamlCase, DamlCaseAlt, DamlCaseAltCons,
     DamlCaseAltEnum, DamlCaseAltOptionalSome, DamlCaseAltSum, DamlCaseAltVariant, DamlCons, DamlEnumCon, DamlExpr,
-    DamlFieldWithExpr, DamlFromAny, DamlFromAnyException, DamlLocalValueName, DamlOptionalSome, DamlPrimCon,
-    DamlPrimLit, DamlRecCon, DamlRecProj, DamlRecUpd, DamlStructCon, DamlStructProj, DamlStructUpd, DamlThrow,
-    DamlToAny, DamlToAnyException, DamlTyAbs, DamlTyApp, DamlValueName, DamlVarWithType, DamlVariantCon,
+    DamlFieldWithExpr, DamlFromAny, DamlFromAnyException, DamlInterfaceExpr, DamlLocalValueName, DamlOptionalSome,
+    DamlPrimCon, DamlPrimLit, DamlRecCon, DamlRecProj, DamlRecUpd, DamlStructCon, DamlStructProj, DamlStructUpd,
+    DamlThrow, DamlToAny, DamlToAnyException, DamlTyAbs, DamlTyApp, DamlValueName, DamlVarWithType, DamlVariantCon,
 };
 use crate::error::{DamlLfConvertError, DamlLfConvertResult};
 use crate::lf_protobuf::daml_lf_2;
@@ -203,21 +203,89 @@ pub fn convert_expr<'a>(
             let exception_expr = convert_expr(throw.exception_expr.as_deref().req()?, package)?;
             Ok(DamlExpr::Throw(DamlThrow::new(return_type, exception_type, Box::new(exception_expr))))
         },
-        // 3.8f: interfaces.
-        ExprSum::ToInterface(_)
-        | ExprSum::FromInterface(_)
-        | ExprSum::CallInterface(_)
-        | ExprSum::ViewInterface(_)
-        | ExprSum::SignatoryInterface(_)
-        | ExprSum::ObserverInterface(_)
-        | ExprSum::UnsafeFromInterface(_)
-        | ExprSum::ToRequiredInterface(_)
-        | ExprSum::FromRequiredInterface(_)
-        | ExprSum::UnsafeFromRequiredInterface(_)
-        | ExprSum::InternedExpr(_)
-        | ExprSum::InterfaceTemplateTypeRep(_)
-        | ExprSum::ChoiceController(_)
-        | ExprSum::ChoiceObserver(_)
+        ExprSum::ToInterface(ti) => Ok(DamlExpr::InterfaceOp(DamlInterfaceExpr::ToInterface {
+            interface_type: Box::new(convert_tycon_id(ti.interface_type.as_ref().req()?, package)?),
+            template_type: Box::new(convert_tycon_id(ti.template_type.as_ref().req()?, package)?),
+            template_expr: Box::new(convert_expr(ti.template_expr.as_deref().req()?, package)?),
+        })),
+        ExprSum::FromInterface(fi) => Ok(DamlExpr::InterfaceOp(DamlInterfaceExpr::FromInterface {
+            interface_type: Box::new(convert_tycon_id(fi.interface_type.as_ref().req()?, package)?),
+            template_type: Box::new(convert_tycon_id(fi.template_type.as_ref().req()?, package)?),
+            interface_expr: Box::new(convert_expr(fi.interface_expr.as_deref().req()?, package)?),
+        })),
+        ExprSum::CallInterface(ci) => {
+            let method = package.resolve_string(ci.method_interned_name)?;
+            Ok(DamlExpr::InterfaceOp(DamlInterfaceExpr::CallInterface {
+                interface_type: Box::new(convert_tycon_id(ci.interface_type.as_ref().req()?, package)?),
+                method: Cow::Borrowed(method),
+                interface_expr: Box::new(convert_expr(ci.interface_expr.as_deref().req()?, package)?),
+            }))
+        },
+        ExprSum::ViewInterface(vi) => Ok(DamlExpr::InterfaceOp(DamlInterfaceExpr::ViewInterface {
+            interface: Box::new(convert_tycon_id(vi.interface.as_ref().req()?, package)?),
+            expr: Box::new(convert_expr(vi.expr.as_deref().req()?, package)?),
+        })),
+        ExprSum::SignatoryInterface(si) => Ok(DamlExpr::InterfaceOp(DamlInterfaceExpr::SignatoryInterface {
+            interface: Box::new(convert_tycon_id(si.interface.as_ref().req()?, package)?),
+            expr: Box::new(convert_expr(si.expr.as_deref().req()?, package)?),
+        })),
+        ExprSum::ObserverInterface(oi) => Ok(DamlExpr::InterfaceOp(DamlInterfaceExpr::ObserverInterface {
+            interface: Box::new(convert_tycon_id(oi.interface.as_ref().req()?, package)?),
+            expr: Box::new(convert_expr(oi.expr.as_deref().req()?, package)?),
+        })),
+        ExprSum::UnsafeFromInterface(ufi) => Ok(DamlExpr::InterfaceOp(DamlInterfaceExpr::UnsafeFromInterface {
+            interface_type: Box::new(convert_tycon_id(ufi.interface_type.as_ref().req()?, package)?),
+            template_type: Box::new(convert_tycon_id(ufi.template_type.as_ref().req()?, package)?),
+            contract_id_expr: Box::new(convert_expr(ufi.contract_id_expr.as_deref().req()?, package)?),
+            interface_expr: Box::new(convert_expr(ufi.interface_expr.as_deref().req()?, package)?),
+        })),
+        ExprSum::ToRequiredInterface(tri) => Ok(DamlExpr::InterfaceOp(DamlInterfaceExpr::ToRequiredInterface {
+            required_interface: Box::new(convert_tycon_id(tri.required_interface.as_ref().req()?, package)?),
+            requiring_interface: Box::new(convert_tycon_id(tri.requiring_interface.as_ref().req()?, package)?),
+            expr: Box::new(convert_expr(tri.expr.as_deref().req()?, package)?),
+        })),
+        ExprSum::FromRequiredInterface(fri) => {
+            Ok(DamlExpr::InterfaceOp(DamlInterfaceExpr::FromRequiredInterface {
+                required_interface: Box::new(convert_tycon_id(fri.required_interface.as_ref().req()?, package)?),
+                requiring_interface: Box::new(convert_tycon_id(fri.requiring_interface.as_ref().req()?, package)?),
+                expr: Box::new(convert_expr(fri.expr.as_deref().req()?, package)?),
+            }))
+        },
+        ExprSum::UnsafeFromRequiredInterface(ufri) => {
+            Ok(DamlExpr::InterfaceOp(DamlInterfaceExpr::UnsafeFromRequiredInterface {
+                required_interface: Box::new(convert_tycon_id(ufri.required_interface.as_ref().req()?, package)?),
+                requiring_interface: Box::new(convert_tycon_id(ufri.requiring_interface.as_ref().req()?, package)?),
+                contract_id_expr: Box::new(convert_expr(ufri.contract_id_expr.as_deref().req()?, package)?),
+                interface_expr: Box::new(convert_expr(ufri.interface_expr.as_deref().req()?, package)?),
+            }))
+        },
+        ExprSum::InterfaceTemplateTypeRep(ittr) => {
+            Ok(DamlExpr::InterfaceOp(DamlInterfaceExpr::InterfaceTemplateTypeRep {
+                interface: Box::new(convert_tycon_id(ittr.interface.as_ref().req()?, package)?),
+                expr: Box::new(convert_expr(ittr.expr.as_deref().req()?, package)?),
+            }))
+        },
+        ExprSum::ChoiceController(cc) => {
+            let choice = package.resolve_string(cc.choice_interned_str)?;
+            Ok(DamlExpr::InterfaceOp(DamlInterfaceExpr::ChoiceController {
+                template: Box::new(convert_tycon_id(cc.template.as_ref().req()?, package)?),
+                choice: Cow::Borrowed(choice),
+                contract_expr: Box::new(convert_expr(cc.contract_expr.as_deref().req()?, package)?),
+                choice_arg_expr: Box::new(convert_expr(cc.choice_arg_expr.as_deref().req()?, package)?),
+            }))
+        },
+        ExprSum::ChoiceObserver(co) => {
+            let choice = package.resolve_string(co.choice_interned_str)?;
+            Ok(DamlExpr::InterfaceOp(DamlInterfaceExpr::ChoiceObserver {
+                template: Box::new(convert_tycon_id(co.template.as_ref().req()?, package)?),
+                choice: Cow::Borrowed(choice),
+                contract_expr: Box::new(convert_expr(co.contract_expr.as_deref().req()?, package)?),
+                choice_arg_expr: Box::new(convert_expr(co.choice_arg_expr.as_deref().req()?, package)?),
+            }))
+        },
+        // InternedExpr references the package's interned_exprs table
+        // (2.dev only); the convert layer doesn't expose it yet.
+        ExprSum::InternedExpr(_)
         // 3.8g: Update.
         | ExprSum::Update(_)
         // 2.dev experimental — out of scope.
