@@ -5,12 +5,13 @@ use crate::convert::{
 use crate::CodeGeneratorParameters;
 use daml_codegen::generator::{ModuleMatcher, RenderMethod};
 use daml_codegen::renderer::full::{
-    quote_choice, quote_daml_enum, quote_daml_record, quote_daml_template, quote_daml_variant,
+    quote_choice, quote_daml_enum, quote_daml_interface, quote_daml_record, quote_daml_template, quote_daml_variant,
 };
 use daml_codegen::renderer::quote_archive;
 use daml_codegen::renderer::{RenderContext, RenderFilterMode};
 use daml_lf::element::{
-    DamlArchive, DamlChoice, DamlEnum, DamlModule, DamlPackage, DamlRecord, DamlTemplate, DamlVariant,
+    DamlArchive, DamlChoice, DamlEnum, DamlInterface, DamlModule, DamlPackage, DamlRecord, DamlTemplate, DamlType,
+    DamlVariant,
 };
 use daml_lf::{DarFile, LanguageVersion};
 use darling::FromMeta;
@@ -66,6 +67,36 @@ pub fn generate_template(
         },
         _ => panic!("the DamlTemplate attribute may only be applied to a named struct type"),
     }
+}
+
+/// Build the marker-trait tokens for a Daml interface declared via
+/// `#[DamlInterface]`. The user-declared struct's body is ignored —
+/// the macro replaces it with the generated trait. Methods and view
+/// type are intentionally left empty: the interface trait at the
+/// derive site is purely a marker for `interface_id()`-style
+/// addressing.
+pub fn generate_interface(
+    input: DeriveInput,
+    package_name: Option<String>,
+    package_id: String,
+    module_name: String,
+) -> proc_macro::TokenStream {
+    let interface_name = input.ident.to_string();
+    let module_path: Vec<Cow<'_, str>> = module_name.split('.').map(|s| Cow::Owned(s.to_string())).collect();
+    let daml_interface = DamlInterface::new(
+        Cow::Owned(interface_name),
+        Cow::Owned(package_id.clone()),
+        module_path,
+        Cow::Borrowed("this"),
+        vec![],
+        vec![],
+        DamlType::Unit,
+        vec![],
+    );
+    let archive = synthesize_archive(&package_id, package_name.as_deref());
+    let ctx = RenderContext::with_archive(&archive, RenderFilterMode::default());
+    let expanded = quote_daml_interface(&ctx, &daml_interface);
+    proc_macro::TokenStream::from(expanded)
 }
 
 /// Build a minimal one-package `DamlArchive` carrying the

@@ -409,6 +409,36 @@ pub fn DamlTemplate(attr: proc_macro::TokenStream, input: proc_macro::TokenStrea
     )
 }
 
+/// Custom attribute for modelling Daml interfaces.
+///
+/// Emits a marker trait whose `interface_id() -> DamlIdentifier`
+/// addresses the interface on the v2 Ledger API by package-name
+/// (preferred) or package-id. Templates that implement the
+/// interface are expected to write
+/// `impl <Interface> for <TemplateContractId> {}` manually for
+/// now; an `implements = "..."` knob on `#[DamlTemplate]` is a
+/// possible future extension.
+///
+/// ```ignore
+/// #[DamlInterface(package_name = "fuji", module_name = "Fuji.Asset")]
+/// pub struct MyInterface;
+/// ```
+#[proc_macro_attribute]
+pub fn DamlInterface(attr: proc_macro::TokenStream, input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let interface_info: DamlInterfaceInfo =
+        DamlInterfaceInfo::from_list(&parse_macro_input!(attr as AttributeArgs)).unwrap_or_else(|e| panic!("{}", e));
+    let input: DeriveInput = parse_macro_input!(input as DeriveInput);
+    if interface_info.package_name.is_none() && interface_info.package_id.is_none() {
+        panic!("#[DamlInterface] requires at least one of `package_name = \"...\"` or `package_id = \"...\"`");
+    }
+    generator::generate_interface(
+        input,
+        interface_info.package_name,
+        interface_info.package_id.unwrap_or_default(),
+        interface_info.module_name,
+    )
+}
+
 /// Custom attribute for modelling Daml choices.
 ///
 /// Choices on Daml templates are modelled as `impl` blocks on the `struct` which defines the template.
@@ -719,6 +749,21 @@ struct CodeGeneratorParameters {
     pub module_filter_regex: Vec<String>,
     #[darling(default)]
     pub mode: Option<String>,
+}
+
+#[doc(hidden)]
+#[derive(Debug, FromMeta)]
+struct DamlInterfaceInfo {
+    /// Daml package-name (preferred under v2). When set, the
+    /// generated `interface_id()` addresses the interface by
+    /// `#<package_name>` on the v2 Ledger API wire.
+    #[darling(default)]
+    pub package_name: Option<String>,
+    /// Daml package-id hash. Required when `package_name` is not
+    /// provided.
+    #[darling(default)]
+    pub package_id: Option<String>,
+    pub module_name: String,
 }
 
 #[doc(hidden)]
