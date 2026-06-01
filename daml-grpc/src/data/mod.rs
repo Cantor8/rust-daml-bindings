@@ -85,6 +85,11 @@ pub mod reassignment;
 /// observed on a synchronizer.
 pub mod topology;
 
+/// The `DamlUpdate` envelope (Transaction / Reassignment /
+/// TopologyTransaction) and the streaming-response variant that adds
+/// OffsetCheckpoint markers.
+pub mod update;
+
 mod configuration;
 pub use self::configuration::DamlLedgerConfiguration;
 

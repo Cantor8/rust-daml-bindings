@@ -2,7 +2,7 @@ use crate::data::{DamlError, DamlResult};
 use crate::service::{
     DamlActiveContractsService, DamlCommandCompletionService, DamlCommandService, DamlCommandSubmissionService,
     DamlLedgerConfigurationService, DamlLedgerIdentityService, DamlPackageService, DamlParticipantPruningService,
-    DamlTransactionService, DamlVersionService,
+    DamlTransactionService, DamlUpdateService, DamlVersionService,
 };
 #[cfg(feature = "admin")]
 use crate::service::{
@@ -261,6 +261,14 @@ impl DamlGrpcClient {
     /// [`OffsetCheckpoint`]: crate::data::completion::DamlOffsetCheckpoint
     pub fn command_completion_service(&self) -> DamlCommandCompletionService<'_> {
         DamlCommandCompletionService::new(self.channel.clone(), self.config.auth_token.as_deref())
+    }
+
+    /// Retrieve a [`DamlUpdateService`] for reading the participant's
+    /// update stream — transactions, reassignments, and topology
+    /// transactions, paginated or open-ended. v2's replacement for
+    /// v1's TransactionService.
+    pub fn update_service(&self) -> DamlUpdateService<'_> {
+        DamlUpdateService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
     /// Retrieve a [`DamlCommandService`] for synchronous command
