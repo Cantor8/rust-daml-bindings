@@ -64,7 +64,7 @@ impl<'a> DamlUserManagementService<'a> {
     /// The initial `rights` SHOULD include `CanActAs` /
     /// `CanReadAs(user.primary_party)` so the user can use their
     /// primary party — the server doesn't auto-grant these.
-    #[instrument(skip(self))]
+    #[instrument(skip(self, rights))]
     pub async fn create_user(
         &self,
         user: DamlUser,
@@ -112,7 +112,7 @@ impl<'a> DamlUserManagementService<'a> {
     /// [`revoke_user_rights`](Self::revoke_user_rights) — those RPCs do
     /// not bump the user's resource version. To change a user's IDP,
     /// use [`update_user_identity_provider_id`](Self::update_user_identity_provider_id).
-    #[instrument(skip(self))]
+    #[instrument(skip(self, update_paths))]
     pub async fn update_user(
         &self,
         user: DamlUser,
@@ -176,7 +176,7 @@ impl<'a> DamlUserManagementService<'a> {
     /// Add rights to a user. The response carries the rights that were
     /// *newly* granted — already-held rights are no-ops and absent from
     /// the response.
-    #[instrument(skip(self))]
+    #[instrument(skip(self, rights))]
     pub async fn grant_user_rights(
         &self,
         user_id: impl Into<String> + Debug,
@@ -197,7 +197,7 @@ impl<'a> DamlUserManagementService<'a> {
     /// Revoke rights from a user. The response carries the rights that
     /// were *actually* revoked — rights the user didn't hold are no-ops
     /// and absent from the response.
-    #[instrument(skip(self))]
+    #[instrument(skip(self, rights))]
     pub async fn revoke_user_rights(
         &self,
         user_id: impl Into<String> + Debug,

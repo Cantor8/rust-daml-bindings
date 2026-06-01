@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 use crate::data::completion::DamlOffsetCheckpoint;
 use crate::data::reassignment::DamlReassignment;
 use crate::data::topology::DamlTopologyTransaction;
-use crate::data::transaction::DamlTransaction;
+use crate::data::DamlTransaction;
 use crate::data::{DamlError, DamlResult};
 use crate::grpc_protobuf::com::daml::ledger::api::v2::get_update_response::Update as PointUpdateKind;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::get_updates_response::Update as StreamUpdateKind;

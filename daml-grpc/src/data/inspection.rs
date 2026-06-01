@@ -19,8 +19,9 @@ use crate::util::Required;
 /// `Unspecified` is the proto's wire-default and is also used as a
 /// query-wildcard ("match any state"). Production code typically only
 /// inspects `Pending` / `Succeeded` / `Failed`.
-#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Default)]
 pub enum DamlCommandState {
+    #[default]
     Unspecified,
     Pending,
     Succeeded,

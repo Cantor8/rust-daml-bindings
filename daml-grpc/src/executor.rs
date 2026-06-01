@@ -1,11 +1,10 @@
 use async_trait::async_trait;
 
 use crate::data::command::{DamlCommand, DamlCreateCommand, DamlExerciseCommand};
-use crate::data::event::{DamlCreatedEvent, DamlTreeEvent};
+use crate::data::event::{DamlCreatedEvent, DamlEvent};
+use crate::data::filter::{DamlEventFormat, DamlTransactionFormat, DamlTransactionShape};
 use crate::data::value::DamlValue;
-use crate::data::{
-    DamlCommandsDeduplicationPeriod, DamlError, DamlMinLedgerTime, DamlResult, DamlTransaction, DamlTransactionTree,
-};
+use crate::data::{DamlCommandsDeduplicationPeriod, DamlError, DamlMinLedgerTime, DamlResult, DamlTransaction};
 use crate::service::DamlCommandService;
 use crate::util::Required;
 use crate::{DamlCommandFactory, DamlGrpcClient};
@@ -136,10 +135,18 @@ pub trait Executor {
 }
 
 /// An async failable Daml command executor.
+///
+/// v2 removed the dedicated `TransactionTree` response shape: the
+/// tree-shaped (ledger-effects) view is now selectable on the same
+/// `SubmitAndWaitForTransaction` RPC via a `TransactionFormat`
+/// whose `transaction_shape = LedgerEffects`. The executor exposes
+/// that selection through [`Self::execute_for_transaction_with_effects`]
+/// which returns the same `DamlTransaction` populated with both
+/// `Created` and `Exercised` events.
 #[async_trait]
 pub trait CommandExecutor {
     async fn execute_for_transaction(&self, command: DamlCommand) -> DamlResult<DamlTransaction>;
-    async fn execute_for_transaction_tree(&self, command: DamlCommand) -> DamlResult<DamlTransactionTree>;
+    async fn execute_for_transaction_with_effects(&self, command: DamlCommand) -> DamlResult<DamlTransaction>;
     async fn execute_create(&self, create_command: DamlCreateCommand) -> DamlResult<DamlCreatedEvent>;
     async fn execute_exercise(&self, exercise_command: DamlExerciseCommand) -> DamlResult<DamlValue>;
 }
@@ -188,12 +195,40 @@ impl<'a> DamlSimpleExecutor<'a> {
 
     async fn submit_and_wait_for_transaction(&self, command: DamlCommand) -> DamlResult<DamlTransaction> {
         let commands = self.command_factory.make_command(command);
-        Ok(self.client().submit_and_wait_for_transaction(commands).await?.0)
+        // Default `None` transaction-format selects ACS-delta shape
+        // with per-party wildcard filters — fine for "give me what I
+        // just submitted" use.
+        self.client().submit_and_wait_for_transaction(commands, None).await
     }
 
-    async fn submit_and_wait_for_transaction_tree(&self, command: DamlCommand) -> DamlResult<DamlTransactionTree> {
+    /// Submit and wait, returning a [`DamlTransaction`] populated
+    /// with both `Created` and `Exercised` events (the LedgerEffects
+    /// shape; v1's `TransactionTree`).
+    async fn submit_and_wait_for_transaction_with_effects(
+        &self,
+        command: DamlCommand,
+    ) -> DamlResult<DamlTransaction> {
         let commands = self.command_factory.make_command(command);
-        Ok(self.client().submit_and_wait_for_transaction_tree(commands).await?.0)
+        // Build a transaction-format scoped to the submitter's parties
+        // with the LedgerEffects shape and verbose output.
+        let mut filters_by_party = std::collections::HashMap::new();
+        let wildcard = crate::data::filter::DamlFilters::default();
+        for party in self.act_as() {
+            filters_by_party.insert(party.clone(), wildcard.clone());
+        }
+        for party in self.read_as() {
+            filters_by_party.insert(party.clone(), wildcard.clone());
+        }
+        let event_format = DamlEventFormat {
+            filters_by_party,
+            filters_for_any_party: None,
+            verbose: true,
+        };
+        let format = DamlTransactionFormat {
+            event_format,
+            transaction_shape: DamlTransactionShape::LedgerEffects,
+        };
+        self.client().submit_and_wait_for_transaction(commands, Some(format)).await
     }
 
     fn client(&self) -> DamlCommandService<'_> {
@@ -213,34 +248,32 @@ impl CommandExecutor for DamlSimpleExecutor<'_> {
         self.submit_and_wait_for_transaction(command).await
     }
 
-    async fn execute_for_transaction_tree(&self, command: DamlCommand) -> DamlResult<DamlTransactionTree> {
-        self.submit_and_wait_for_transaction_tree(command).await
+    async fn execute_for_transaction_with_effects(&self, command: DamlCommand) -> DamlResult<DamlTransaction> {
+        self.submit_and_wait_for_transaction_with_effects(command).await
     }
 
     async fn execute_create(&self, create_command: DamlCreateCommand) -> Result<DamlCreatedEvent, DamlError> {
-        self.submit_and_wait_for_transaction(DamlCommand::Create(create_command))
-            .await?
-            .take_events()
-            .swap_remove(0)
-            .try_created()
+        let mut tx = self.submit_and_wait_for_transaction(DamlCommand::Create(create_command)).await?;
+        if tx.events.is_empty() {
+            return Err(DamlError::Other(
+                "execute_create: transaction had no events".to_owned(),
+            ));
+        }
+        tx.events.swap_remove(0).try_created()
     }
 
-    // TODO only takes the first root event
-    // TODO abstract away the "find the root" logic
+    /// Submit an exercise command and return the result of the
+    /// first `Exercised` event in the LedgerEffects-shaped
+    /// transaction. Non-consuming choices may return `None` from the
+    /// ledger; that surfaces here as
+    /// [`DamlError::MissingRequiredField`].
     async fn execute_exercise(&self, exercise_command: DamlExerciseCommand) -> Result<DamlValue, DamlError> {
-        let tx = self.submit_and_wait_for_transaction_tree(DamlCommand::Exercise(exercise_command)).await?;
-        let root_event_id = tx.root_event_ids()[0].clone();
-        tx.take_events_by_id()
+        let tx = self.submit_and_wait_for_transaction_with_effects(DamlCommand::Exercise(exercise_command)).await?;
+        tx.events
             .into_iter()
-            .find_map(|(id, e)| {
-                if id == root_event_id {
-                    match e {
-                        DamlTreeEvent::Exercised(exercised_event) => Some(exercised_event.take_exercise_result()),
-                        DamlTreeEvent::Created(_) => None,
-                    }
-                } else {
-                    None
-                }
+            .find_map(|e| match e {
+                DamlEvent::Exercised(ex) => ex.exercise_result.clone(),
+                _ => None,
             })
             .req()
     }

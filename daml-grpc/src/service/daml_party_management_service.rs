@@ -166,7 +166,7 @@ impl<'a> DamlPartyManagementService<'a> {
     /// may also appear in `update_paths`, but only to identify the
     /// resource or assert optimistic-concurrency invariants — their
     /// values in `party_details` must match the server's.
-    #[instrument(skip(self))]
+    #[instrument(skip(self, update_paths))]
     pub async fn update_party_details(
         &self,
         party_details: DamlPartyDetails,

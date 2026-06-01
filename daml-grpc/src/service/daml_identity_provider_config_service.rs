@@ -82,7 +82,7 @@ impl<'a> DamlIdentityProviderConfigService<'a> {
     /// touch; only paths listed in `update_paths` are written.
     /// Modifiable paths are `is_deactivated`, `issuer`, `jwks_url`, and
     /// `audience`.
-    #[instrument(skip(self))]
+    #[instrument(skip(self, update_paths))]
     pub async fn update_identity_provider_config(
         &self,
         config: DamlIdentityProviderConfig,

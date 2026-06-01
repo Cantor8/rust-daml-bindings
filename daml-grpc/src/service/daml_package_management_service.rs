@@ -125,7 +125,7 @@ impl<'a> DamlPackageManagementService<'a> {
     ///
     /// `force_flags` opt into vetting changes the server would
     /// otherwise reject for upgrade-safety reasons.
-    #[instrument(skip(self))]
+    #[instrument(skip(self, force_flags))]
     pub async fn update_vetted_packages(
         &self,
         changes: Vec<DamlVettedPackagesChange>,

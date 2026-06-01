@@ -7,7 +7,7 @@ use tracing::{instrument, trace};
 use crate::data::filter::{DamlEventFormat, DamlTransactionFormat};
 use crate::data::offset::DamlLedgerOffset;
 use crate::data::reassignment::{DamlReassignment, DamlReassignmentCommands};
-use crate::data::transaction::DamlTransaction;
+use crate::data::DamlTransaction;
 use crate::data::{DamlCommands, DamlResult};
 use crate::grpc_protobuf::com::daml::ledger::api::v2::command_service_client::CommandServiceClient;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::{
