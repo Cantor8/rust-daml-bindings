@@ -94,6 +94,10 @@ pub mod update;
 /// connected-synchronizer views, prune offsets.
 pub mod state;
 
+/// EventQueryService data types — per-contract event lookup
+/// (Created / Archived halves scoped to a synchronizer).
+pub mod event_query;
+
 mod configuration;
 pub use self::configuration::DamlLedgerConfiguration;
 

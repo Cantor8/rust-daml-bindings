@@ -1,8 +1,9 @@
 use crate::data::{DamlError, DamlResult};
 use crate::service::{
     DamlActiveContractsService, DamlCommandCompletionService, DamlCommandService, DamlCommandSubmissionService,
-    DamlLedgerConfigurationService, DamlLedgerIdentityService, DamlPackageService, DamlParticipantPruningService,
-    DamlStateService, DamlTransactionService, DamlUpdateService, DamlVersionService,
+    DamlContractService, DamlEventQueryService, DamlLedgerConfigurationService, DamlLedgerIdentityService,
+    DamlPackageService, DamlParticipantPruningService, DamlStateService, DamlTransactionService, DamlUpdateService,
+    DamlVersionService,
 };
 #[cfg(feature = "admin")]
 use crate::service::{
@@ -277,6 +278,20 @@ impl DamlGrpcClient {
     /// replacement for v1's ActiveContractsService.
     pub fn state_service(&self) -> DamlStateService<'_> {
         DamlStateService::new(self.channel.clone(), self.config.auth_token.as_deref())
+    }
+
+    /// Retrieve a [`DamlEventQueryService`] for per-contract event
+    /// lookup (create + consuming-archive halves) by contract id.
+    pub fn event_query_service(&self) -> DamlEventQueryService<'_> {
+        DamlEventQueryService::new(self.channel.clone(), self.config.auth_token.as_deref())
+    }
+
+    /// Retrieve a [`DamlContractService`] for contract-payload
+    /// lookup by id. Experimental / alpha per the proto; prefer
+    /// [`event_query_service`](Self::event_query_service) or
+    /// [`state_service`](Self::state_service) for stable surfaces.
+    pub fn contract_service(&self) -> DamlContractService<'_> {
+        DamlContractService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
 
     /// Retrieve a [`DamlCommandService`] for synchronous command
