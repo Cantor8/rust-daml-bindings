@@ -11,7 +11,6 @@
 
 use crate::command_intern::CommandIntern;
 use crate::command_package::CommandPackage;
-use crate::command_token::CommandToken;
 use anyhow::Result;
 use clap::{crate_description, crate_name, crate_version, ArgMatches, Command};
 use std::collections::HashMap;
@@ -20,8 +19,6 @@ use std::collections::HashMap;
 pub mod command_intern;
 #[doc(hidden)]
 pub mod command_package;
-#[doc(hidden)]
-pub mod command_token;
 
 #[doc(hidden)]
 pub trait DarnCommand {
@@ -41,7 +38,7 @@ macro_rules! command {
 #[tokio::main]
 async fn main() -> Result<()> {
     let commands: Vec<Box<dyn DarnCommand>> =
-        vec![command!(CommandPackage), command!(CommandToken), command!(CommandIntern)];
+        vec![command!(CommandPackage), command!(CommandIntern)];
     let command_map: HashMap<_, _> = commands.into_iter().map(|cmd| (cmd.name().to_owned(), cmd)).collect();
     let matches = Command::new(crate_name!())
         .version(crate_version!())

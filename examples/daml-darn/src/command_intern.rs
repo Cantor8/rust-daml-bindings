@@ -72,7 +72,7 @@ enum SortOrder {
 fn intern_string(dar_path: &str, show_mangled: bool, sort_order: &SortOrder, filter: &[usize]) -> Result<()> {
     let dar = DarFile::from_file(dar_path)?;
     match dar.main.payload.package {
-        DamlLfPackage::V1(package) => {
+        DamlLfPackage::V2(package) => {
             let mut res: Vec<_> = package
                 .interned_strings
                 .iter()
@@ -109,7 +109,7 @@ fn intern_string(dar_path: &str, show_mangled: bool, sort_order: &SortOrder, fil
 fn intern_dotted(dar_path: &str, show_mangled: bool, sort_order: &SortOrder, filter: &[usize]) -> Result<()> {
     let dar = DarFile::from_file(dar_path)?;
     match dar.main.payload.package {
-        DamlLfPackage::V1(package) => {
+        DamlLfPackage::V2(package) => {
             let mut res: Vec<_> = package
                 .interned_dotted_names
                 .iter()
