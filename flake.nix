@@ -36,6 +36,57 @@
           sha256 = "0gdjrhiqa2djjam42cdw5m80fcdbq2fcy7bk3jyqv8z9cmmycwby";
         };
 
+        # Daml SDK 3.4.x produces LF 2.x DARs, which is what the
+        # LF2-only `daml-lf` crate consumes. Paired with Canton
+        # 3.5.x for the participant side — the SDK toolchain and
+        # the participant binary track different release trains;
+        # the minor mismatch is fine because `daml build` only
+        # depends on the LF specification, not the participant.
+        damlSdkVersion = "3.4.11";
+
+        damlSdkSrc = pkgs.fetchurl {
+          url = "https://github.com/digital-asset/daml/releases/download/v${damlSdkVersion}/daml-sdk-${damlSdkVersion}-linux-x86_64.tar.gz";
+          sha256 = "0bf6l6drkblzrdh4yf47c0c745k593jji9lm4nxh29d6mjin4xb0";
+        };
+
+        # Daml SDK — exposes `daml build` (and the rest of the
+        # Daml Assistant CLI) for compiling LF2 DARs locally. The
+        # SDK ships a self-contained tree under
+        # $out/share/daml-sdk/<version>; the wrapper script keeps
+        # DAML_SDK / DAML_HOME pointing into that tree so the
+        # toolchain doesn't try to write to `~/.daml`.
+        damlSdk = pkgs.stdenv.mkDerivation {
+          pname = "daml-sdk";
+          version = damlSdkVersion;
+          src = damlSdkSrc;
+          nativeBuildInputs = [ pkgs.makeWrapper pkgs.autoPatchelfHook ];
+          # The bundled JDK / Haskell binaries link against glibc +
+          # libstdc++ + zlib + ncurses; autoPatchelfHook needs
+          # these in scope to rewrite their rpaths.
+          buildInputs = [ pkgs.stdenv.cc.cc.lib pkgs.zlib pkgs.ncurses5 ];
+          # The SDK includes prebuilt Linux ELF binaries; skip the
+          # cross-arch and broken-symlink scans that would
+          # otherwise scrub them.
+          dontStrip = true;
+          dontPatchELF = false;
+          installPhase = ''
+            sdkdir="$out/share/daml-sdk/${damlSdkVersion}"
+            mkdir -p "$sdkdir" "$out/bin"
+            cp -r . "$sdkdir/"
+            makeWrapper "$sdkdir/daml/daml" "$out/bin/daml" \
+              --set JAVA_HOME ${pkgs.jdk21}/lib/openjdk \
+              --set DAML_SDK "$sdkdir" \
+              --set DAML_SDK_VERSION "${damlSdkVersion}" \
+              --prefix PATH : ${pkgs.jdk21}/bin
+          '';
+          meta = {
+            description = "Daml SDK — daml build, daml-assistant, daml-libs";
+            homepage = "https://daml.com/";
+            license = pkgs.lib.licenses.asl20;
+            platforms = [ "x86_64-linux" ];
+          };
+        };
+
         # Canton open-source distribution. Wraps the upstream `bin/canton`
         # launcher so JAVA_HOME points at a managed JDK.
         canton = pkgs.stdenv.mkDerivation {
@@ -88,7 +139,7 @@
       in
       {
         packages = {
-          inherit canton canton-sandbox;
+          inherit canton canton-sandbox damlSdk;
           default = canton-sandbox;
         };
 
@@ -117,6 +168,9 @@
             canton
             canton-sandbox
 
+            # Daml SDK for building LF2 .dar fixtures from .daml sources.
+            damlSdk
+
             # Handy for poking the gRPC surface from the shell.
             grpcurl
           ];
@@ -139,10 +193,12 @@
             echo "  protoc:          $(protoc --version)"
             echo "  java:            $(java -version 2>&1 | head -1)"
             echo "  canton:          ${canton}/share/canton (v${cantonVersion})"
+            echo "  daml SDK:        ${damlSdk}/share/daml-sdk/${damlSdkVersion} (v${damlSdkVersion})"
             echo ""
             echo "  Start the sandbox with: canton-sandbox"
             echo "  Ledger API listens on:  localhost:5011"
             echo "  Admin API  listens on:  localhost:5012"
+            echo "  Build a DAR with:       daml build (in a project dir with daml.yaml)"
           '';
         };
       });
