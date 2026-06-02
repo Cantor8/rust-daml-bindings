@@ -159,19 +159,38 @@ pub fn convert_tycon_id<'a>(
     let (data_name, extra_module_path) = split_data_name(&data_name_segments)?;
     let mut full_module_path: Vec<Cow<'a, str>> = module_path.into_iter().map(Cow::Borrowed).collect();
     full_module_path.extend(extra_module_path.iter().copied().map(Cow::Borrowed));
-    // For self-references we know the current package's name and
-    // can attach it so downstream consumers (notably the
-    // `daml-codegen` type renderer) can build a correct
-    // `crate::<pkg>::<module>::<name>` path. Cross-package references
-    // still need an archive lookup the convert layer doesn't yet
-    // do — leave their `package_name` empty for now.
-    let package_name = if pkg_id == package.package_id { Cow::Borrowed(package.name.as_str()) } else { Cow::Borrowed("") };
+    // Resolve `package_name` for both self- and cross-package
+    // references. Self-refs use `package.name` directly;
+    // cross-package refs go through the archive-level
+    // `pkg_names` table that `DamlArchivePayload::try_from`
+    // stamps onto every package. When no table is available
+    // (out-of-archive reference or a payload built standalone)
+    // we fall back to the empty string, matching the previous
+    // behaviour.
+    let package_name = resolve_package_name(package, &pkg_id);
     Ok(DamlTyConName::Absolute(DamlAbsoluteTyCon::new(
         Cow::Borrowed(data_name),
         Cow::Owned(pkg_id),
         package_name,
         full_module_path,
     )))
+}
+
+/// Resolve a package-id to its package-name. For self-references
+/// the current package's name is used directly; for cross-package
+/// references the package's `pkg_names` table (populated by
+/// [`DamlArchivePayload::try_from`]) is consulted. Returns an empty
+/// `Cow` when the id is unknown (out-of-archive reference or a
+/// standalone payload).
+pub(crate) fn resolve_package_name<'a>(package: &'a DamlPackagePayload<'a>, pkg_id: &str) -> Cow<'a, str> {
+    if pkg_id == package.package_id {
+        Cow::Borrowed(package.name.as_str())
+    } else {
+        match package.cross_pkg_name(pkg_id) {
+            Some(name) => Cow::Owned(name.to_owned()),
+            None => Cow::Borrowed(""),
+        }
+    }
 }
 
 /// Convert an LF2 `TypeSynId` into a [`DamlTypeSynName`].
@@ -187,10 +206,11 @@ pub fn convert_tysyn_id<'a>(
     // DamlTypeSynName is an alias for DamlTyConName today — both use
     // the same (data_name, package_id, package_name, module_path)
     // shape — so we reuse DamlAbsoluteTyCon here.
+    let package_name = resolve_package_name(package, &pkg_id);
     Ok(DamlTypeSynName::Absolute(DamlAbsoluteTyCon::new(
         Cow::Borrowed(data_name),
         Cow::Owned(pkg_id),
-        Cow::Borrowed(""),
+        package_name,
         full_module_path,
     )))
 }

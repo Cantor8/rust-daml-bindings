@@ -1,4 +1,6 @@
+use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::sync::Arc;
 
 use crate::convert::interned::PackageInternedResolver;
 use crate::convert::module_payload::DamlModulePayload;
@@ -6,6 +8,18 @@ use crate::convert::util::Required;
 use crate::error::{DamlLfConvertError, DamlLfConvertResult};
 use crate::lf_protobuf::daml_lf_2;
 use crate::{DamlLfArchive, DamlLfPackage, LanguageVersion};
+
+/// Package-id → package-name lookup table shared across all
+/// [`DamlPackagePayload`]s in the same archive. Each package holds
+/// an `Arc`-clone so cross-package references in `convert_tycon_id`
+/// can resolve the target package's name without threading the
+/// archive through every helper.
+///
+/// For single-package payloads (the `apply_dalf` path) the map
+/// carries only the self-mapping; cross-package lookups fall back
+/// to the empty string the same way they did before this table
+/// existed.
+pub type PackageNameTable = Arc<HashMap<String, String>>;
 
 /// Borrowed view of an LF2 `Package`: metadata (name, version,
 /// language version, package-id), the package-level interning
@@ -28,6 +42,13 @@ pub struct DamlPackagePayload<'a> {
     #[allow(dead_code)]
     interned_exprs: &'a [daml_lf_2::Expr],
     pub modules: Vec<DamlModulePayload<'a>>,
+    /// Cross-package package-id → package-name table. Populated by
+    /// [`DamlArchivePayload::try_from`] (multi-package case); the
+    /// stand-alone [`Self::try_from`] (single-package case) seeds
+    /// this with only the self-mapping. Cloning an `Arc` is cheap;
+    /// 30-package DARs are typical and each clone is one atomic
+    /// increment.
+    pkg_names: PackageNameTable,
 }
 
 impl<'a> DamlPackagePayload<'a> {
@@ -52,6 +73,22 @@ impl<'a> DamlPackagePayload<'a> {
     #[allow(dead_code)]
     pub fn interned_exprs_raw(&self) -> &'a [daml_lf_2::Expr] {
         self.interned_exprs
+    }
+
+    /// Look up the package-name for a given package-id. Returns
+    /// `None` if the id isn't in this archive's name table — which
+    /// happens either when the reference points outside the loaded
+    /// archive or when the payload was constructed standalone
+    /// (single-package path).
+    pub fn cross_pkg_name(&self, package_id: &str) -> Option<&str> {
+        self.pkg_names.get(package_id).map(String::as_str)
+    }
+
+    /// Replace this package's cross-package name table. Called by
+    /// [`DamlArchivePayload::try_from`] once it has built the
+    /// combined table from every package in the archive.
+    pub(crate) fn set_pkg_names(&mut self, names: PackageNameTable) {
+        self.pkg_names = names;
     }
 }
 
@@ -92,6 +129,12 @@ impl<'a> TryFrom<&'a DamlLfArchive> for DamlPackagePayload<'a> {
             .req()?
             .to_owned();
         let modules = package.modules.iter().map(DamlModulePayload::new).collect();
+        // Seed the name table with the self-mapping. The archive
+        // payload (multi-package case) replaces this with the full
+        // table once it's collected every package's name.
+        let mut pkg_names = HashMap::new();
+        pkg_names.insert(package_id.to_owned(), name.clone());
+        let pkg_names = Arc::new(pkg_names);
         Ok(Self {
             name,
             version: Some(version),
@@ -103,6 +146,7 @@ impl<'a> TryFrom<&'a DamlLfArchive> for DamlPackagePayload<'a> {
             interned_kinds,
             interned_exprs,
             modules,
+            pkg_names,
         })
     }
 }

@@ -529,13 +529,11 @@ fn convert_value_id<'a>(
     let (name, prefix) = name_segments.split_last().req()?;
     let mut full_module_path = module_path;
     full_module_path.extend(prefix.iter().copied().map(Cow::Borrowed));
+    let package_name = crate::convert::type_payload::resolve_package_name(package, &pkg_id);
     Ok(DamlValueName::Local(DamlLocalValueName::new(
         Cow::Borrowed(*name),
         pkg_id,
-        // Package-name resolution requires cross-package archive
-        // context the convert layer doesn't carry yet — same posture
-        // as `convert_tycon_id`.
-        Cow::Borrowed(""),
+        package_name,
         full_module_path,
     )))
 }

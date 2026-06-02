@@ -98,21 +98,12 @@ fn quote_generic_type_arguments(ctx: &RenderContext<'_>, type_arguments: &[DamlT
     }
 }
 
-fn quote_absolute_tycon(ctx: &RenderContext<'_>, abs_tycon: &DamlAbsoluteTyCon<'_>) -> TokenStream {
-    // The convert layer only fills in `package_name` for
-    // self-references (see `convert_tycon_id` in `daml-lf`); for
-    // cross-package refs the name is empty. Recover it by looking
-    // the package up by id in the render-context archive — that's
-    // the same map `RenderContext::package_name_for` consults.
-    let resolved_pkg_name = if abs_tycon.package_name().is_empty() {
-        ctx.package_name_for(abs_tycon.package_id())
+fn quote_absolute_tycon(_ctx: &RenderContext<'_>, abs_tycon: &DamlAbsoluteTyCon<'_>) -> TokenStream {
+    let pkg_name = abs_tycon.package_name();
+    let path: Vec<&str> = if pkg_name.is_empty() {
+        abs_tycon.module_path().map(AsRef::as_ref).collect()
     } else {
-        Some(abs_tycon.package_name())
-    };
-    let path: Vec<&str> = match resolved_pkg_name {
-        Some(name) if !name.is_empty() =>
-            iter::once(name).chain(abs_tycon.module_path().map(AsRef::as_ref)).collect(),
-        _ => abs_tycon.module_path().map(AsRef::as_ref).collect(),
+        iter::once(pkg_name).chain(abs_tycon.module_path().map(AsRef::as_ref)).collect()
     };
     let target_path_tokens: Vec<_> =
         path.into_iter().map(ToSnakeCase::to_snake_case).map(quote_escaped_ident).collect();

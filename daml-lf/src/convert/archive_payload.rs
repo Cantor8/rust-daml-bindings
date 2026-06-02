@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::sync::Arc;
 
 use crate::convert::package_payload::DamlPackagePayload;
 use crate::error::{DamlLfConvertError, DamlLfConvertResult};
@@ -50,6 +51,18 @@ impl<'a> TryFrom<&'a DarFile> for DamlArchivePayload<'a> {
         for dep in &dar.dependencies {
             let dep_payload = DamlPackagePayload::try_from(dep)?;
             packages.insert(dep_payload.package_id, dep_payload);
+        }
+        // Build the cross-package name table once and stamp each
+        // package with a shared `Arc` of it, so `convert_tycon_id`
+        // can resolve cross-package references without threading
+        // the archive through every helper. Note: `package.name`
+        // is owned; the table is independent of the underlying
+        // `DarFile`'s lifetime.
+        let names_table: HashMap<String, String> =
+            packages.iter().map(|(id, pkg)| ((*id).to_owned(), pkg.name.clone())).collect();
+        let shared = Arc::new(names_table);
+        for pkg in packages.values_mut() {
+            pkg.set_pkg_names(shared.clone());
         }
         Ok(Self {
             archive_name: dar.main.name.as_str(),

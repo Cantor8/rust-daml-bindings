@@ -94,6 +94,59 @@ fn test_visitor_finds_enum() -> DamlLfResult<()> {
 }
 
 #[test]
+fn test_cross_package_name_resolution() -> DamlLfResult<()> {
+    // Every `DamlTyConName::Absolute` reachable from the converted
+    // archive should carry the right `package_name` -- both for
+    // self-references (within the fixture's own package) and for
+    // cross-package references (into daml-stdlib / daml-prim).
+    // Before the archive-level name table landed, only self-refs
+    // were resolved.
+    use daml_lf::element::{DamlElementVisitor, DamlTyConName};
+
+    #[derive(Default)]
+    struct CollectAbs {
+        // (package_id, package_name)
+        seen: HashSet<(String, String)>,
+        // Any tycons where we have a non-empty package_id but
+        // empty package_name -- these are the bug.
+        unresolved: HashSet<String>,
+    }
+    impl DamlElementVisitor for CollectAbs {
+        fn pre_visit_tycon_name<'a>(&mut self, name: &'a DamlTyConName<'a>) {
+            if let DamlTyConName::Absolute(abs) = name {
+                self.seen.insert((abs.package_id().to_owned(), abs.package_name().to_owned()));
+                if !abs.package_id().is_empty() && abs.package_name().is_empty() {
+                    self.unresolved.insert(abs.package_id().to_owned());
+                }
+            }
+        }
+    }
+
+    let mut visitor = CollectAbs::default();
+    let dar = DarFile::from_file(FIXTURE_DAR)?;
+    let loaded_pkg_ids: HashSet<String> = std::iter::once(dar.main.hash.clone())
+        .chain(dar.dependencies.iter().map(|d| d.hash.clone()))
+        .collect();
+    dar.apply(|archive| archive.accept(&mut visitor))?;
+    // Unresolved is only a bug if the unresolved package-id is one
+    // we actually loaded. References to package-ids outside the
+    // archive (e.g. an interned package not shipped with this dar)
+    // are still empty by design.
+    let real_unresolved: HashSet<&String> =
+        visitor.unresolved.iter().filter(|id| loaded_pkg_ids.contains(*id)).collect();
+    assert!(
+        real_unresolved.is_empty(),
+        "package_name unresolved for {} loaded package id(s): {:?}",
+        real_unresolved.len(),
+        real_unresolved,
+    );
+    // Sanity: we should have seen many distinct (pkg_id, pkg_name)
+    // pairs -- one per package the fixture transitively touches.
+    assert!(visitor.seen.len() >= 3, "expected at least 3 distinct tycon packages, saw {}", visitor.seen.len());
+    Ok(())
+}
+
+#[test]
 fn test_visitor_finds_interface_and_template() -> DamlLfResult<()> {
     use daml_lf::element::{DamlInterface, DamlTemplate};
 
