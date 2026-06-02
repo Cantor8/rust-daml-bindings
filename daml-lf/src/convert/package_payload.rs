@@ -24,6 +24,8 @@ pub struct DamlPackagePayload<'a> {
     interned_dotted_names: Vec<&'a [i32]>,
     interned_types: &'a [daml_lf_2::Type],
     interned_kinds: &'a [daml_lf_2::Kind],
+    // Only consumed by `convert_expr` under `--features full`.
+    #[allow(dead_code)]
     interned_exprs: &'a [daml_lf_2::Expr],
     pub modules: Vec<DamlModulePayload<'a>>,
 }
@@ -45,7 +47,9 @@ impl<'a> DamlPackagePayload<'a> {
 
     /// Raw LF2 expression-interning table — referenced by
     /// `Expr::Sum::InternedExpr(i)`. Only populated in LF 2.dev;
-    /// empty in 2.1.
+    /// empty in 2.1. Consumed by `convert_expr` under
+    /// `--features full`.
+    #[allow(dead_code)]
     pub fn interned_exprs_raw(&self) -> &'a [daml_lf_2::Expr] {
         self.interned_exprs
     }

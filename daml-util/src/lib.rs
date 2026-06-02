@@ -16,11 +16,10 @@
 #![doc(html_logo_url = "https://docs.daml.com/_static/images/DAML_Logo_Blue.svg")]
 #![doc(html_root_url = "https://docs.rs/daml-util/0.3.0")]
 
-// The v1-shaped sandbox JWT token builder was removed in the v2
-// migration: Canton v2 uses a different claim shape
-// (`aud` / `scope` / `sub` style audience-scoped tokens) that the
-// v1 `https://daml.com/ledger-api` claim doesn't model. A v2 token
-// helper is a planned follow-up.
+/// JWT token builder for Canton v2 participants
+/// (`aud`/`sub`/`scope`-shape claims).
+pub mod canton_auth;
+pub use canton_auth::{DamlCantonClaims, DamlCantonTokenBuilder, DamlCantonTokenError, DamlCantonTokenResult};
 
 /// Conveniences for working with a collection of [`DamlPackage`](daml_grpc::data::package::DamlPackage).
 pub mod package;
