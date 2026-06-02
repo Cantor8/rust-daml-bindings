@@ -18,6 +18,6 @@ clap = { version = "3.0.14", features = [ "cargo" ] }
 prettytable-rs = "0.8.0"
 itertools = "0.10.3"
 anyhow = "1.0.55"
-thiserror = "1.0.30"
+thiserror = "2.0.18"
 
 [workspace]
