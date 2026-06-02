@@ -71,8 +71,8 @@ fn quote_contract_struct_impl_try_from(struct_name: &str) -> TokenStream {
 
             type Error = DamlError;
             fn try_from(event: DamlCreatedEvent) -> std::result::Result<Self, <#contract_struct_name_tokens as std::convert::TryFrom<DamlCreatedEvent>>::Error> {
-                let contract_id = event.contract_id().to_owned();
-                let record: DamlRecord = event.take_create_arguments();
+                let contract_id = event.contract_id.clone();
+                let record: DamlRecord = event.create_arguments;
                 Ok(Self {
                     id: #contract_id_struct_name_tokens::try_from(DamlContractId::new(contract_id))?,
                     data: DamlValue::new_record(record).deserialize_into()?,

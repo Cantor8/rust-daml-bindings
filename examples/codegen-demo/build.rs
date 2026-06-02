@@ -1,11 +1,42 @@
-//! Placeholder build script for the codegen-demo stub.
+//! Build-script-driven Daml codegen for the demo binary.
 //!
-//! The original build.rs invoked `daml::codegen::generator::daml_codegen`
-//! against `resources/rental/archive/rental-0_1_0-sdk_1_18_1-lf_1_14.dar`,
-//! but that fixture is LF 1.14 and the v2 `daml-lf` crate doesn't
-//! load LF1. Phase 7 will check in an LF2-compiled replacement DAR
-//! (with an interface implementation so Phase 4b / 4c codegen has
-//! something to exercise); the body of this build.rs will then
-//! re-invoke `daml_codegen` against that fixture.
+//! Runs `daml::codegen::generator::daml_codegen` over the Phase 7
+//! LF2 fixture DAR (`TestingTypes-3_0_0-sdk_3_4_11-lf_2_1.dar`)
+//! and writes the generated Rust modules to `src/autogen/`. The
+//! demo's `main.rs` includes the entry-point module via `include!`.
+//!
+//! Re-running `cargo build` after the DAR changes regenerates the
+//! module tree; the `cargo:rerun-if-changed` line below tells
+//! cargo to do that.
 
-fn main() {}
+use daml::codegen::generator::{daml_codegen, ModuleOutputMode, RenderMethod};
+
+const DAR_PATH: &str = "../../daml-lf/test_resources/TestingTypes-3_0_0-sdk_3_4_11-lf_2_1.dar";
+const OUTPUT_PATH: &str = "src/autogen";
+
+fn main() {
+    println!("cargo:rerun-if-changed={DAR_PATH}");
+    // Filter codegen to the fixture's own modules. Without this
+    // the renderer would also emit Rust types for every dalf
+    // dependency (daml-stdlib / daml-prim, GHC.* internals, etc.)
+    // — most of which the type renderer doesn't handle gracefully
+    // (recursive types in `CallStack` / `Down` / similar).
+    // The Fuji.Asset module is the only one whose types this
+    // demo exercises; Fuji.Types is excluded to dodge a codegen
+    // quirk around variant-with-record-payload rendering
+    // (`Shape::Circle(crate::...::shape::Circle)` references a
+    // sub-module the renderer doesn't emit).
+    daml_codegen(
+        DAR_PATH,
+        OUTPUT_PATH,
+        // Fuji.Asset is the only module whose types this demo
+        // exercises; DA.Internal.Template is brought in so the
+        // generated `archive_command` / `holding_archive_command`
+        // signatures (which take a `DA.Internal.Template.Archive`)
+        // can be rendered.
+        &["^Fuji.Asset$", "^DA\\.Internal\\.Template$"],
+        RenderMethod::Full,
+        ModuleOutputMode::Combined,
+    )
+    .expect("failed to generate code for Daml archive");
+}

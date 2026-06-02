@@ -105,14 +105,24 @@ pub fn quote_interface_choices(
             let choice_name_lit = choice.name();
             let method_name = format!("{}_{}_command", iface_prefix, choice.name().to_snake_case());
             let method_ident = quote_escaped_ident(method_name);
-            let choice_args = quote_method_arguments(&choice.fields().iter().collect::<Vec<_>>());
-            let supported: Vec<_> =
-                choice.fields().iter().filter(|f| IsRenderable::new(ctx).check_type(f.ty())).collect();
-            let body_fields = quote_choice_field_body(&supported);
+            // v2 Daml expects the choice argument as the bare record
+            // type (e.g. `Reassign { target: Party }`), not wrapped
+            // in an outer `{ arg: ... }` envelope. The convert layer
+            // surfaces the choice's signature as a single `arg`
+            // DamlField whose `ty` is the record type — emit the
+            // method with that record as the parameter and
+            // serialise it directly.
+            let arg_field = choice.fields().first().expect("choice must carry an arg field");
+            let arg_type_tokens = quote_type(ctx, arg_field.ty());
             quote!(
-                pub fn #method_ident(&self, #choice_args) -> DamlExerciseCommand {
-                    let template_id = #iface_path::interface_id();
-                    #body_fields
+                pub fn #method_ident(&self, arg: impl Into<#arg_type_tokens>) -> DamlExerciseCommand {
+                    // Qualified path-call: a trait method without
+                    // `&self` can't be invoked via `Trait::method()`
+                    // because Rust can't infer the `Self` type. The
+                    // `<Self as Iface>::interface_id()` form pins it.
+                    let template_id = <Self as #iface_path>::interface_id();
+                    let params: DamlValue =
+                        <#arg_type_tokens as DamlSerializeInto<DamlValue>>::serialize_into(arg.into());
                     DamlExerciseCommand::new(
                         template_id,
                         self.contract_id().as_str(),
@@ -137,11 +147,11 @@ pub fn quote_interface_choices(
 /// Mirror of `quote_choices::quote_all_choice_fields` — builds the
 /// `params` record from a slice of `DamlField`s. Inlined here to
 /// avoid making the choice-body helpers public.
-fn quote_choice_field_body(fields: &[&DamlField<'_>]) -> TokenStream {
+fn quote_choice_field_body(ctx: &RenderContext<'_>, fields: &[&DamlField<'_>]) -> TokenStream {
     if fields.is_empty() {
         quote!(let params = DamlValue::Record(DamlRecord::new(vec![], None::<DamlIdentifier>));)
     } else {
-        let field_stmts: Vec<_> = fields.iter().map(|f| quote_choice_field(f.name(), f.ty())).collect();
+        let field_stmts: Vec<_> = fields.iter().map(|f| quote_choice_field(ctx, f.name(), f.ty())).collect();
         quote!(
             let mut records = vec![];
             #( #field_stmts )*
@@ -150,9 +160,9 @@ fn quote_choice_field_body(fields: &[&DamlField<'_>]) -> TokenStream {
     }
 }
 
-fn quote_choice_field(field_name: &str, field_type: &DamlType<'_>) -> TokenStream {
+fn quote_choice_field(ctx: &RenderContext<'_>, field_name: &str, field_type: &DamlType<'_>) -> TokenStream {
     let field_ident = quote_escaped_ident(field_name);
-    let ty_tokens = quote_type(field_type);
+    let ty_tokens = quote_type(ctx, field_type);
     let name_lit = quote!(#field_name);
     quote!(
         records.push(DamlRecordField::new(

@@ -159,15 +159,17 @@ pub fn convert_tycon_id<'a>(
     let (data_name, extra_module_path) = split_data_name(&data_name_segments)?;
     let mut full_module_path: Vec<Cow<'a, str>> = module_path.into_iter().map(Cow::Borrowed).collect();
     full_module_path.extend(extra_module_path.iter().copied().map(Cow::Borrowed));
+    // For self-references we know the current package's name and
+    // can attach it so downstream consumers (notably the
+    // `daml-codegen` type renderer) can build a correct
+    // `crate::<pkg>::<module>::<name>` path. Cross-package references
+    // still need an archive lookup the convert layer doesn't yet
+    // do — leave their `package_name` empty for now.
+    let package_name = if pkg_id == package.package_id { Cow::Borrowed(package.name.as_str()) } else { Cow::Borrowed("") };
     Ok(DamlTyConName::Absolute(DamlAbsoluteTyCon::new(
         Cow::Borrowed(data_name),
         Cow::Owned(pkg_id),
-        // Package name resolution requires cross-package archive
-        // context the convert layer doesn't carry yet. 3.5+ can
-        // wire archive-aware lookups; for now an empty name is fine
-        // — package_id is what downstream `DamlArchive::data_by_*`
-        // lookups key on.
-        Cow::Borrowed(""),
+        package_name,
         full_module_path,
     )))
 }

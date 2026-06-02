@@ -14,13 +14,11 @@ rust-version = "1.75"
 publish = false
 
 [dependencies]
-# The stub doesn't pull anything from the daml crate; the deps are
-# kept here as breadcrumbs for the v2 rewrite landing alongside the
-# Phase 7 LF2 fixtures + Phase 8 integration harness.
-daml = { path = "../../daml", features = [ "prelude", "grpc" ] }
+daml = { path = "../../daml", features = [ "prelude", "grpc", "util", "macros" ] }
+tokio = { version = "1.17.0", features = [ "macros", "rt-multi-thread" ] }
+anyhow = "1.0.55"
 
 [build-dependencies]
-# Re-enabled when Phase 7's LF2 DAR fixture lands.
 daml = { path = "../../daml", features = [ "codegen" ] }
 
 [workspace]

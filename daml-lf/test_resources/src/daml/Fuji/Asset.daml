@@ -8,7 +8,12 @@
 
 module Fuji.Asset where
 
-import Fuji.Types (Color)
+-- A small enum reused by the Asset template. Inlined here
+-- (instead of imported from Fuji.Types) so the codegen demo
+-- can scope its module-filter regex to a single Daml module
+-- and not have to render Fuji.Types' variant-with-record types.
+data Color = Red | Green | Blue
+  deriving (Eq, Show)
 
 -- View type for the `Holding` interface.
 data HoldingView = HoldingView
