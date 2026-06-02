@@ -260,6 +260,15 @@ impl<'a> DamlTemplate<'a> {
         &self.implements
     }
 
+    /// Override the list of interfaces this template implements.
+    /// Used by the derive crate to attach interfaces declared on
+    /// `#[DamlTemplate(implements(...))]` without having to thread
+    /// them through the (Expr-heavy under `--features full`)
+    /// `DamlTemplate::new` constructor.
+    pub fn set_implements(&mut self, implements: Vec<DamlTyConName<'a>>) {
+        self.implements = implements;
+    }
+
     pub fn name(&self) -> &str {
         &self.name
     }

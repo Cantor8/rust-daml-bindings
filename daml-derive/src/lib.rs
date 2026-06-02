@@ -345,9 +345,19 @@ use syn::{parse_macro_input, AttributeArgs, DeriveInput, ItemImpl};
 /// }
 /// ```
 ///
-/// The `DamlTemplate` attribute takes two mandatory parameters:
-/// - `package_id` - the id of the Daml package which contains the module which declares this template
-/// - `module_name` - the fully qualified Daml module name within the package
+/// The `DamlTemplate` attribute takes the following parameters:
+/// - `package_name` (preferred) — Daml package-name for v2
+///   addressing. At least one of `package_name` / `package_id`
+///   must be set.
+/// - `package_id` — Daml package-id hash. Required if
+///   `package_name` is not provided.
+/// - `module_name` — the fully qualified Daml module name within
+///   the package.
+/// - `implements` (optional) — comma-separated list of
+///   `<pkg>:<Module.Path>:<Iface>` references to interfaces this
+///   template implements. The codegen emits an
+///   `impl <Iface> for <Foo>ContractId {}` block for each entry,
+///   plus `<iface>_<choice>_command(...)` exercise helpers.
 ///
 /// Each field within the `struct` takes the form `field_name: FieldType` and fields are separated with an (optionally
 /// trailing) comma as usual.  Any [Daml primitive type alias] or a custom [`macro@DamlData`] type may be used.  Note
@@ -406,6 +416,7 @@ pub fn DamlTemplate(attr: proc_macro::TokenStream, input: proc_macro::TokenStrea
         template_info.package_name,
         template_info.package_id.unwrap_or_default(),
         template_info.module_name,
+        template_info.implements.unwrap_or_default(),
     )
 }
 
@@ -779,4 +790,11 @@ struct DamlTemplateInfo {
     #[darling(default)]
     pub package_id: Option<String>,
     pub module_name: String,
+    /// Comma-separated list of `<pkg>:<Module.Path>:<Iface>`
+    /// references to interfaces this template implements. The
+    /// codegen emits an `impl <Iface> for <Foo>ContractId {}`
+    /// block per entry plus the matching
+    /// `<iface>_<choice>_command(...)` exercise helpers.
+    #[darling(default)]
+    pub implements: Option<String>,
 }

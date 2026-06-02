@@ -22,15 +22,36 @@ pub struct AttrTemplate {
     pub package_id: String,
     pub module_path: Vec<String>,
     pub fields: Vec<AttrField>,
+    /// Interface refs, formatted as `pkg:Module.Path:EntityName`
+    /// (see `parse_implements_ref` in `attribute_converter.rs`).
+    /// Codegen turns each into an `impl <Iface> for FooContractId {}`
+    /// block plus the matching exercise-via-interface helpers.
+    pub implements: Vec<AttrInterfaceRef>,
+}
+
+/// Parsed reference to an interface: package-name, module path,
+/// and entity name.
+#[derive(Debug, Clone)]
+pub struct AttrInterfaceRef {
+    pub package_name: String,
+    pub module_path: Vec<String>,
+    pub entity_name: String,
 }
 
 impl AttrTemplate {
-    pub fn new(name: String, package_id: String, module_path: Vec<String>, fields: Vec<AttrField>) -> Self {
+    pub fn new(
+        name: String,
+        package_id: String,
+        module_path: Vec<String>,
+        fields: Vec<AttrField>,
+        implements: Vec<AttrInterfaceRef>,
+    ) -> Self {
         Self {
             name,
             package_id,
             module_path,
             fields,
+            implements,
         }
     }
 }
@@ -78,9 +99,10 @@ pub fn extract_template(
     package_id: String,
     module_path: String,
     fields_named: &FieldsNamed,
+    implements: Vec<AttrInterfaceRef>,
 ) -> AttrTemplate {
     let module_path: Vec<String> = module_path.split('.').map(ToOwned::to_owned).collect();
-    AttrTemplate::new(name, package_id, module_path, extract_struct_data(fields_named))
+    AttrTemplate::new(name, package_id, module_path, extract_struct_data(fields_named), implements)
 }
 
 pub fn extract_variant(name: String, data_enum: &DataEnum, generics: &Generics) -> AttrVariant {

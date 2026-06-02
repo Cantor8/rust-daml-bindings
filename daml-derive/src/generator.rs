@@ -1,6 +1,6 @@
 use crate::convert::{
     data_type_string_from_type, extract_all_choices, extract_enum, extract_record, extract_template, extract_variant,
-    AttrChoice, AttrRecord, AttrTemplate, AttrVariant,
+    AttrChoice, AttrInterfaceRef, AttrRecord, AttrTemplate, AttrVariant,
 };
 use crate::CodeGeneratorParameters;
 use daml_codegen::generator::{ModuleMatcher, RenderMethod};
@@ -46,6 +46,7 @@ pub fn generate_template(
     package_name: Option<String>,
     package_id: String,
     module_name: String,
+    implements: String,
 ) -> proc_macro::TokenStream {
     let struct_name = input.ident.to_string();
     match &input.data {
@@ -53,7 +54,9 @@ pub fn generate_template(
             fields: Fields::Named(fields_named),
             ..
         }) => {
-            let template: AttrTemplate = extract_template(struct_name, package_id.clone(), module_name, fields_named);
+            let implements = parse_implements_list(&implements);
+            let template: AttrTemplate =
+                extract_template(struct_name, package_id.clone(), module_name, fields_named, implements);
             let daml_template = DamlTemplate::from(&template);
             // Build a synthetic single-package archive so the
             // codegen's `ctx.package_name_for` resolves to the user-
@@ -67,6 +70,34 @@ pub fn generate_template(
         },
         _ => panic!("the DamlTemplate attribute may only be applied to a named struct type"),
     }
+}
+
+/// Parse the `implements = "..."` attribute value into structured
+/// `AttrInterfaceRef`s. The expected syntax is a comma-separated
+/// list of `<package-name>:<Module.Path>:<EntityName>` triples.
+/// Whitespace between entries is tolerated.
+///
+/// Examples:
+/// - `"fuji:Fuji.Asset:Holding"`
+/// - `"fuji:Fuji.Asset:Holding, other-pkg:Foo.Bar:OtherIface"`
+fn parse_implements_list(raw: &str) -> Vec<AttrInterfaceRef> {
+    raw.split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(|entry| {
+            let parts: Vec<&str> = entry.split(':').collect();
+            if parts.len() != 3 {
+                panic!(
+                    "#[DamlTemplate(implements = ...)]: expected `<pkg>:<Module.Path>:<Entity>`, got `{entry}`"
+                );
+            }
+            AttrInterfaceRef {
+                package_name: parts[0].to_string(),
+                module_path: parts[1].split('.').map(ToOwned::to_owned).collect(),
+                entity_name: parts[2].to_string(),
+            }
+        })
+        .collect()
 }
 
 /// Build the marker-trait tokens for a Daml interface declared via

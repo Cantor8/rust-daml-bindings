@@ -1,4 +1,4 @@
-use crate::convert::{AttrChoice, AttrEnum, AttrField, AttrRecord, AttrTemplate, AttrType, AttrVariant};
+use crate::convert::{AttrChoice, AttrEnum, AttrField, AttrInterfaceRef, AttrRecord, AttrTemplate, AttrType, AttrVariant};
 use daml_lf::element::{
     DamlAbsoluteTyCon, DamlChoice, DamlEnum, DamlField, DamlKind, DamlLocalTyCon, DamlRecord, DamlTemplate, DamlTyCon,
     DamlTyConName, DamlType, DamlTypeVarWithKind, DamlVariant,
@@ -20,12 +20,41 @@ impl<'a> From<&'a AttrRecord> for DamlRecord<'a> {
 impl<'a> From<&'a AttrTemplate> for DamlTemplate<'a> {
     fn from(attr_template: &'a AttrTemplate) -> Self {
         let fields: Vec<DamlField<'_>> = attr_template.fields.iter().map(DamlField::from).collect();
-        DamlTemplate::new_with_defaults(
+        let implements: Vec<DamlTyConName<'a>> =
+            attr_template.implements.iter().map(DamlTyConName::from).collect();
+        if implements.is_empty() {
+            return DamlTemplate::new_with_defaults(
+                Cow::from(&attr_template.name),
+                Cow::from(&attr_template.package_id),
+                to_vec_str(&attr_template.module_path),
+                fields,
+            );
+        }
+        // We have implements — go through the full constructor so the
+        // codegen sees them. The default constructor would discard
+        // them.
+        let mut tpl = DamlTemplate::new_with_defaults(
             Cow::from(&attr_template.name),
             Cow::from(&attr_template.package_id),
             to_vec_str(&attr_template.module_path),
             fields,
-        )
+        );
+        tpl.set_implements(implements);
+        tpl
+    }
+}
+
+impl<'a> From<&'a AttrInterfaceRef> for DamlTyConName<'a> {
+    fn from(iface: &'a AttrInterfaceRef) -> Self {
+        DamlTyConName::Absolute(DamlAbsoluteTyCon::new(
+            Cow::from(&iface.entity_name),
+            // Derive doesn't know the package-id hash; an empty
+            // package_id is fine because the codegen's
+            // `quote_interface_trait_path` keys on package_name.
+            Cow::Borrowed(""),
+            Cow::from(&iface.package_name),
+            to_vec_str(&iface.module_path),
+        ))
     }
 }
 
