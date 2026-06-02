@@ -7,6 +7,13 @@
 
 Unofficial Rust bindings and tools for [Daml](https://daml.com).
 
+> This repository is a fork of
+> [fujiapple852/rust-daml-bindings](https://github.com/fujiapple852/rust-daml-bindings),
+> which targeted Daml Connect SDK 1.18.1 / Ledger API v1 / Daml-LF 1.x.
+> The fork has been migrated to Canton 3.5.1 / Ledger API v2 / Daml-LF 2.x.
+> See [`CHANGELOG.md`](./CHANGELOG.md) for the full set of breaking changes
+> in the 0.3.0 line.
+
 ## Crates
 
 The project provides the following crates:
