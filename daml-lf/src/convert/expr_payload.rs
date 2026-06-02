@@ -299,11 +299,13 @@ pub fn convert_expr<'a>(
             }))
         },
         ExprSum::Update(update) => Ok(DamlExpr::Update(convert_update(update, package)?)),
-        // InternedExpr references the package's interned_exprs table
-        // (2.dev only); the convert layer doesn't expose it yet.
-        ExprSum::InternedExpr(_)
+        ExprSum::InternedExpr(idx) => {
+            let i = usize::try_from(*idx).map_err(|_| DamlLfConvertError::MissingRequiredField)?;
+            let resolved = package.interned_exprs_raw().get(i).req()?;
+            convert_expr(resolved, package)
+        },
         // 2.dev experimental — out of scope.
-        | ExprSum::Experimental(_) => Err(DamlLfConvertError::MissingRequiredField),
+        ExprSum::Experimental(_) => Err(DamlLfConvertError::MissingRequiredField),
     }
 }
 
@@ -580,9 +582,15 @@ fn convert_builtin_lit<'a>(
                 ProtoRm::Unnecessary => RoundingMode::Unnecessary,
             }))
         },
-        // FailureCategory is the literal argument to FailWithStatus,
-        // which the element-layer DamlPrimLit doesn't model yet.
-        BuiltinLitSum::FailureCategory(_) => Err(DamlLfConvertError::MissingRequiredField),
+        BuiltinLitSum::FailureCategory(code) => {
+            use crate::element::FailureCategory;
+            use crate::lf_protobuf::daml_lf_2::builtin_lit::FailureCategory as ProtoFc;
+            let cat = ProtoFc::from_i32(*code).req()?;
+            Ok(DamlPrimLit::FailureCategory(match cat {
+                ProtoFc::InvalidIndependentOfSystemState => FailureCategory::InvalidIndependentOfSystemState,
+                ProtoFc::InvalidGivenCurrentSystemStateOther => FailureCategory::InvalidGivenCurrentSystemStateOther,
+            }))
+        },
     }
 }
 
@@ -662,16 +670,14 @@ fn convert_builtin_function(code: i32) -> DamlLfConvertResult<DamlBuiltinFunctio
         BuiltinFunctionProto::BignumericToNumeric => DamlBuiltinFunction::BigNumericToNumeric,
         BuiltinFunctionProto::NumericToBignumeric => DamlBuiltinFunction::NumericToBigNumeric,
         BuiltinFunctionProto::BignumericToText => DamlBuiltinFunction::BigNumericToText,
-        // LF2-only builtins that the element layer doesn't model
-        // yet. Adding a new `DamlBuiltinFunction` variant is the fix.
-        BuiltinFunctionProto::FailWithStatus
-        | BuiltinFunctionProto::Keccak256Text
-        | BuiltinFunctionProto::Secp256k1Bool
-        | BuiltinFunctionProto::HexToText
-        | BuiltinFunctionProto::TextToHex
-        | BuiltinFunctionProto::Sha256Hex
-        | BuiltinFunctionProto::Secp256k1WithEcdsaBool
-        | BuiltinFunctionProto::Secp256k1ValidateKey
-        | BuiltinFunctionProto::TypeRepTyconName => return Err(DamlLfConvertError::MissingRequiredField),
+        BuiltinFunctionProto::FailWithStatus => DamlBuiltinFunction::FailWithStatus,
+        BuiltinFunctionProto::Keccak256Text => DamlBuiltinFunction::Keccak256Text,
+        BuiltinFunctionProto::Secp256k1Bool => DamlBuiltinFunction::Secp256k1Bool,
+        BuiltinFunctionProto::Secp256k1WithEcdsaBool => DamlBuiltinFunction::Secp256k1WithEcdsaBool,
+        BuiltinFunctionProto::Secp256k1ValidateKey => DamlBuiltinFunction::Secp256k1ValidateKey,
+        BuiltinFunctionProto::HexToText => DamlBuiltinFunction::HexToText,
+        BuiltinFunctionProto::TextToHex => DamlBuiltinFunction::TextToHex,
+        BuiltinFunctionProto::Sha256Hex => DamlBuiltinFunction::Sha256Hex,
+        BuiltinFunctionProto::TypeRepTyconName => DamlBuiltinFunction::TypeRepTyconName,
     })
 }

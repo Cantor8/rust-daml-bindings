@@ -24,6 +24,7 @@ pub struct DamlPackagePayload<'a> {
     interned_dotted_names: Vec<&'a [i32]>,
     interned_types: &'a [daml_lf_2::Type],
     interned_kinds: &'a [daml_lf_2::Kind],
+    interned_exprs: &'a [daml_lf_2::Expr],
     pub modules: Vec<DamlModulePayload<'a>>,
 }
 
@@ -40,6 +41,13 @@ impl<'a> DamlPackagePayload<'a> {
     /// empty in 2.1.
     pub fn interned_kinds_raw(&self) -> &'a [daml_lf_2::Kind] {
         self.interned_kinds
+    }
+
+    /// Raw LF2 expression-interning table — referenced by
+    /// `Expr::Sum::InternedExpr(i)`. Only populated in LF 2.dev;
+    /// empty in 2.1.
+    pub fn interned_exprs_raw(&self) -> &'a [daml_lf_2::Expr] {
+        self.interned_exprs
     }
 }
 
@@ -69,6 +77,7 @@ impl<'a> TryFrom<&'a DamlLfArchive> for DamlPackagePayload<'a> {
             package.interned_dotted_names.iter().map(|dn| dn.segments_interned_str.as_slice()).collect();
         let interned_types = package.interned_types.as_slice();
         let interned_kinds = package.interned_kinds.as_slice();
+        let interned_exprs = package.interned_exprs.as_slice();
         let metadata = package.metadata.as_ref().req()?;
         // Package metadata is required in LF2 (LF1 had it gated behind
         // a feature flag); resolve name + version directly.
@@ -88,6 +97,7 @@ impl<'a> TryFrom<&'a DamlLfArchive> for DamlPackagePayload<'a> {
             interned_dotted_names,
             interned_types,
             interned_kinds,
+            interned_exprs,
             modules,
         })
     }

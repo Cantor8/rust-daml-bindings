@@ -398,6 +398,25 @@ pub enum DamlBuiltinFunction {
     Less,
     GreaterEq,
     Greater,
+    // LF2-only additions:
+    /// `failWithStatus : forall r. FailureCategory -> Text -> Text -> TextMap Text -> r`.
+    FailWithStatus,
+    /// `keccak256 : Text -> Text` (returns hex-encoded digest).
+    Keccak256Text,
+    /// Legacy alias kept for the older Secp256k1 binding.
+    Secp256k1Bool,
+    /// `secp256k1WithEcdsa : Text -> Text -> Text -> Bool`.
+    Secp256k1WithEcdsaBool,
+    /// `secp256k1ValidateKey : Text -> Bool` (from LF 2.3+).
+    Secp256k1ValidateKey,
+    /// `hexToText : Text -> Optional Text` — strict hex decode.
+    HexToText,
+    /// `textToHex : Text -> Text` — hex encode.
+    TextToHex,
+    /// `sha256Hex : Text -> Text` — sha256 returning hex.
+    Sha256Hex,
+    /// 2.dev — extract the tycon name from a `TypeRep`.
+    TypeRepTyconName,
 }
 
 impl<'a> DamlVisitableElement<'a> for DamlBuiltinFunction {
@@ -444,6 +463,11 @@ pub enum DamlPrimLit<'a> {
     /// denote the scale of the decimal number.
     Numeric(Cow<'a, str>),
     RoundingMode(RoundingMode),
+    /// LF2 `FailureCategory` literal — the first argument to
+    /// `failWithStatus`. Two values today, both defined by LF2:
+    /// `InvalidIndependentOfSystemState` /
+    /// `InvalidGivenCurrentSystemStateOther`.
+    FailureCategory(FailureCategory),
 }
 
 impl<'a> DamlVisitableElement<'a> for DamlPrimLit<'a> {
@@ -464,6 +488,13 @@ pub enum RoundingMode {
     HalfDown,
     HalfEven,
     Unnecessary,
+}
+
+/// LF2 `FailureCategory` literal — argument to `failWithStatus`.
+#[derive(Debug, Serialize, Copy, Clone, ToStatic)]
+pub enum FailureCategory {
+    InvalidIndependentOfSystemState,
+    InvalidGivenCurrentSystemStateOther,
 }
 
 impl<'a> DamlVisitableElement<'a> for RoundingMode {
