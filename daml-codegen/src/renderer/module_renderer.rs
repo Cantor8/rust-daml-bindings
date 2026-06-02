@@ -19,12 +19,19 @@ pub fn quote_module_tree(
 }
 
 /// Inner traversal that additionally carries
-/// `ancestor_real_included` — whether some non-synthetic ancestor
-/// of the current module matched the module matcher. Synthetic
-/// modules (created by the convert layer to host
+/// `ancestor_real_included` — whether the *nearest* non-synthetic
+/// ancestor of the current module matched the module matcher.
+/// Synthetic modules (created by the convert layer to host
 /// variant-record-payload records) render their contents under
 /// that ancestor's inclusion, not their own path (which the
 /// matcher was never given).
+///
+/// The signal is *not* transitive past non-synthetic boundaries:
+/// passing through a real-but-unmatched module resets it. Without
+/// this, `ModuleMatcher`'s `matches("")` special case (the root
+/// module always matches) would cascade down through every
+/// intermediate and synthetic descendants would render even when
+/// their real LF ancestor was filtered out.
 fn quote_module_tree_inner(
     ctx: &RenderContext<'_>,
     name: &str,
@@ -38,12 +45,15 @@ fn quote_module_tree_inner(
     // module was included; real modules render data only when they
     // themselves were matched.
     let render_data = self_real_included || (module.is_synthetic() && ancestor_real_included);
-    // Children inherit the nearest *real* ancestor's inclusion; a
-    // synthetic intermediate doesn't reset that signal.
+    // Children inherit the *current* non-synthetic match state, not
+    // the union with the ancestor state — passing through a real
+    // module that wasn't matched resets the "nearest real ancestor
+    // is included" signal. Synthetic intermediates pass the signal
+    // through unchanged.
     let child_ancestor_included = if module.is_synthetic() {
         ancestor_real_included
     } else {
-        self_real_included || ancestor_real_included
+        self_real_included
     };
     let all_children: Vec<_> = module
         .child_modules()
