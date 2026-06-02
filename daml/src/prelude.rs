@@ -2,6 +2,7 @@
 pub use daml_derive::DamlChoices;
 pub use daml_derive::DamlData;
 pub use daml_derive::DamlEnum;
+pub use daml_derive::DamlInterface;
 pub use daml_derive::DamlTemplate;
 pub use daml_derive::DamlVariant;
 pub use daml_grpc::data::command::{DamlCommand, DamlCreateCommand, DamlExerciseCommand};
