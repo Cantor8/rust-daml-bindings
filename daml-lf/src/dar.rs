@@ -226,7 +226,6 @@ impl DarFile {
 
 trait ZipArchiveEx<T> {
     fn paths(&mut self) -> Vec<PathBuf>;
-    fn contains(&mut self, path: &str) -> bool;
 }
 
 impl ZipArchiveEx<File> for ZipArchive<File> {
@@ -240,7 +239,4 @@ impl ZipArchiveEx<File> for ZipArchive<File> {
         paths
     }
 
-    fn contains(&mut self, path: &str) -> bool {
-        self.by_name(path).is_ok()
-    }
 }

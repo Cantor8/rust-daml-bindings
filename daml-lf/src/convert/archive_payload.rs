@@ -32,6 +32,9 @@ impl<'a> DamlArchivePayload<'a> {
         }
     }
 
+    /// Look up a package by id; useful when 2.dev `PackageImportId`
+    /// resolution lands (currently unused but inexpensive to keep).
+    #[allow(dead_code)]
     pub fn package_by_id(&self, package_id: &str) -> Option<&DamlPackagePayload<'a>> {
         self.packages.get(package_id)
     }

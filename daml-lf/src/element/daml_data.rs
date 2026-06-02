@@ -81,6 +81,7 @@ impl<'a> DamlData<'a> {
     ///
     /// This is a clone of a `Cow<str>` which is cheap for the borrowed case used within the library.
     #[doc(hidden)]
+    #[allow(dead_code)]
     pub(crate) fn name_clone(&self) -> Cow<'a, str> {
         match self {
             DamlData::Record(record) => record.name.clone(),

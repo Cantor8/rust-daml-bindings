@@ -17,7 +17,6 @@ use crate::service::{
     DamlCommandInspectionService, DamlIdentityProviderConfigService, DamlPackageManagementService,
     DamlPartyManagementService, DamlUserManagementService,
 };
-#[cfg(feature = "sandbox")]
 use crate::service::DamlTimeService;
 
 const DEFAULT_TIMEOUT_SECS: u64 = 5;
@@ -305,7 +304,11 @@ impl DamlGrpcClient {
     /// participant is configured for static time (see the
     /// `experimental.static_time` flag in
     /// `VersionService::GetLedgerApiVersion`).
-    #[cfg(feature = "sandbox")]
+    ///
+    /// v2 dropped the `sandbox` feature gate — TimeService is part
+    /// of every Canton participant's `testing` API; static-vs-
+    /// wallclock is a server-side config switch, not a client
+    /// build flag.
     pub fn time_service(&self) -> DamlTimeService<'_> {
         DamlTimeService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }

@@ -1,7 +1,7 @@
 use crate::data::DamlError;
 use crate::nat::{Nat, Nat10};
 use bigdecimal::BigDecimal;
-use chrono::{Date, DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use itertools::Itertools;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
@@ -34,7 +34,11 @@ pub type DamlBool = bool;
 pub type DamlUnit = ();
 
 /// Type alias for a Daml `Date`.
-pub type DamlDate = Date<Utc>;
+///
+/// Modelled as a [`chrono::NaiveDate`] — Daml's `Date` carries no
+/// timezone (it's a calendar date), so the v0.3 bindings dropped
+/// the deprecated `chrono::Date<Utc>` alias from v0.2.
+pub type DamlDate = NaiveDate;
 
 /// Type alias for a Daml `List a`.
 pub type DamlList<T> = Vec<T>;

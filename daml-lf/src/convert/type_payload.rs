@@ -7,7 +7,7 @@ use crate::convert::package_payload::DamlPackagePayload;
 use crate::convert::typevar_payload::convert_typevar_with_kind;
 use crate::convert::util::Required;
 use crate::element::{
-    DamlAbsoluteTyCon, DamlForall, DamlKind, DamlStruct, DamlSyn, DamlTyCon, DamlTyConName, DamlType, DamlTypeSynName,
+    DamlAbsoluteTyCon, DamlForall, DamlStruct, DamlSyn, DamlTyCon, DamlTyConName, DamlType, DamlTypeSynName,
     DamlTypeVarWithKind, DamlVar,
 };
 use crate::error::{DamlLfConvertError, DamlLfConvertResult};
@@ -120,18 +120,15 @@ fn convert_builtin<'a>(
         BuiltinType::Bignumeric => DamlType::Bignumeric,
         BuiltinType::FailureCategory => DamlType::FailureCategory,
         BuiltinType::RoundingMode => DamlType::RoundingMode,
-        // FailureCategory was added to LF2 after the current
-        // element-layer DamlType enum was last updated; surfaces as
-        // an error for now. Add a DamlType::FailureCategory variant
-        // when a use case appears.
-        BuiltinType::FailureCategory => return Err(DamlLfConvertError::MissingRequiredField),
     })
 }
 
 /// Convert an LF2 `r#type::Con` (a possibly-applied type constructor)
 /// into a [`DamlTyCon`]: the constructor name plus its type
 /// arguments. The result is the same shape produced by the matching
-/// arm in [`convert_type`].
+/// arm in [`convert_type`]. Used by the `convert_expr` path under
+/// `--features full`.
+#[allow(dead_code)]
 pub fn convert_type_con<'a>(
     proto: &daml_lf_2::r#type::Con,
     package: &'a DamlPackagePayload<'a>,

@@ -72,7 +72,7 @@
 /// | `t`    | text        | `&str`                    | [`DamlValue::Text`]       |
 /// | `s`    | timestamp   | `&DateTime<Utc>`          | [`DamlValue::Timestamp`]  |
 /// | `b`    | boolean     | `&bool`                   | [`DamlValue::Bool`]       |
-/// | `d`    | date        | `&Date<Utc>`              | [`DamlValue::Date`]       |
+/// | `d`    | date        | `&NaiveDate`              | [`DamlValue::Date`]       |
 /// | `r`    | record      | `&DamlRecord`             | [`DamlValue::Record`]     |
 /// | `l`    | list        | `&Vec<DamlValue>`         | [`DamlValue::List`]       |
 /// | `v`    | variant     | `&DamlVariant`            | [`DamlValue::Variant`]    |

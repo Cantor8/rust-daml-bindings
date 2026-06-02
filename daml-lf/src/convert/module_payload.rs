@@ -76,7 +76,9 @@ impl<'a> DamlModulePayload<'a> {
         &self.module.exceptions
     }
 
-    /// Slice of the value definitions in this module.
+    /// Slice of the value definitions in this module. Consumed by
+    /// `build_values` under `--features full`.
+    #[allow(dead_code)]
     pub fn values(&self) -> &'a [daml_lf_2::DefValue] {
         &self.module.values
     }
