@@ -50,3 +50,34 @@ impl From<DamlIdentityProviderConfig> for IdentityProviderConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample() -> DamlIdentityProviderConfig {
+        DamlIdentityProviderConfig {
+            identity_provider_id: "idp-test".to_owned(),
+            is_deactivated: true,
+            issuer: "https://issuer.example".to_owned(),
+            jwks_url: "https://example.invalid/jwks".to_owned(),
+            audience: "test-audience".to_owned(),
+        }
+    }
+
+    #[test]
+    fn roundtrip_dto_proto_dto() {
+        let dto = sample();
+        let proto: IdentityProviderConfig = dto.clone().into();
+        let back: DamlIdentityProviderConfig = proto.into();
+        assert_eq!(back, dto);
+    }
+
+    #[test]
+    fn roundtrip_default_is_lossless() {
+        let dto = DamlIdentityProviderConfig::default();
+        let proto: IdentityProviderConfig = dto.clone().into();
+        let back: DamlIdentityProviderConfig = proto.into();
+        assert_eq!(back, dto);
+    }
+}

@@ -52,3 +52,31 @@ pub enum DamlLedgerOffsetType {
     /// Terminate after the named offset (inclusive on the wire).
     Bounded(DamlLedgerOffset),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn begin_sentinel_round_trips() {
+        // BEGIN must equal new(0), be `is_begin`, and survive an
+        // i64 round-trip.
+        assert_eq!(DamlLedgerOffset::BEGIN, DamlLedgerOffset::new(0));
+        assert!(DamlLedgerOffset::BEGIN.is_begin());
+        let raw: i64 = DamlLedgerOffset::BEGIN.into();
+        assert_eq!(raw, 0);
+        assert_eq!(DamlLedgerOffset::from(raw), DamlLedgerOffset::BEGIN);
+    }
+
+    #[test]
+    fn arbitrary_offset_round_trips() {
+        // A non-BEGIN offset must survive `into-from` and not be
+        // confused with BEGIN.
+        let off = DamlLedgerOffset::new(424_242);
+        let raw: i64 = off.into();
+        assert_eq!(raw, 424_242);
+        let back = DamlLedgerOffset::from(raw);
+        assert_eq!(back, off);
+        assert!(!back.is_begin());
+    }
+}

@@ -77,3 +77,71 @@ impl From<DamlObjectMeta> for ObjectMeta {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_meta() -> DamlObjectMeta {
+        DamlObjectMeta {
+            resource_version: "v42".to_owned(),
+            annotations: [("k".to_owned(), "v".to_owned()), ("other".to_owned(), "value".to_owned())]
+                .into_iter()
+                .collect(),
+        }
+    }
+
+    fn sample_party() -> DamlPartyDetails {
+        DamlPartyDetails {
+            party: "Alice::participant".to_owned(),
+            is_local: true,
+            local_metadata: Some(sample_meta()),
+            identity_provider_id: "idp-1".to_owned(),
+        }
+    }
+
+    #[test]
+    fn party_details_roundtrip() {
+        let dto = sample_party();
+        let proto: PartyDetails = dto.clone().into();
+        let back: DamlPartyDetails = proto.into();
+        assert_eq!(back, dto);
+    }
+
+    #[test]
+    fn party_details_default_roundtrip() {
+        let dto = DamlPartyDetails::default();
+        let proto: PartyDetails = dto.clone().into();
+        let back: DamlPartyDetails = proto.into();
+        assert_eq!(back, dto);
+    }
+
+    #[test]
+    fn party_details_without_metadata_roundtrip() {
+        let dto = DamlPartyDetails {
+            party: "Bob".to_owned(),
+            is_local: false,
+            local_metadata: None,
+            identity_provider_id: String::new(),
+        };
+        let proto: PartyDetails = dto.clone().into();
+        let back: DamlPartyDetails = proto.into();
+        assert_eq!(back, dto);
+    }
+
+    #[test]
+    fn object_meta_roundtrip() {
+        let dto = sample_meta();
+        let proto: ObjectMeta = dto.clone().into();
+        let back: DamlObjectMeta = proto.into();
+        assert_eq!(back, dto);
+    }
+
+    #[test]
+    fn object_meta_empty_roundtrip() {
+        let dto = DamlObjectMeta::default();
+        let proto: ObjectMeta = dto.clone().into();
+        let back: DamlObjectMeta = proto.into();
+        assert_eq!(back, dto);
+    }
+}

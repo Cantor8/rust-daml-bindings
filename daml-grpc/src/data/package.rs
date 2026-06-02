@@ -389,3 +389,97 @@ pub struct DamlUpdateVettedPackagesOutcome {
     pub past_vetted_packages: Option<DamlVettedPackages>,
     pub new_vetted_packages: Option<DamlVettedPackages>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Each DamlVettingChange must map to a distinct proto enum
+    /// value. Collisions would silently downgrade a vet operation
+    /// (e.g. `VetAllPackages` -> `Unspecified` would defer to the
+    /// server default unintentionally).
+    #[test]
+    fn vetting_change_variants_are_injective() {
+        let unspecified: VettingChange = DamlVettingChange::Unspecified.into();
+        let vet: VettingChange = DamlVettingChange::VetAllPackages.into();
+        let dont_vet: VettingChange = DamlVettingChange::DontVetAnyPackages.into();
+        assert_ne!(unspecified as i32, vet as i32);
+        assert_ne!(unspecified as i32, dont_vet as i32);
+        assert_ne!(vet as i32, dont_vet as i32);
+    }
+
+    #[test]
+    fn force_flag_variants_are_injective() {
+        let incompatible: i32 = DamlUpdateVettedPackagesForceFlag::AllowVetIncompatibleUpgrades.into();
+        let unvetted: i32 = DamlUpdateVettedPackagesForceFlag::AllowUnvettedDependencies.into();
+        assert_ne!(incompatible, unvetted);
+    }
+
+    /// `Prior(7)` vs `NoPrior` must remain distinguishable on the
+    /// wire — confusing them with each other would either reject
+    /// every update (NoPrior on a participant with prior history)
+    /// or accept any update (Prior matched against the wrong
+    /// serial).
+    #[test]
+    fn prior_topology_serial_variants_distinct() {
+        let prior: PriorTopologySerial = DamlPriorTopologySerial::Prior(7).into();
+        let no_prior: PriorTopologySerial = DamlPriorTopologySerial::NoPrior.into();
+        match prior.serial {
+            Some(Serial::Prior(v)) => assert_eq!(v, 7),
+            other => panic!("Prior(7) lost on the way to proto: {other:?}"),
+        }
+        match no_prior.serial {
+            Some(Serial::NoPrior(_)) => {}
+            other => panic!("NoPrior lost on the way to proto: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn vetted_packages_ref_roundtrips_to_proto() {
+        let dto = DamlVettedPackagesRef {
+            package_id: "abc123".to_owned(),
+            package_name: "my-pkg".to_owned(),
+            package_version: "1.0.0".to_owned(),
+        };
+        let proto: VettedPackagesRef = dto.clone().into();
+        assert_eq!(proto.package_id, dto.package_id);
+        assert_eq!(proto.package_name, dto.package_name);
+        assert_eq!(proto.package_version, dto.package_version);
+    }
+
+    #[test]
+    fn vetted_packages_change_vet_serialises() {
+        use chrono::TimeZone;
+
+        let from = chrono::Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap();
+        let until = chrono::Utc.with_ymd_and_hms(2027, 1, 1, 0, 0, 0).unwrap();
+        let dto = DamlVettedPackagesChange::Vet {
+            packages: vec![DamlVettedPackagesRef {
+                package_id: "abc".to_owned(),
+                package_name: "p".to_owned(),
+                package_version: "0.1.0".to_owned(),
+            }],
+            new_valid_from_inclusive: Some(from),
+            new_valid_until_exclusive: Some(until),
+        };
+        let proto: VettedPackagesChange = dto.try_into().expect("convert");
+        match proto.operation {
+            Some(Operation::Vet(v)) => {
+                assert_eq!(v.packages.len(), 1);
+                assert_eq!(v.packages[0].package_id, "abc");
+                assert!(v.new_valid_from_inclusive.is_some(), "lower bound must be set");
+                assert!(v.new_valid_until_exclusive.is_some(), "upper bound must be set");
+            }
+            other => panic!("Vet variant lost: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn vetted_packages_change_unvet_serialises() {
+        let dto = DamlVettedPackagesChange::Unvet {
+            packages: vec![DamlVettedPackagesRef::default()],
+        };
+        let proto: VettedPackagesChange = dto.try_into().expect("convert");
+        assert!(matches!(proto.operation, Some(Operation::Unvet(_))));
+    }
+}

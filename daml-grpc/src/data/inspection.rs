@@ -183,3 +183,57 @@ impl TryFrom<CommandStatus> for DamlCommandStatus {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_command_state_round_trips() {
+        // No two DamlCommandState variants may collide in their
+        // proto representation — a silent fall-through to a
+        // neighbour would mis-classify a Failed command as
+        // Succeeded (or vice versa). Forces the From impls to stay
+        // injective across the enum.
+        let cases = [
+            DamlCommandState::Unspecified,
+            DamlCommandState::Pending,
+            DamlCommandState::Succeeded,
+            DamlCommandState::Failed,
+        ];
+        for original in cases {
+            let proto: CommandState = original.into();
+            let back = DamlCommandState::from(proto);
+            assert_eq!(back, original);
+        }
+    }
+
+    #[test]
+    fn timing_preserves_duration_in_ms() {
+        let proto = Timing {
+            description: "validation".to_owned(),
+            duration_ms: 1_500,
+        };
+        let dto: DamlTiming = proto.into();
+        assert_eq!(dto.description, "validation");
+        assert_eq!(dto.duration, Duration::from_millis(1_500));
+    }
+
+    #[test]
+    fn request_statistics_preserves_counts() {
+        let proto = RequestStatistics {
+            envelopes: 7,
+            request_size: 1024,
+            recipients: 3,
+        };
+        let dto: DamlRequestStatistics = proto.into();
+        assert_eq!(
+            dto,
+            DamlRequestStatistics {
+                envelopes: 7,
+                request_size: 1024,
+                recipients: 3,
+            },
+        );
+    }
+}

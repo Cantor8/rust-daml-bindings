@@ -124,3 +124,72 @@ impl TryFrom<Right> for DamlUserRight {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_user() -> DamlUser {
+        DamlUser {
+            id: "user-x".to_owned(),
+            primary_party: "Alice::participant".to_owned(),
+            is_deactivated: true,
+            metadata: Some(DamlObjectMeta {
+                resource_version: "v7".to_owned(),
+                annotations: [("k".to_owned(), "v".to_owned())].into_iter().collect(),
+            }),
+            identity_provider_id: "idp-1".to_owned(),
+            primary_party_authentication: true,
+        }
+    }
+
+    #[test]
+    fn user_roundtrip() {
+        let dto = sample_user();
+        let proto: User = dto.clone().into();
+        let back: DamlUser = proto.into();
+        assert_eq!(back, dto);
+    }
+
+    #[test]
+    fn user_default_roundtrip() {
+        let dto = DamlUser::default();
+        let proto: User = dto.clone().into();
+        let back: DamlUser = proto.into();
+        assert_eq!(back, dto);
+    }
+
+    /// Every `DamlUserRight` variant must round-trip cleanly: a v2
+    /// proto with a missing kind would be a wire violation and is
+    /// covered separately in [`right_with_missing_kind_errors`].
+    /// Critically the participant-scoped (`AnyParty`) and
+    /// IdP-scoped (`IdentityProviderAdmin`) variants must not get
+    /// silently confused with `ParticipantAdmin` — the convert
+    /// layer does *not* fall through to a default.
+    #[test]
+    fn every_right_variant_roundtrips() {
+        let cases = [
+            DamlUserRight::ParticipantAdmin,
+            DamlUserRight::CanActAs("Alice".to_owned()),
+            DamlUserRight::CanReadAs("Bob".to_owned()),
+            DamlUserRight::CanExecuteAs("Charlie".to_owned()),
+            DamlUserRight::IdentityProviderAdmin,
+            DamlUserRight::CanReadAsAnyParty,
+            DamlUserRight::CanExecuteAsAnyParty,
+        ];
+        for original in cases {
+            let proto: Right = original.clone().into();
+            let back = DamlUserRight::try_from(proto).expect("known kinds should round-trip");
+            assert_eq!(back, original, "right variant did not round-trip");
+        }
+    }
+
+    #[test]
+    fn right_with_missing_kind_errors() {
+        let proto = Right {
+            kind: None,
+        };
+        let result = DamlUserRight::try_from(proto);
+        assert!(matches!(result, Err(DamlError::MissingRequiredField)));
+    }
+}
