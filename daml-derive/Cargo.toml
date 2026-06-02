@@ -27,3 +27,10 @@ itertools = "0.10.3"
 # its own source files. A round-trip suite around the v2 attribute
 # macros (#[DamlTemplate] + #[DamlInterface]) is a planned
 # follow-up.
+
+# Pulled in for doctests so `use daml::prelude::*;` resolves. The
+# circularity (daml → daml-derive → daml) is OK because dev-deps
+# only affect the test build and proc-macro crates compile
+# independently of their dev-dep graph.
+[dev-dependencies]
+daml = { path = "../daml", features = [ "prelude", "derive" ] }

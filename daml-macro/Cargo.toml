@@ -17,4 +17,4 @@ chrono = "0.4.19"
 bigdecimal = "0.3.0"
 
 [dev-dependencies]
-daml = { path = "../daml", features = [ "grpc" ] }
+daml = { path = "../daml", features = [ "grpc", "macros" ] }

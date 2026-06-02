@@ -204,14 +204,14 @@
 //! ```no_run
 //! # use daml::prelude::*;
 //! # use std::convert::TryInto;
-//! # #[DamlTemplate(package_id = r"", module_name = "Fuji.PingPong")]
+//! # #[DamlTemplate(package_name = "MyApp", module_name = "Fuji.PingPong")]
 //! # pub struct Ping {
 //! #    pub sender: DamlParty,
 //! #    pub receiver: DamlParty,
 //! #    pub count: DamlInt64,
 //! # }
 //! # fn main() -> DamlResult<()> {
-//! # let created_event = DamlCreatedEvent::new("", "", DamlIdentifier::new("", "", ""), None, DamlRecord::new(vec![], None::<DamlIdentifier>), vec![], vec![], vec![], "");
+//! # let created_event: DamlCreatedEvent = unimplemented!("delivered by the participant");
 //! let ping_contract: PingContract = created_event.try_into()?;
 //! # Ok::<(), DamlError>(())
 //! }
@@ -224,14 +224,14 @@
 //! ```no_run
 //! # use daml::prelude::*;
 //! # use std::convert::TryInto;
-//! # #[DamlTemplate(package_id = r"", module_name = "Fuji.PingPong")]
+//! # #[DamlTemplate(package_name = "MyApp", module_name = "Fuji.PingPong")]
 //! # pub struct Ping {
 //! #    pub sender: DamlParty,
 //! #    pub receiver: DamlParty,
 //! #    pub count: DamlInt64,
 //! # }
 //! # fn main() -> DamlResult<()> {
-//! # let created_event = DamlCreatedEvent::new("", "", DamlIdentifier::new("", "", ""), None, DamlRecord::new(vec![], None::<DamlIdentifier>), vec![], vec![], vec![], "");
+//! # let created_event: DamlCreatedEvent = unimplemented!("delivered by the participant");
 //! # let ping_contract: PingContract = created_event.try_into()?;
 //! assert_eq!("Alice", ping_contract.data().sender);
 //! assert_eq!("Bob", ping_contract.data().receiver);
@@ -249,7 +249,7 @@
 //! ```no_run
 //! # use daml::prelude::*;
 //! # use std::convert::TryInto;
-//! # #[DamlTemplate(package_id = r"", module_name = "Fuji.PingPong")]
+//! # #[DamlTemplate(package_name = "MyApp", module_name = "Fuji.PingPong")]
 //! # pub struct Ping {
 //! #    pub sender: DamlParty,
 //! #    pub receiver: DamlParty,
@@ -261,7 +261,7 @@
 //! #     fn reset_count(&self, new_count: DamlInt64) {}
 //! # }
 //! # fn main() -> DamlResult<()> {
-//! # let created_event = DamlCreatedEvent::new("", "", DamlIdentifier::new("", "", ""), None, DamlRecord::new(vec![], None::<DamlIdentifier>), vec![], vec![], vec![], "");
+//! # let created_event: DamlCreatedEvent = unimplemented!("delivered by the participant");
 //! # let ping_contract: PingContract = created_event.try_into()?;
 //! let exercise_command = ping_contract.id().reset_count_command(5);
 //! # Ok::<(), DamlError>(())
