@@ -16,7 +16,7 @@ proc-macro = true
 [dependencies]
 daml-codegen = { version = "0.3.0", path = "../daml-codegen" }
 daml-lf = { version = "0.3.0", path = "../daml-lf" }
-syn = { version = "1.0.86", features = ["full"] }
+syn = { version = "2.0.117", features = ["full"] }
 quote = "1.0.15"
 proc-macro2 = "1.0.36"
 darling = "0.13.1"
