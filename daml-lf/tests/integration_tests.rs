@@ -147,6 +147,40 @@ fn test_cross_package_name_resolution() -> DamlLfResult<()> {
 }
 
 #[test]
+fn test_variant_record_payload_lives_in_synthetic_child() -> DamlLfResult<()> {
+    // `data Shape = Circle { radius : Decimal } | Rectangle { ... } | Polygon [Decimal]`
+    // in Fuji.Types compiles to an LF variant `Shape` plus two
+    // synthetic payload records whose dotted names are
+    // `Shape.Circle` and `Shape.Rectangle`. The convert layer
+    // routes those records into a synthetic child module so a
+    // lookup against `Fuji.Types.Shape::Circle` (the path that
+    // `convert_tycon_id` produces for the variant's `Circle`
+    // field) actually finds the record; before this change the
+    // payload records were stored under `Fuji.Types::Circle` and
+    // the cross-reference dangled.
+    let dar = DarFile::from_file(FIXTURE_DAR)?;
+    dar.apply(|archive| {
+        let pkg_id = archive.main_package_id();
+        // The payload records live in the synthetic Shape child.
+        let circle = archive.data(pkg_id, &["Fuji", "Types", "Shape"], "Circle");
+        assert!(circle.is_some(), "Fuji.Types.Shape::Circle should resolve");
+        let rectangle = archive.data(pkg_id, &["Fuji", "Types", "Shape"], "Rectangle");
+        assert!(rectangle.is_some(), "Fuji.Types.Shape::Rectangle should resolve");
+        // And not at the parent module's top level (would be the
+        // pre-fix behaviour).
+        assert!(
+            archive.data(pkg_id, &["Fuji", "Types"], "Circle").is_none(),
+            "Circle should not also be at Fuji.Types::Circle",
+        );
+        // The variant `Shape` itself still lives at the parent
+        // module's top level.
+        let shape = archive.data(pkg_id, &["Fuji", "Types"], "Shape");
+        assert!(shape.is_some(), "Fuji.Types::Shape (the variant) should resolve");
+    })?;
+    Ok(())
+}
+
+#[test]
 fn test_visitor_finds_interface_and_template() -> DamlLfResult<()> {
     use daml_lf::element::{DamlInterface, DamlTemplate};
 

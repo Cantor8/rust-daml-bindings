@@ -139,7 +139,7 @@ fn insert_module<'a>(
         cursor = cursor.child_module_or_new(segment);
     }
     let leaf_path = path.iter().map(|s| Cow::Borrowed(*s)).collect::<Vec<_>>();
-    let data_types = build_data_types(module, package, &leaf_path)?;
+    let (direct_data, nested_data) = build_data_types(module, package, &leaf_path)?;
     let synonyms = build_synonyms(module, package, &leaf_path)?;
     let interfaces = build_interfaces(module, package, &leaf_path)?;
     let exceptions = build_exceptions(module, package, &leaf_path)?;
@@ -153,13 +153,28 @@ fn insert_module<'a>(
             module.flags.dont_disclose_non_consuming_choices_to_observers,
         ),
         synonyms,
-        data_types,
+        direct_data,
         interfaces,
         exceptions,
         #[cfg(feature = "full")]
         values,
     );
     cursor.take_from(leaf);
+    // Re-route variant-record-payload data (LF2 emits these as
+    // dotted-name data types like `Shape.Circle`) into synthetic
+    // child modules so the payload records sit at the same module
+    // path that `convert_tycon_id` produces for references to them.
+    // Without this, `data_by_tycon_name` lookups for cross-record
+    // references inside a variant would miss the payload data and
+    // codegen would emit `crate::...::shape::Circle` paths backed
+    // by no actual sub-module.
+    for (extra_path, key, data) in nested_data {
+        let mut nested_cursor: &mut DamlModule<'a> = cursor;
+        for segment in extra_path {
+            nested_cursor = nested_cursor.synthetic_child_or_new(segment);
+        }
+        nested_cursor.insert_data_type(key, data);
+    }
     Ok(())
 }
 
@@ -239,36 +254,61 @@ fn build_synonyms<'a>(
 /// are filtered out — the actual interface definitions live on the
 /// module's `interfaces` list and 3.6 will wire those into
 /// `element/`.
+/// Output of [`build_data_types`]: data that goes straight into
+/// the LF module's own bucket, plus data routed into synthetic
+/// child modules to mirror dotted-name prefixes (the
+/// variant-record-payload case; see the call site in
+/// [`insert_module`]).
+type BuiltDataTypes<'a> = (HashMap<Cow<'a, str>, DamlData<'a>>, Vec<(Vec<&'a str>, Cow<'a, str>, DamlData<'a>)>);
+
 fn build_data_types<'a>(
     module: &DamlModulePayload<'a>,
     package: &'a DamlPackagePayload<'a>,
     module_path: &[Cow<'a, str>],
-) -> DamlLfResult<HashMap<Cow<'a, str>, DamlData<'a>>> {
+) -> DamlLfResult<BuiltDataTypes<'a>> {
     // Pre-index this module's templates by the data type they wrap
     // (templates and data-types are sibling lists in LF2; a template
     // references its argument record via `tycon_interned_dname`).
     let template_by_tycon: HashMap<i32, &daml_lf_2::DefTemplate> =
         module.templates().iter().map(|t| (t.tycon_interned_dname, t)).collect();
-    let mut out = HashMap::new();
+    let mut direct = HashMap::new();
+    let mut nested = Vec::new();
     for payload in module.data_types() {
-        if let Some(data) = build_data_type(payload, package, module_path, &template_by_tycon)? {
-            out.insert(data_key(&data), data);
+        let path = package.resolve_dotted(payload.name_index())?;
+        let (last_seg, prefix) = path
+            .split_last()
+            .ok_or(crate::error::DamlLfConvertError::MissingRequiredField)?;
+        // Fold the dotted-name prefix into the data's module path.
+        // For top-level data (single-segment name) prefix is empty
+        // and this collapses to just the module's own path. For
+        // variant-record payloads (multi-segment, e.g.
+        // `Shape.Circle`) the prefix carries the synthetic
+        // sub-namespace.
+        let full_module_path: Vec<Cow<'a, str>> = module_path
+            .iter()
+            .cloned()
+            .chain(prefix.iter().copied().map(Cow::Borrowed))
+            .collect();
+        if let Some(data) =
+            build_data_type(payload, last_seg, package, &full_module_path, &template_by_tycon)?
+        {
+            if prefix.is_empty() {
+                direct.insert(data_key(&data), data);
+            } else {
+                nested.push((prefix.to_vec(), Cow::Borrowed(*last_seg), data));
+            }
         }
     }
-    Ok(out)
+    Ok((direct, nested))
 }
 
 fn build_data_type<'a>(
     payload: DamlDataPayload<'a>,
+    name: &'a str,
     package: &'a DamlPackagePayload<'a>,
     module_path: &[Cow<'a, str>],
     template_by_tycon: &HashMap<i32, &'a daml_lf_2::DefTemplate>,
 ) -> DamlLfResult<Option<DamlData<'a>>> {
-    let path = package.resolve_dotted(payload.name_index())?;
-    let name = path
-        .last()
-        .copied()
-        .ok_or_else(|| crate::error::DamlLfConvertError::MissingRequiredField)?;
     let name_cow = Cow::Borrowed(name);
     let package_id_cow = Cow::Borrowed(package.package_id);
     let module_path_owned = module_path.to_vec();

@@ -21,20 +21,18 @@ fn main() {
     // dependency (daml-stdlib / daml-prim, GHC.* internals, etc.)
     // — most of which the type renderer doesn't handle gracefully
     // (recursive types in `CallStack` / `Down` / similar).
-    // The Fuji.Asset module is the only one whose types this
-    // demo exercises; Fuji.Types is excluded to dodge a codegen
-    // quirk around variant-with-record-payload rendering
-    // (`Shape::Circle(crate::...::shape::Circle)` references a
-    // sub-module the renderer doesn't emit).
     daml_codegen(
         DAR_PATH,
         OUTPUT_PATH,
         // Fuji.Asset is the only module whose types this demo
-        // exercises; DA.Internal.Template is brought in so the
-        // generated `archive_command` / `holding_archive_command`
-        // signatures (which take a `DA.Internal.Template.Archive`)
-        // can be rendered.
-        &["^Fuji.Asset$", "^DA\\.Internal\\.Template$"],
+        // exercises directly; Fuji.Types is brought in so the
+        // variant `Shape` (with record-payload constructors
+        // `Circle` / `Rectangle`) lands in the generated tree, and
+        // DA.Internal.Template is included so the generated
+        // `archive_command` / `holding_archive_command` signatures
+        // (which take a `DA.Internal.Template.Archive`) can be
+        // rendered.
+        &["^Fuji\\.Asset$", "^Fuji\\.Types$", "^DA\\.Internal\\.Template$"],
         RenderMethod::Full,
         ModuleOutputMode::Combined,
     )

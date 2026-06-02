@@ -29,6 +29,17 @@ pub struct DamlModule<'a> {
     exceptions: HashMap<Cow<'a, str>, crate::element::DamlException<'a>>,
     #[cfg(feature = "full")]
     values: HashMap<Cow<'a, str>, DamlDefValue<'a>>,
+    /// `true` for modules that don't correspond to a real Daml LF
+    /// module declaration but were synthesised by the convert layer
+    /// to host the payload records of a variant-with-record-payload
+    /// declaration (e.g. `Fuji.Types.Shape` for the synthetic
+    /// `Circle`/`Rectangle` records produced from `data Shape =
+    /// Circle { ... } | Rectangle { ... }`). Consumers that filter
+    /// rendering by module name (codegen's `ModuleMatcher`) should
+    /// treat synthetic modules as included whenever the nearest
+    /// real ancestor module is included.
+    #[serde(default)]
+    synthetic: bool,
 }
 
 impl<'a> DamlModule<'a> {
@@ -58,7 +69,15 @@ impl<'a> DamlModule<'a> {
             exceptions,
             #[cfg(feature = "full")]
             values,
+            synthetic: false,
         }
+    }
+
+    /// Is this module synthetic (created by the convert layer to
+    /// host variant-record-payload records) rather than a real LF
+    /// module declaration?
+    pub fn is_synthetic(&self) -> bool {
+        self.synthetic
     }
 
     /// The `DamlFeatureFlags` of the module.
@@ -153,6 +172,17 @@ impl<'a> DamlModule<'a> {
         })
     }
 
+    /// Insert a [`DamlData`] into this module's `data_types`. Used
+    /// by the convert layer when re-routing synthetic
+    /// variant-record-payload data types into a child module that
+    /// matches their dotted-name prefix (so a Daml `data Shape =
+    /// Circle { ... }` lands in a synthetic `Shape` sub-module
+    /// containing the `Circle` record).
+    #[doc(hidden)]
+    pub(crate) fn insert_data_type(&mut self, name: Cow<'a, str>, data: DamlData<'a>) {
+        self.data_types.insert(name, data);
+    }
+
     /// Populate this module with data taken from another module.
     ///
     /// Note that this does not copy the `child_modules` from the `other` [`DamlModule`] as this node may already have
@@ -169,6 +199,11 @@ impl<'a> DamlModule<'a> {
         {
             self.values = other.values;
         }
+        // A real LF module's leaf is being installed here; any
+        // earlier synthetic-marker we may have stamped on this slot
+        // (because a sibling variant-record-payload routing created
+        // it first) no longer applies.
+        self.synthetic = false;
     }
 
     /// Create an empty `DamlModule` with a given `path`.
@@ -183,7 +218,27 @@ impl<'a> DamlModule<'a> {
             exceptions: HashMap::default(),
             #[cfg(feature = "full")]
             values: HashMap::default(),
+            synthetic: false,
         }
+    }
+
+    /// Retrieve or create a child synthetic [`DamlModule`] with
+    /// `name`. If the child does not exist it is created and
+    /// flagged synthetic; if it already exists (because, e.g., a
+    /// real LF module of the same name happens to live here) the
+    /// existing module is returned unchanged. Used by the convert
+    /// layer to route variant-record-payload data into a
+    /// sub-namespace.
+    #[doc(hidden)]
+    pub(crate) fn synthetic_child_or_new(&mut self, name: &'a str) -> &mut Self {
+        let path = &self.path;
+        self.child_modules.entry(Cow::from(name)).or_insert_with(|| {
+            let mut module = DamlModule::new_empty(
+                path.iter().map(ToOwned::to_owned).chain(once(Cow::from(name))).collect(),
+            );
+            module.synthetic = true;
+            module
+        })
     }
 }
 
