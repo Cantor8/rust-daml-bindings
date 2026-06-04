@@ -79,5 +79,11 @@ pub use command_factory::DamlCommandFactory;
 mod executor;
 pub use executor::{CommandExecutor, DamlSimpleExecutor, DamlSimpleExecutorBuilder, Executor};
 
-mod grpc_protobuf;
+/// Raw prost-generated Ledger API v2 protobuf bindings.
+///
+/// Exposed so downstream crates (e.g. `roadrunner-proto`) can re-use the
+/// `transaction.proto` / `value.proto` types without re-vendoring the
+/// protos. The DTO wrappers in [`data`] sit on top of these; most user
+/// code should reach for the DTOs rather than the raw prost types.
+pub mod grpc_protobuf;
 mod util;
