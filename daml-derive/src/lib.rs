@@ -438,7 +438,9 @@ pub fn DamlTemplate(attr: proc_macro::TokenStream, input: proc_macro::TokenStrea
 /// now; an `implements = "..."` knob on `#[DamlTemplate]` is a
 /// possible future extension.
 ///
-/// ```ignore
+/// ```no_run
+/// use daml::prelude::*;
+///
 /// #[DamlInterface(package_name = "fuji", module_name = "Fuji.Asset")]
 /// pub struct MyInterface;
 /// ```
