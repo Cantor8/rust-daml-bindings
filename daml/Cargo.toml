@@ -1,15 +1,15 @@
 [package]
 name = "daml"
-version = "0.3.0"
-authors = ["FujiApple <fujiapple852@gmail.com>"]
+version = "0.4.0"
+authors = ["drsk0 <drsk0@proton.me>", "FujiApple <fujiapple852@gmail.com>"]
 description = "A smart contract language for building distributed applications on a safe, privacy-aware runtime"
 readme = "README.md"
-repository = "https://github.com/fujiapple852/rust-daml-bindings"
+repository = "https://github.com/drsk0/rust-daml-bindings"
 license = "Apache-2.0"
 keywords = ["daml", "api", "ledger"]
 categories = ["development-tools"]
-edition = "2021"
-rust-version = "1.75"
+edition = "2024"
+rust-version = "1.96.0"
 
 [features]
 default = []
@@ -40,12 +40,12 @@ util = [ "daml-util" ]
 prelude = [ "daml-grpc", "daml-derive" ]
 
 [dependencies]
-daml-grpc = { version = "0.3.0", path = "../daml-grpc", optional = true }
-daml-macro = { version = "0.3.0", path = "../daml-macro", optional = true }
-daml-lf = { version = "0.3.0", path = "../daml-lf", optional = true }
-daml-util = { version = "0.3.0", path = "../daml-util", optional = true }
-daml-derive = { version = "0.3.0", path = "../daml-derive", optional = true }
-daml-codegen = { version = "0.3.0", path = "../daml-codegen", optional = true }
+daml-grpc = { version = "0.4.0", path = "../daml-grpc", optional = true }
+daml-macro = { version = "0.4.0", path = "../daml-macro", optional = true }
+daml-lf = { version = "0.4.0", path = "../daml-lf", optional = true }
+daml-util = { version = "0.4.0", path = "../daml-util", optional = true }
+daml-derive = { version = "0.4.0", path = "../daml-derive", optional = true }
+daml-codegen = { version = "0.4.0", path = "../daml-codegen", optional = true }
 
 [package.metadata.docs.rs]
 all-features = true

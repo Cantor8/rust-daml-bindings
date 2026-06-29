@@ -1,15 +1,15 @@
 [package]
 name = "daml-grpc"
-version = "0.3.0"
-authors = ["FujiApple <fujiapple852@gmail.com>"]
+version = "0.4.0"
+authors = ["drsk0 <drsk0@proton.me>", "FujiApple <fujiapple852@gmail.com>"]
 description = "Daml Ledger GRPC API"
 readme = "README.md"
-repository = "https://github.com/fujiapple852/rust-daml-bindings"
+repository = "https://github.com/drsk0/rust-daml-bindings"
 license = "Apache-2.0"
 keywords = ["daml", "api", "ledger"]
 categories = ["development-tools"]
-edition = "2021"
-rust-version = "1.75"
+edition = "2024"
+rust-version = "1.96.0"
 build = "build.rs"
 
 [features]

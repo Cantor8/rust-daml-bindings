@@ -1,19 +1,19 @@
 [package]
 name = "daml-util"
-version = "0.3.0"
-authors = ["FujiApple <fujiapple852@gmail.com>"]
+version = "0.4.0"
+authors = ["drsk0 <drsk0@proton.me>", "FujiApple <fujiapple852@gmail.com>"]
 description = "Helper utilities for working with the Daml Ledgers"
 readme = "README.md"
-repository = "https://github.com/fujiapple852/rust-daml-bindings"
+repository = "https://github.com/drsk0/rust-daml-bindings"
 license = "Apache-2.0"
 keywords = ["daml", "api", "ledger"]
 categories = ["development-tools"]
-edition = "2021"
-rust-version = "1.75"
+edition = "2024"
+rust-version = "1.96.0"
 
 [dependencies]
-daml-grpc = { version = "0.3.0", path = "../daml-grpc" }
-daml-lf = { version = "0.3.0", path = "../daml-lf" }
+daml-grpc = { version = "0.4.0", path = "../daml-grpc" }
+daml-lf = { version = "0.4.0", path = "../daml-lf" }
 futures = "0.3.32"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"

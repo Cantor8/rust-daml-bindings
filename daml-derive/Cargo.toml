@@ -1,21 +1,21 @@
 [package]
 name = "daml-derive"
-version = "0.3.0"
-authors = ["FujiApple <fujiapple852@gmail.com>"]
+version = "0.4.0"
+authors = ["drsk0 <drsk0@proton.me>", "FujiApple <fujiapple852@gmail.com>"]
 description = "Daml Ledger Procedural Macro"
-repository = "https://github.com/fujiapple852/rust-daml-bindings"
+repository = "https://github.com/drsk0/rust-daml-bindings"
 license = "Apache-2.0"
 keywords = ["daml", "api", "ledger"]
 categories = ["development-tools"]
-edition = "2021"
-rust-version = "1.75"
+edition = "2024"
+rust-version = "1.96.0"
 
 [lib]
 proc-macro = true
 
 [dependencies]
-daml-codegen = { version = "0.3.0", path = "../daml-codegen" }
-daml-lf = { version = "0.3.0", path = "../daml-lf" }
+daml-codegen = { version = "0.4.0", path = "../daml-codegen" }
+daml-lf = { version = "0.4.0", path = "../daml-lf" }
 syn = { version = "2.0.118", features = ["full"] }
 quote = "1.0.46"
 proc-macro2 = "1.0.106"
