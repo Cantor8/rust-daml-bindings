@@ -56,21 +56,12 @@ pub enum DamlLfConvertError {
     /// A required optional field was None.
     #[error("required field was not supplied")]
     MissingRequiredField,
-    /// A Daml type not supported by the code generator was found.
-    #[error("the type {0} is not currently supported")]
-    UnsupportedType(String),
     /// A Daml choice was not a `DamlDataWrapper::Record`.
     #[error("choice argument was not a record")]
     UnexpectedChoiceData,
-    /// A feature supported by this archive version was not used.
-    #[error("Daml LF version {0} supports feature {1} but was not used (supported as of version {2})")]
-    SupportedFeatureUnused(String, String, String),
     /// A feature not supported by this archive version was used.
     #[error("Daml LF version {0} does not support feature {1} (requires version {2})")]
     UnsupportedFeatureUsed(String, String, String),
-    /// An unexpected `DamlDataPayload` variant was found.
-    #[error("unexpected DamlDataPayload variant")]
-    UnexpectedData,
     /// Expected a given `DamlTypePayload` but found a different `DamlTypePayload`
     #[error("expected type {0} but found type {1}")]
     UnexpectedType(String, String),
