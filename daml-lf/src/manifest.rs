@@ -156,13 +156,25 @@ impl DarManifest {
         let docs = YamlLoader::load_from_str(manifest)?;
         let doc = docs.first().ok_or_else(|| DamlLfError::new_dar_parse_error("unexpected manifest format"))?;
 
-        let manifest_version = match doc[MANIFEST_VERSION_KEY].as_f64() {
-            Some(s) if format!("{:.*}", 1, s) == VERSION_1_VALUE => Ok(DarManifestVersion::V1),
-            Some(s) => Err(DamlLfError::new_dar_parse_error(format!(
-                "unexpected value for {MANIFEST_VERSION_KEY}, found {s}"
-            ))),
-            None => Ok(DarManifestVersion::Unknown),
-        }?;
+        // YAML parses `Manifest-Version: 1.0` as a float and `Manifest-Version: "1.0"` as a
+        // string; both forms are accepted. Float values are normalised to one decimal place
+        // so `1.0`, `1.00`, etc. all compare equal to "1.0". Missing key falls through to
+        // `Unknown` (legacy DARs that ship without the header).
+        let raw = &doc[MANIFEST_VERSION_KEY];
+        let normalised: Option<String> =
+            raw.as_str().map(str::to_owned).or_else(|| raw.as_f64().map(|n| format!("{n:.1}")));
+        let manifest_version = match normalised {
+            Some(ref s) if s == VERSION_1_VALUE => DarManifestVersion::V1,
+            Some(other) =>
+                return Err(DamlLfError::new_dar_parse_error(format!(
+                    "unexpected value for {MANIFEST_VERSION_KEY}, found {other}"
+                ))),
+            None if raw.is_badvalue() => DarManifestVersion::Unknown,
+            None =>
+                return Err(DamlLfError::new_dar_parse_error(format!(
+                    "unexpected value for {MANIFEST_VERSION_KEY}"
+                ))),
+        };
 
         let created_by = doc[CREATED_BY_KEY].as_str().map_or_else(|| "", |s| s);
 
@@ -381,6 +393,53 @@ mod test {
         assert_eq!(DarManifestFormat::DamlLf, manifest.format());
         assert_eq!(DarEncryptionType::NotEncrypted, manifest.encryption());
         Ok(())
+    }
+
+    #[test]
+    pub fn test_version_unquoted_float() -> DamlLfResult<()> {
+        let manifest_str = "
+            |Manifest-Version: 1.0
+            |Main-Dalf: A.dalf
+            |Dalfs: A.dalf
+            |Format: daml-lf
+            |Encryption: non-encrypted"
+            .trim_margin()
+            .expect("invalid test string");
+        let manifest = DarManifest::parse(&manifest_str[..])?;
+        assert_eq!(DarManifestVersion::V1, manifest.version());
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_version_quoted_string() -> DamlLfResult<()> {
+        let manifest_str = "
+            |Manifest-Version: \"1.0\"
+            |Main-Dalf: A.dalf
+            |Dalfs: A.dalf
+            |Format: daml-lf
+            |Encryption: non-encrypted"
+            .trim_margin()
+            .expect("invalid test string");
+        let manifest = DarManifest::parse(&manifest_str[..])?;
+        assert_eq!(DarManifestVersion::V1, manifest.version());
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_version_unknown_value() {
+        let manifest_str = "
+            |Manifest-Version: 2.0
+            |Main-Dalf: A.dalf
+            |Dalfs: A.dalf
+            |Format: daml-lf
+            |Encryption: non-encrypted"
+            .trim_margin()
+            .expect("invalid test string");
+        let err = DarManifest::parse(&manifest_str[..]).expect_err("expected failure");
+        match err {
+            DamlLfError::DarParseError(s) => assert_eq!("unexpected value for Manifest-Version, found 2.0", s),
+            _ => panic!("expected DarParseError"),
+        }
     }
 
     #[test]
