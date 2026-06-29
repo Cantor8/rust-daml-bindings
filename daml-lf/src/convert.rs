@@ -1,10 +1,4 @@
 //! LF2 → element/ conversion layer.
-//!
-//! As of sub-checkpoint 3.4, the layer covers modules, data types
-//! (records / variants / enums with their fields and type parameters
-//! fully populated), and type synonyms. Templates land in 3.5,
-//! interfaces in 3.6, exceptions in 3.7, and values + expressions
-//! in 3.8.
 
 mod archive_payload;
 mod data_payload;
@@ -51,6 +45,7 @@ use crate::element::{
 };
 use crate::lf_protobuf::daml_lf_2;
 use crate::lf_protobuf::daml_lf_2::def_data_type::DataCons;
+use crate::error::DamlLfConvertError;
 use crate::{DamlLfArchive, DamlLfArchivePayload, DamlLfHashFunction, DamlLfResult, DarFile};
 
 /// Create an owned [`DamlArchive`] from a [`DarFile`].
@@ -95,11 +90,7 @@ fn build_archive<'a>(payload: &'a DamlArchivePayload<'a>) -> DamlLfResult<DamlAr
         .values()
         .map(|pkg| build_package(pkg).map(|p| (Cow::Borrowed(pkg.package_id), p)))
         .collect::<DamlLfResult<_>>()?;
-    Ok(DamlArchive::new(
-        Cow::Borrowed(payload.archive_name),
-        Cow::Borrowed(payload.main_package_id),
-        packages,
-    ))
+    Ok(DamlArchive::new(Cow::Borrowed(payload.archive_name), Cow::Borrowed(payload.main_package_id), packages))
 }
 
 fn build_package<'a>(payload: &'a DamlPackagePayload<'a>) -> DamlLfResult<DamlPackage<'a>> {
@@ -115,10 +106,7 @@ fn build_package<'a>(payload: &'a DamlPackagePayload<'a>) -> DamlLfResult<DamlPa
 
 /// Walk the package's flat list of modules and build a nested
 /// [`DamlModule`] tree keyed by dotted-name segment. Each module's
-/// feature flags, path, and data-type names are filled in; type
-/// synonyms (and the type-system content of each data type) land
-/// with 3.4; templates with 3.5; interfaces with 3.6; exceptions
-/// with 3.7; values with 3.8.
+/// feature flags, path, and data-type names are filled in;
 fn build_module_tree<'a>(payload: &'a DamlPackagePayload<'a>) -> DamlLfResult<DamlModule<'a>> {
     let mut root = DamlModule::new_root();
     for module in &payload.modules {
@@ -139,6 +127,35 @@ fn insert_module<'a>(
         cursor = cursor.child_module_or_new(segment);
     }
     let leaf_path = path.iter().map(|s| Cow::Borrowed(*s)).collect::<Vec<_>>();
+    // LF2 mandates the safer defaults for all three transitional LF1 feature flags
+    // (they exist on the wire only for backward compatibility with LF1 archives,
+    // which this crate no longer loads). Reject any LF2 module that opts back into
+    // the LF1-era loose semantics — that combination is not a valid LF2 archive.
+    let lf_ver = package.language_version().to_string();
+    if !module.flags.forbid_party_literals {
+        return Err(DamlLfConvertError::UnsupportedFeatureUsed(
+            lf_ver,
+            "party-literal syntax (LF1-only; use the Party type instead)".into(),
+            "LF1".into(),
+        )
+        .into());
+    }
+    if !module.flags.dont_divulge_contract_ids_in_create_arguments {
+        return Err(DamlLfConvertError::UnsupportedFeatureUsed(
+            lf_ver,
+            "contract-id divulgence in create arguments (LF1-only)".into(),
+            "LF1".into(),
+        )
+        .into());
+    }
+    if !module.flags.dont_disclose_non_consuming_choices_to_observers {
+        return Err(DamlLfConvertError::UnsupportedFeatureUsed(
+            lf_ver,
+            "non-consuming choice disclosure to observers (LF1-only)".into(),
+            "LF1".into(),
+        )
+        .into());
+    }
     let (direct_data, nested_data) = build_data_types(module, package, &leaf_path)?;
     let synonyms = build_synonyms(module, package, &leaf_path)?;
     let interfaces = build_interfaces(module, package, &leaf_path)?;
@@ -227,11 +244,8 @@ fn build_synonyms<'a>(
         .iter()
         .map(|syn| {
             let name_segments = package.resolve_dotted(syn.name_interned_dname)?;
-            let name_cow: Vec<Cow<'a, str>> = module_path
-                .iter()
-                .cloned()
-                .chain(name_segments.iter().copied().map(Cow::Borrowed))
-                .collect();
+            let name_cow: Vec<Cow<'a, str>> =
+                module_path.iter().cloned().chain(name_segments.iter().copied().map(Cow::Borrowed)).collect();
             let params = convert_type_params(&syn.params, package)?;
             let ty = convert_type(
                 syn.r#type.as_ref().ok_or(crate::error::DamlLfConvertError::MissingRequiredField)?,
@@ -275,23 +289,16 @@ fn build_data_types<'a>(
     let mut nested = Vec::new();
     for payload in module.data_types() {
         let path = package.resolve_dotted(payload.name_index())?;
-        let (last_seg, prefix) = path
-            .split_last()
-            .ok_or(crate::error::DamlLfConvertError::MissingRequiredField)?;
+        let (last_seg, prefix) = path.split_last().ok_or(crate::error::DamlLfConvertError::MissingRequiredField)?;
         // Fold the dotted-name prefix into the data's module path.
         // For top-level data (single-segment name) prefix is empty
         // and this collapses to just the module's own path. For
         // variant-record payloads (multi-segment, e.g.
         // `Shape.Circle`) the prefix carries the synthetic
         // sub-namespace.
-        let full_module_path: Vec<Cow<'a, str>> = module_path
-            .iter()
-            .cloned()
-            .chain(prefix.iter().copied().map(Cow::Borrowed))
-            .collect();
-        if let Some(data) =
-            build_data_type(payload, last_seg, package, &full_module_path, &template_by_tycon)?
-        {
+        let full_module_path: Vec<Cow<'a, str>> =
+            module_path.iter().cloned().chain(prefix.iter().copied().map(Cow::Borrowed)).collect();
+        if let Some(data) = build_data_type(payload, last_seg, package, &full_module_path, &template_by_tycon)? {
             if prefix.is_empty() {
                 direct.insert(data_key(&data), data);
             } else {
