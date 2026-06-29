@@ -50,21 +50,25 @@ pub fn convert_type<'a>(
             Ok(DamlType::Struct(DamlStruct::new(fields)))
         },
         TypeSum::Nat(n) => {
-            let nat = u8::try_from(*n).map_err(|_| DamlLfConvertError::MissingRequiredField)?;
+            let nat = u8::try_from(*n).map_err(|_| DamlLfConvertError::NatOutOfRange(*n))?;
             if nat > 37 {
-                return Err(DamlLfConvertError::MissingRequiredField);
+                return Err(DamlLfConvertError::NatOutOfRange(*n));
             }
             Ok(DamlType::Nat(nat))
         },
         TypeSum::InternedType(idx) => {
-            let idx_usize = usize::try_from(*idx).map_err(|_| DamlLfConvertError::MissingRequiredField)?;
-            let resolved = package.interned_types_raw().get(idx_usize).req()?;
+            let idx_usize = usize::try_from(*idx)
+                .map_err(|_| DamlLfConvertError::InternalError(format!("negative interned-type index {idx}")))?;
+            let resolved = package
+                .interned_types_raw()
+                .get(idx_usize)
+                .ok_or_else(|| DamlLfConvertError::InternalError(format!("interned-type index {idx_usize} out of range")))?;
             convert_type(resolved, package)
         },
         // TApp is a 2.dev-only flattening replacement; we don't see
         // it in 2.1 archives. Surface as a conversion error rather
         // than silently producing the wrong shape.
-        TypeSum::Tapp(_) => Err(DamlLfConvertError::MissingRequiredField),
+        TypeSum::Tapp(_) => Err(DamlLfConvertError::UnsupportedType("TApp (LF 2.dev only)".into())),
     }
 }
 
@@ -107,7 +111,12 @@ fn convert_builtin<'a>(
         BuiltinType::Numeric => DamlType::Numeric(args),
         BuiltinType::Party => DamlType::Party,
         BuiltinType::Text => DamlType::Text,
-        BuiltinType::ContractId => DamlType::ContractId(args.into_iter().next().map(Box::new)),
+        BuiltinType::ContractId => {
+            if args.len() > 1 {
+                return Err(DamlLfConvertError::UnexpectedContractIdTypeArguments);
+            }
+            DamlType::ContractId(args.into_iter().next().map(Box::new))
+        },
         BuiltinType::Optional => DamlType::Optional(args),
         BuiltinType::List => DamlType::List(args),
         BuiltinType::Genmap => DamlType::GenMap(args),
@@ -234,7 +243,8 @@ fn resolve_package_ref<R: PackageInternedResolver>(
         PackageRefSum::SelfPackageId(_) => Ok(resolver.package_id().to_owned()),
         PackageRefSum::ImportedPackageIdInternedStr(idx) => Ok(resolver.resolve_string(*idx)?.to_owned()),
         // PackageImports table (2.dev only) — not yet handled.
-        PackageRefSum::PackageImportId(_) => Err(DamlLfConvertError::MissingRequiredField),
+        PackageRefSum::PackageImportId(_) =>
+            Err(DamlLfConvertError::UnsupportedType("PackageImportId (LF 2.dev only)".into())),
     }
 }
 

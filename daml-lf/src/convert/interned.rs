@@ -1,7 +1,6 @@
 use std::convert::TryFrom;
 
-use crate::convert::util::Required;
-use crate::error::DamlLfConvertResult;
+use crate::error::{DamlLfConvertError, DamlLfConvertResult};
 
 /// Resolves indices into a package's interning tables.
 ///
@@ -19,8 +18,12 @@ pub trait PackageInternedResolver {
 
     /// Resolve a single interned-string index.
     fn resolve_string(&self, index: i32) -> DamlLfConvertResult<&str> {
-        let idx = usize::try_from(index).map_err(|_| crate::error::DamlLfConvertError::MissingRequiredField)?;
-        Ok(self.interned_strings().get(idx).req()?.as_str())
+        let idx = usize::try_from(index)
+            .map_err(|_| DamlLfConvertError::InternalError(format!("negative interned-string index {index}")))?;
+        self.interned_strings()
+            .get(idx)
+            .map(String::as_str)
+            .ok_or_else(|| DamlLfConvertError::InternalError(format!("interned-string index {idx} out of range")))
     }
 
     /// Resolve a sequence of interned-string indices.
@@ -31,8 +34,12 @@ pub trait PackageInternedResolver {
     /// Look up an interned-dotted-name's underlying interned-string
     /// indices (without resolving them to `&str` yet).
     fn resolve_dotted_to_indices(&self, index: i32) -> DamlLfConvertResult<&[i32]> {
-        let idx = usize::try_from(index).map_err(|_| crate::error::DamlLfConvertError::MissingRequiredField)?;
-        self.interned_dotted_names().get(idx).copied().req()
+        let idx = usize::try_from(index)
+            .map_err(|_| DamlLfConvertError::InternalError(format!("negative interned-dotted-name index {index}")))?;
+        self.interned_dotted_names()
+            .get(idx)
+            .copied()
+            .ok_or_else(|| DamlLfConvertError::InternalError(format!("interned-dotted-name index {idx} out of range")))
     }
 
     /// Fully resolve an interned-dotted-name to its constituent

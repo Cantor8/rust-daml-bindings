@@ -122,11 +122,23 @@ impl<'a> TryFrom<&'a DamlLfArchive> for DamlPackagePayload<'a> {
         let metadata = package.metadata.as_ref().req()?;
         // Package metadata is required in LF2 (LF1 had it gated behind
         // a feature flag); resolve name + version directly.
-        let name =
-            interned_strings.get(usize::try_from(metadata.name_interned_str).unwrap_or(usize::MAX)).req()?.to_owned();
+        let name = interned_strings
+            .get(usize::try_from(metadata.name_interned_str).unwrap_or(usize::MAX))
+            .ok_or_else(|| {
+                DamlLfConvertError::InternalError(format!(
+                    "package metadata name_interned_str {} out of range",
+                    metadata.name_interned_str
+                ))
+            })?
+            .to_owned();
         let version = interned_strings
             .get(usize::try_from(metadata.version_interned_str).unwrap_or(usize::MAX))
-            .req()?
+            .ok_or_else(|| {
+                DamlLfConvertError::InternalError(format!(
+                    "package metadata version_interned_str {} out of range",
+                    metadata.version_interned_str
+                ))
+            })?
             .to_owned();
         let modules = package.modules.iter().map(DamlModulePayload::new).collect();
         // Seed the name table with the self-mapping. The archive

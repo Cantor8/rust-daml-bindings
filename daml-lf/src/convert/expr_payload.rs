@@ -300,12 +300,16 @@ pub fn convert_expr<'a>(
         },
         ExprSum::Update(update) => Ok(DamlExpr::Update(convert_update(update, package)?)),
         ExprSum::InternedExpr(idx) => {
-            let i = usize::try_from(*idx).map_err(|_| DamlLfConvertError::MissingRequiredField)?;
-            let resolved = package.interned_exprs_raw().get(i).req()?;
+            let i = usize::try_from(*idx)
+                .map_err(|_| DamlLfConvertError::InternalError(format!("negative interned-expr index {idx}")))?;
+            let resolved = package
+                .interned_exprs_raw()
+                .get(i)
+                .ok_or_else(|| DamlLfConvertError::InternalError(format!("interned-expr index {i} out of range")))?;
             convert_expr(resolved, package)
         },
         // 2.dev experimental — out of scope.
-        ExprSum::Experimental(_) => Err(DamlLfConvertError::MissingRequiredField),
+        ExprSum::Experimental(_) => Err(DamlLfConvertError::UnsupportedType("Experimental expression (LF 2.dev only)".into())),
     }
 }
 
@@ -518,7 +522,8 @@ fn convert_value_id<'a>(
     let pkg_id = match module.package_id.as_ref().req()?.sum.as_ref().req()? {
         PackageRefSum::SelfPackageId(_) => Cow::Borrowed(package.package_id),
         PackageRefSum::ImportedPackageIdInternedStr(idx) => Cow::Borrowed(package.resolve_string(*idx)?),
-        PackageRefSum::PackageImportId(_) => return Err(DamlLfConvertError::MissingRequiredField),
+        PackageRefSum::PackageImportId(_) =>
+            return Err(DamlLfConvertError::UnsupportedType("PackageImportId in value-name PackageRef (LF 2.dev only)".into())),
     };
     let module_path: Vec<Cow<'a, str>> =
         package.resolve_dotted(module.module_name_interned_dname)?.into_iter().map(Cow::Borrowed).collect();
@@ -540,7 +545,7 @@ fn convert_value_id<'a>(
 
 /// Map the LF2 `BuiltinCon` enum to a [`DamlPrimCon`].
 fn convert_builtin_con(code: i32) -> DamlLfConvertResult<DamlPrimCon> {
-    let kind = BuiltinConProto::try_from(code).ok().req()?;
+    let kind = BuiltinConProto::try_from(code).map_err(|_| DamlLfConvertError::UnknownPrimCon(code))?;
     Ok(match kind {
         BuiltinConProto::ConUnit => DamlPrimCon::Unit,
         BuiltinConProto::ConFalse => DamlPrimCon::False,
@@ -568,7 +573,7 @@ fn convert_builtin_lit<'a>(
         BuiltinLitSum::RoundingMode(code) => {
             use crate::element::RoundingMode;
             use crate::lf_protobuf::daml_lf_2::builtin_lit::RoundingMode as ProtoRm;
-            let mode = ProtoRm::try_from(*code).ok().req()?;
+            let mode = ProtoRm::try_from(*code).map_err(|_| DamlLfConvertError::UnknownRoundingMode(*code))?;
             Ok(DamlPrimLit::RoundingMode(match mode {
                 ProtoRm::Up => RoundingMode::Up,
                 ProtoRm::Down => RoundingMode::Down,
@@ -596,7 +601,7 @@ fn convert_builtin_lit<'a>(
 /// [`DamlBuiltinFunction`]. Variants that exist only in LF2 (no
 /// element-layer analog yet) surface as `MissingRequiredField`.
 fn convert_builtin_function(code: i32) -> DamlLfConvertResult<DamlBuiltinFunction> {
-    let kind = BuiltinFunctionProto::try_from(code).ok().req()?;
+    let kind = BuiltinFunctionProto::try_from(code).map_err(|_| DamlLfConvertError::UnknownBuiltinFunction(code))?;
     Ok(match kind {
         BuiltinFunctionProto::Trace => DamlBuiltinFunction::Trace,
         BuiltinFunctionProto::Error => DamlBuiltinFunction::Error,

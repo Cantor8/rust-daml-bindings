@@ -33,9 +33,11 @@ pub fn convert_kind(
             Ok(DamlKind::Arrow(Box::new(DamlArrow::new(params, result))))
         },
         KindSum::InternedKind(idx) => {
-            let idx_usize =
-                usize::try_from(*idx).map_err(|_| DamlLfConvertError::MissingRequiredField)?;
-            let resolved = interned_kinds.get(idx_usize).req()?;
+            let idx_usize = usize::try_from(*idx)
+                .map_err(|_| DamlLfConvertError::InternalError(format!("negative interned-kind index {idx}")))?;
+            let resolved = interned_kinds
+                .get(idx_usize)
+                .ok_or_else(|| DamlLfConvertError::InternalError(format!("interned-kind index {idx_usize} out of range")))?;
             convert_kind(resolved, interned_kinds)
         },
     }
