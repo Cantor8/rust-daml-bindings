@@ -181,6 +181,13 @@ fn test_variant_record_payload_lives_in_synthetic_child() -> DamlLfResult<()> {
 }
 
 #[test]
+fn test_validate_fixture_archive() -> DamlLfResult<()> {
+    let dar = DarFile::from_file(FIXTURE_DAR)?;
+    dar.apply(|archive| archive.validate())??;
+    Ok(())
+}
+
+#[test]
 fn test_visitor_finds_interface_and_template() -> DamlLfResult<()> {
     use daml_lf::element::{DamlInterface, DamlTemplate};
 

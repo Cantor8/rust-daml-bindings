@@ -1,8 +1,11 @@
 use crate::element::daml_package::DamlPackage;
 use crate::element::visitor::{DamlElementVisitor, DamlVisitableElement};
-use crate::element::{serialize, DamlData, DamlTyCon, DamlTyConName};
+use crate::element::{
+    serialize, DamlChoice, DamlData, DamlInterface, DamlModule, DamlTemplate, DamlTyCon, DamlTyConName, DamlType,
+};
 #[cfg(feature = "full")]
 use crate::element::{DamlDefValue, DamlValueName};
+use crate::error::{DamlLfConvertError, DamlLfConvertResult};
 use bounded_static::ToStatic;
 use itertools::Itertools;
 use serde::Serialize;
@@ -143,6 +146,179 @@ impl<'a> DamlArchive<'a> {
         D: AsRef<str>,
     {
         self.packages.get(package_id.as_ref())?.root_module().child_module_path(module_path)?.value(name.as_ref())
+    }
+
+    /// Validate cross-references and shape constraints across the
+    /// assembled archive. Walks every TyCon reference, template
+    /// choice and interface and returns the first violation as a
+    /// [`DamlLfConvertError`]:
+    ///
+    /// - [`UnknownPackage`] / [`UnknownModule`] / [`UnknownData`]:
+    ///   a TyCon reference points at a target that doesn't exist.
+    /// - [`UnexpectedChoiceData`]: a template choice's argument
+    ///   type doesn't resolve to a Record.
+    /// - [`UnexpectedType`]: an interface's view type doesn't
+    ///   resolve to a Record.
+    ///
+    /// Returns `Ok(())` if every reference resolves and every shape
+    /// holds. The walk is cheap to run after [`DarFile::apply`] /
+    /// [`DarFile::to_owned_archive`] and is the recommended way to
+    /// catch DAR-integrity problems eagerly instead of letting
+    /// downstream `data_by_tycon_name` calls silently return `None`.
+    ///
+    /// [`UnknownPackage`]: DamlLfConvertError::UnknownPackage
+    /// [`UnknownModule`]: DamlLfConvertError::UnknownModule
+    /// [`UnknownData`]: DamlLfConvertError::UnknownData
+    /// [`UnexpectedChoiceData`]: DamlLfConvertError::UnexpectedChoiceData
+    /// [`UnexpectedType`]: DamlLfConvertError::UnexpectedType
+    /// [`DarFile::apply`]: crate::DarFile::apply
+    /// [`DarFile::to_owned_archive`]: crate::DarFile::to_owned_archive
+    pub fn validate(&'a self) -> DamlLfConvertResult<()> {
+        let mut modules: Vec<&DamlModule<'_>> = self.packages.values().map(DamlPackage::root_module).collect();
+        while let Some(module) = modules.pop() {
+            for data in module.data_types() {
+                self.validate_data(data)?;
+            }
+            for interface in module.interfaces() {
+                self.validate_interface(interface)?;
+            }
+            modules.extend(module.child_modules());
+        }
+        Ok(())
+    }
+
+    fn validate_data(&'a self, data: &DamlData<'a>) -> DamlLfConvertResult<()> {
+        match data {
+            DamlData::Record(rec) => {
+                for field in rec.fields() {
+                    self.validate_type(field.ty())?;
+                }
+            },
+            DamlData::Variant(var) => {
+                for field in var.fields() {
+                    self.validate_type(field.ty())?;
+                }
+            },
+            DamlData::Enum(_) => {},
+            DamlData::Template(tpl) => self.validate_template(tpl)?,
+        }
+        Ok(())
+    }
+
+    fn validate_template(&'a self, template: &DamlTemplate<'a>) -> DamlLfConvertResult<()> {
+        for field in template.fields() {
+            self.validate_type(field.ty())?;
+        }
+        for choice in template.choices() {
+            self.validate_choice(choice)?;
+        }
+        if let Some(key) = template.key() {
+            self.validate_type(key.ty())?;
+        }
+        Ok(())
+    }
+
+    fn validate_interface(&'a self, interface: &DamlInterface<'a>) -> DamlLfConvertResult<()> {
+        let view = interface.view();
+        if !self.resolves_to_record(view) {
+            return Err(DamlLfConvertError::UnexpectedType("Record".into(), format!("{view:?}")));
+        }
+        self.validate_type(view)?;
+        for method in interface.methods() {
+            self.validate_type(method.ty())?;
+        }
+        for choice in interface.choices() {
+            self.validate_choice(choice)?;
+        }
+        for required in interface.requires() {
+            self.validate_tycon_name(required)?;
+        }
+        Ok(())
+    }
+
+    fn validate_choice(&'a self, choice: &DamlChoice<'a>) -> DamlLfConvertResult<()> {
+        let arg_ty = choice.fields().first().map(crate::element::DamlField::ty);
+        match arg_ty {
+            Some(ty) if self.resolves_to_record(ty) => self.validate_type(ty)?,
+            _ => return Err(DamlLfConvertError::UnexpectedChoiceData),
+        }
+        self.validate_type(choice.return_type())?;
+        Ok(())
+    }
+
+    /// Iterative walk over a type tree. Deeply-nested LF types
+    /// (interned-type chains, big generic instantiations) easily
+    /// exhaust the default 2MiB test-thread stack; a `Vec` work-list
+    /// keeps the walk allocation-bounded by tree width, not depth.
+    fn validate_type<'b>(&'a self, ty: &'b DamlType<'b>) -> DamlLfConvertResult<()> {
+        let mut stack: Vec<&DamlType<'_>> = vec![ty];
+        while let Some(t) = stack.pop() {
+            match t {
+                DamlType::TyCon(tycon) | DamlType::BoxedTyCon(tycon) => {
+                    self.validate_tycon_name(tycon.tycon())?;
+                    stack.extend(tycon.type_arguments().iter());
+                },
+                DamlType::ContractId(inner) =>
+                    if let Some(boxed) = inner {
+                        stack.push(boxed);
+                    },
+                DamlType::Numeric(args)
+                | DamlType::List(args)
+                | DamlType::TextMap(args)
+                | DamlType::GenMap(args)
+                | DamlType::Optional(args) => stack.extend(args.iter()),
+                DamlType::Var(var) => stack.extend(var.type_arguments().iter()),
+                DamlType::Forall(forall) => stack.push(forall.body()),
+                DamlType::Struct(s) => stack.extend(s.fields().iter().map(crate::element::DamlField::ty)),
+                DamlType::Syn(syn) => stack.extend(syn.args().iter()),
+                DamlType::Text
+                | DamlType::Int64
+                | DamlType::Timestamp
+                | DamlType::Party
+                | DamlType::Bool
+                | DamlType::Unit
+                | DamlType::Date
+                | DamlType::Nat(_)
+                | DamlType::Arrow
+                | DamlType::Any
+                | DamlType::TypeRep
+                | DamlType::Bignumeric
+                | DamlType::RoundingMode
+                | DamlType::AnyException
+                | DamlType::Update
+                | DamlType::Scenario
+                | DamlType::FailureCategory => {},
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_tycon_name(&'a self, name: &DamlTyConName<'_>) -> DamlLfConvertResult<()> {
+        if self.data_by_tycon_name(name).is_some() || self.interface_by_tycon_name(name).is_some() {
+            return Ok(());
+        }
+        let (pkg_id, module_path, data_name) = name.reference_parts();
+        if !self.packages.contains_key(pkg_id) {
+            return Err(DamlLfConvertError::UnknownPackage(pkg_id.to_string()));
+        }
+        let module_segments: Vec<&str> = module_path.iter().map(Cow::as_ref).collect();
+        if self
+            .packages
+            .get(pkg_id)
+            .and_then(|p| p.root_module().child_module_path(&module_segments))
+            .is_none()
+        {
+            return Err(DamlLfConvertError::UnknownModule(module_segments.join(".")));
+        }
+        Err(DamlLfConvertError::UnknownData(data_name.to_string()))
+    }
+
+    fn resolves_to_record(&'a self, ty: &DamlType<'_>) -> bool {
+        match ty {
+            DamlType::TyCon(tycon) | DamlType::BoxedTyCon(tycon) =>
+                matches!(self.data_by_tycon_name(tycon.tycon()), Some(DamlData::Record(_))),
+            _ => false,
+        }
     }
 }
 
