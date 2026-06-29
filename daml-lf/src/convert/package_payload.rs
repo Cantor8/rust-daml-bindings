@@ -97,6 +97,10 @@ impl PackageInternedResolver for DamlPackagePayload<'_> {
         self.package_id
     }
 
+    fn language_version(&self) -> LanguageVersion {
+        self.language_version
+    }
+
     fn interned_strings(&self) -> &[String] {
         self.interned_strings
     }

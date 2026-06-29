@@ -68,7 +68,11 @@ pub fn convert_type<'a>(
         // TApp is a 2.dev-only flattening replacement; we don't see
         // it in 2.1 archives. Surface as a conversion error rather
         // than silently producing the wrong shape.
-        TypeSum::Tapp(_) => Err(DamlLfConvertError::UnsupportedType("TApp (LF 2.dev only)".into())),
+        TypeSum::Tapp(_) => Err(DamlLfConvertError::UnsupportedFeatureUsed(
+            package.language_version().to_string(),
+            "TApp".into(),
+            "2.dev".into(),
+        )),
     }
 }
 
@@ -243,8 +247,11 @@ fn resolve_package_ref<R: PackageInternedResolver>(
         PackageRefSum::SelfPackageId(_) => Ok(resolver.package_id().to_owned()),
         PackageRefSum::ImportedPackageIdInternedStr(idx) => Ok(resolver.resolve_string(*idx)?.to_owned()),
         // PackageImports table (2.dev only) — not yet handled.
-        PackageRefSum::PackageImportId(_) =>
-            Err(DamlLfConvertError::UnsupportedType("PackageImportId (LF 2.dev only)".into())),
+        PackageRefSum::PackageImportId(_) => Err(DamlLfConvertError::UnsupportedFeatureUsed(
+            resolver.language_version().to_string(),
+            "PackageImportId".into(),
+            "2.dev".into(),
+        )),
     }
 }
 

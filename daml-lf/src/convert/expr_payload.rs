@@ -309,7 +309,11 @@ pub fn convert_expr<'a>(
             convert_expr(resolved, package)
         },
         // 2.dev experimental — out of scope.
-        ExprSum::Experimental(_) => Err(DamlLfConvertError::UnsupportedType("Experimental expression (LF 2.dev only)".into())),
+        ExprSum::Experimental(_) => Err(DamlLfConvertError::UnsupportedFeatureUsed(
+            package.language_version().to_string(),
+            "Experimental expression".into(),
+            "2.dev".into(),
+        )),
     }
 }
 
@@ -523,7 +527,11 @@ fn convert_value_id<'a>(
         PackageRefSum::SelfPackageId(_) => Cow::Borrowed(package.package_id),
         PackageRefSum::ImportedPackageIdInternedStr(idx) => Cow::Borrowed(package.resolve_string(*idx)?),
         PackageRefSum::PackageImportId(_) =>
-            return Err(DamlLfConvertError::UnsupportedType("PackageImportId in value-name PackageRef (LF 2.dev only)".into())),
+            return Err(DamlLfConvertError::UnsupportedFeatureUsed(
+                package.language_version().to_string(),
+                "PackageImportId in value-name PackageRef".into(),
+                "2.dev".into(),
+            )),
     };
     let module_path: Vec<Cow<'a, str>> =
         package.resolve_dotted(module.module_name_interned_dname)?.into_iter().map(Cow::Borrowed).collect();

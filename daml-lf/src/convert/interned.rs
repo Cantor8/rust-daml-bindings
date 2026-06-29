@@ -1,6 +1,7 @@
 use std::convert::TryFrom;
 
 use crate::error::{DamlLfConvertError, DamlLfConvertResult};
+use crate::version::LanguageVersion;
 
 /// Resolves indices into a package's interning tables.
 ///
@@ -10,6 +11,9 @@ use crate::error::{DamlLfConvertError, DamlLfConvertResult};
 /// language-version gating or `literal` fall-back paths.
 pub trait PackageInternedResolver {
     fn package_id(&self) -> &str;
+    /// The archive's declared LF language version. Used by feature-
+    /// gating checks (e.g. `UnsupportedFeatureUsed`) at convert sites.
+    fn language_version(&self) -> LanguageVersion;
     fn interned_strings(&self) -> &[String];
     /// Each entry is the slice of interned-string indices that
     /// compose one dotted-name. Borrowing the slice avoids cloning
