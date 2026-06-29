@@ -250,7 +250,7 @@ fn build_synonyms<'a>(
 /// that 3.4 lands. Enum constructors *are* fully populated; they
 /// carry interned strings only and don't need the type system.
 ///
-/// DefDataType entries whose `data_cons` is the `Interface` marker
+/// `DefDataType` entries whose `data_cons` is the `Interface` marker
 /// are filtered out — the actual interface definitions live on the
 /// module's `interfaces` list and 3.6 will wire those into
 /// `element/`.
@@ -378,14 +378,14 @@ fn build_data_type<'a>(
 }
 
 /// Pull the (final) dotted-name segment as the key under which a
-/// DamlData lives in its module's `data_types` map. The element
+/// `DamlData` lives in its module's `data_types` map. The element
 /// layer keys by single name, not by full path, so we strip the
 /// module prefix.
 fn data_key<'a>(data: &DamlData<'a>) -> Cow<'a, str> {
     Cow::Owned(data.name().to_owned())
 }
 
-/// Combine the record-shaped fields a DefDataType supplies with the
+/// Combine the record-shaped fields a `DefDataType` supplies with the
 /// template-only metadata (choices, key, param, implements) into a
 /// [`DamlTemplate`]. Under `--features full`, the Expr-typed fields
 /// (precond, signatories, observers) are populated from the LF2

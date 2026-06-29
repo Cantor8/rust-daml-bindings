@@ -32,7 +32,7 @@ pub enum DamlType<'a> {
     Date,
     /// A list.
     List(Vec<DamlType<'a>>),
-    /// A map wih [DamlType::Text] keys.
+    /// A map wih [`DamlType::Text`] keys.
     TextMap(Vec<DamlType<'a>>),
     /// A map.
     GenMap(Vec<DamlType<'a>>),
@@ -72,7 +72,7 @@ pub enum DamlType<'a> {
     Syn(DamlSyn<'a>),
 }
 
-impl<'a> DamlType<'a> {
+impl DamlType<'_> {
     pub fn name(&self) -> &str {
         match self {
             DamlType::ContractId(_) => "DamlContractId",
@@ -119,7 +119,7 @@ impl<'a> DamlType<'a> {
             | DamlType::TextMap(args)
             | DamlType::GenMap(args)
             | DamlType::Numeric(args) => args.iter().any(|arg| arg.contains_type_var(type_var)),
-            DamlType::ContractId(inner) => inner.as_ref().map_or(false, |ty| ty.contains_type_var(type_var)),
+            DamlType::ContractId(inner) => inner.as_ref().is_some_and(|ty| ty.contains_type_var(type_var)),
             DamlType::TyCon(tycon) | DamlType::BoxedTyCon(tycon) =>
                 tycon.type_arguments.iter().any(|f| f.contains_type_var(type_var)),
             DamlType::Forall(forall) => forall.body.as_ref().contains_type_var(type_var),
@@ -366,7 +366,7 @@ pub enum DamlTyConName<'a> {
     Absolute(DamlAbsoluteTyCon<'a>),
 }
 
-impl<'a> DamlTyConName<'a> {
+impl DamlTyConName<'_> {
     pub fn package_id(&self) -> &str {
         match self {
             DamlTyConName::Local(local) => &local.package_id,

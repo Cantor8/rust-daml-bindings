@@ -1,8 +1,8 @@
 //! A library for working with `Daml-LF`.
 //!
 //! Compiled `Daml` packages are represented as [`Daml-LF`](https://github.com/digital-asset/daml/tree/main/daml-lf) (
-//! aka "Ledger Fragment") archives.  An archive is a protobuf serialized bytes array which is typically stored in a
-//! `dalf` file.  Multiple `dalf` archives can be combined along with a manifest file into a `Dar` ("Daml Archive")
+//! aka "Ledger Fragment") archives. An archive is a protobuf serialized bytes array which is typically stored in a
+//! `dalf` file. Multiple `dalf` archives can be combined along with a manifest file into a `Dar` ("Daml Archive")
 //! file.
 //!
 //! # Elements
@@ -62,8 +62,8 @@
 //! # Downloading Daml Packages
 //!
 //! Serialized `Daml-LF` archives may also be retrieved from an existing ledger via the `GetPackage` method of the GRPC
-//! `package_service` (see [here](https://github.com/digital-asset/daml/blob/main/ledger-api/grpc-definitions/com/daml/ledger/api/v1/package_service.proto)).
-//! The `daml-grpc` create provides an implementation of this service in the [`daml_package_service`] module.
+//! `package_service` (see [here](https://github.com/digital-asset/daml/blob/main/ledger-api/grpc-definitions/com/daml/ledger/api/v2/package_service.proto)).
+//! The `daml-grpc` crate provides an implementation of this service in the [`daml_package_service`] module.
 //!
 //! The [`daml-util`] crate provides the [`DamlPackages`] helper to simplify downloading of packages form a Daml
 //! ledger and converting to a [`DarFile`] or collections of [`DamlLfArchive`] or [`DamlLfArchivePayload`].
@@ -74,9 +74,9 @@
 //! no longer supported — passing an LF1 archive surfaces a
 //! [`DamlLfError::UnknownVersion`] from [`DamlLfArchivePayload::from_bytes`].
 //!
-//! [`daml-util`]: https://docs.rs/daml-util/0.3.0/daml_util/
-//! [`DamlPackages`]: https://docs.rs/daml-util/0.3.0/daml_util/package/struct.DamlPackages.html
-//! [`daml_package_service`]: https://docs.rs/daml-grpc/0.3.0/daml_grpc/service/struct.DamlPackageService.html
+//! [`daml-util`]: https://docs.rs/daml-util/0.4.0/daml_util/
+//! [`DamlPackages`]: https://docs.rs/daml-util/0.4.0/daml_util/package/struct.DamlPackages.html
+//! [`daml_package_service`]: https://docs.rs/daml-grpc/0.4.0/daml_grpc/service/struct.DamlPackageService.html
 #![warn(clippy::all, clippy::pedantic, clippy::nursery, rust_2018_idioms)]
 #![allow(
     clippy::module_name_repetitions,
@@ -89,7 +89,7 @@
 #![forbid(unsafe_code)]
 #![doc(html_favicon_url = "https://docs.daml.com/_static/images/favicon/favicon-32x32.png")]
 #![doc(html_logo_url = "https://docs.daml.com/_static/images/DAML_Logo_Blue.svg")]
-#![doc(html_root_url = "https://docs.rs/daml-lf/0.3.0")]
+#![doc(html_root_url = "https://docs.rs/daml-lf/0.4.0")]
 
 mod archive;
 mod convert;
@@ -105,7 +105,7 @@ mod version;
 pub mod element;
 
 // reexport types
-pub use archive::{DamlLfArchive, DamlLfHashFunction, DEFAULT_ARCHIVE_NAME};
+pub use archive::{DEFAULT_ARCHIVE_NAME, DamlLfArchive, DamlLfHashFunction};
 pub use dar::DarFile;
 pub use error::{DamlLfError, DamlLfResult};
 pub use manifest::{DarEncryptionType, DarManifest, DarManifestFormat, DarManifestVersion};

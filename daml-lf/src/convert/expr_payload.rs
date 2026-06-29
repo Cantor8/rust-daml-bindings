@@ -3,9 +3,9 @@
 //! 3.8g closes out 3.8 with the `Update` sub-oneof, the effect
 //! language used inside every template choice body. The LF2 update
 //! sub-oneof carries 16 variants; the 11 that already existed in
-//! [`DamlUpdate`] (Pure / Block / Create / Exercise / ExerciseByKey
-//! / Fetch / GetTime / LookupByKey / FetchByKey / EmbedExpr /
-//! TryCatch) are wired through, and the 5 LF2 additions
+//! [`DamlUpdate`] (Pure / Block / Create / Exercise / `ExerciseByKey`
+//! / Fetch / `GetTime` / `LookupByKey` / `FetchByKey` / `EmbedExpr` /
+//! `TryCatch`) are wired through, and the 5 LF2 additions
 //! (`QueryNByKey`, `CreateInterface`, `ExerciseInterface`,
 //! `FetchInterface`, `LedgerTimeLt`) joined the element layer in
 //! this checkpoint.
@@ -21,14 +21,14 @@
 //! Per-checkpoint scope:
 //!  - 3.8b: leaves.
 //!  - 3.8c: record / variant / enum / struct + To/FromAny.
-//!  - 3.8d: App / Abs / Case / Let / Cons / OptionalSome.
-//!  - 3.8e: Throw / ToAnyException / FromAnyException.
+//!  - 3.8d: App / Abs / Case / Let / Cons / `OptionalSome`.
+//!  - 3.8e: Throw / `ToAnyException` / `FromAnyException`.
 //!  - 3.8f: interface expressions.
 //!  - 3.8g: Update statement (this checkpoint).
 //!
-//! LF2 grew several builtins and literals (FailWithStatus,
-//! Keccak256Text, hex codecs, FailureCategory literals,
-//! TypeRepTyconName) that the [`DamlBuiltinFunction`] /
+//! LF2 grew several builtins and literals (`FailWithStatus`,
+//! `Keccak256Text`, hex codecs, `FailureCategory` literals,
+//! `TypeRepTyconName`) that the [`DamlBuiltinFunction`] /
 //! [`DamlPrimLit`] enums in `element/` don't model yet. These
 //! variants surface as `MissingRequiredField` until a real consumer
 //! needs them; the path to fix is "add the enum variant in
@@ -507,8 +507,8 @@ fn convert_field_exprs<'a>(
 /// Convert an LF2 `ValueId` (module reference + interned dotted
 /// name) into a [`DamlValueName`]. We always produce the `Local`
 /// variant: the element layer's `Local`/`NonLocal` distinction is
-/// stylistic, and downstream lookups go through the (package_id,
-/// module_path, name) tuple either way (mirroring how
+/// stylistic, and downstream lookups go through the (`package_id`,
+/// `module_path`, name) tuple either way (mirroring how
 /// `convert_tycon_id` always emits `Absolute`).
 fn convert_value_id<'a>(
     proto: &daml_lf_2::ValueId,

@@ -182,7 +182,7 @@ pub fn convert_tycon_id<'a>(
 /// [`DamlArchivePayload::try_from`]) is consulted. Returns an empty
 /// `Cow` when the id is unknown (out-of-archive reference or a
 /// standalone payload).
-pub(crate) fn resolve_package_name<'a>(package: &'a DamlPackagePayload<'a>, pkg_id: &str) -> Cow<'a, str> {
+pub fn resolve_package_name<'a>(package: &'a DamlPackagePayload<'a>, pkg_id: &str) -> Cow<'a, str> {
     if pkg_id == package.package_id {
         Cow::Borrowed(package.name.as_str())
     } else {
@@ -215,7 +215,7 @@ pub fn convert_tysyn_id<'a>(
     )))
 }
 
-/// Resolve a `ModuleId` to (package_id, module_path_segments).
+/// Resolve a `ModuleId` to (`package_id`, `module_path_segments`).
 fn resolve_module_id<'a, R: PackageInternedResolver>(
     proto: &daml_lf_2::ModuleId,
     resolver: &'a R,

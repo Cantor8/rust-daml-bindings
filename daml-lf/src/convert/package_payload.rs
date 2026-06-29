@@ -92,7 +92,7 @@ impl<'a> DamlPackagePayload<'a> {
     }
 }
 
-impl<'a> PackageInternedResolver for DamlPackagePayload<'a> {
+impl PackageInternedResolver for DamlPackagePayload<'_> {
     fn package_id(&self) -> &str {
         self.package_id
     }

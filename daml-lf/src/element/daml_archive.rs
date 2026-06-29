@@ -91,7 +91,7 @@ impl<'a> DamlArchive<'a> {
             .data_type(data_name.as_ref())
     }
 
-    /// Retrieve a [`DamlInterface`] by its tycon name, or `None` if
+    /// Retrieve a [`crate::element::DamlInterface`] by its tycon name, or `None` if
     /// no such interface exists in the archive.
     pub fn interface_by_tycon_name<'b>(
         &'a self,
@@ -101,7 +101,7 @@ impl<'a> DamlArchive<'a> {
         self.interface(package_id, module_path, name)
     }
 
-    /// Retrieve a [`DamlInterface`] by package-id, module path, and
+    /// Retrieve a [`crate::element::DamlInterface`] by package-id, module path, and
     /// interface name, or `None` if no such interface exists.
     pub fn interface<P, M, D>(
         &'a self,

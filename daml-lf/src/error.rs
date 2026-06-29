@@ -83,13 +83,13 @@ pub enum DamlLfConvertError {
     /// Failed to lookup a `DamlDataPayload` by id.
     #[error("failed to lookup a DamlDataPayload with id {0}")]
     UnknownData(String),
-    /// Unknown PrimCon enum variant.
+    /// Unknown `PrimCon` enum variant.
     #[error("unknown PrimCon enum variant {0}")]
     UnknownPrimCon(i32),
-    /// Unknown BuiltinFunction enum variant.
+    /// Unknown `BuiltinFunction` enum variant.
     #[error("unknown BuiltinFunction enum variant {0}")]
     UnknownBuiltinFunction(i32),
-    /// Unknown RoundingMode enum variant.
+    /// Unknown `RoundingMode` enum variant.
     #[error("unknown RoundingMode enum variant {0}")]
     UnknownRoundingMode(i32),
     /// Nat out of range (0..37 inclusive).

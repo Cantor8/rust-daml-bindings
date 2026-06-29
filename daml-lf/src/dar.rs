@@ -168,14 +168,14 @@ impl DarFile {
     }
 
     fn is_dalf(path: &Path) -> bool {
-        path.extension().and_then(OsStr::to_str).map(str::to_lowercase).map_or(false, |q| q == DALF_FILE_EXTENSION)
+        path.extension().and_then(OsStr::to_str).map(str::to_lowercase).is_some_and(|q| q == DALF_FILE_EXTENSION)
     }
 
     fn is_prim_dalf(path: &Path) -> bool {
         path.file_stem()
             .and_then(OsStr::to_str)
             .map(str::to_lowercase)
-            .map_or(false, |p| p.ends_with(DALF_PRIM_FILE_SUFFIX))
+            .is_some_and(|p| p.ends_with(DALF_PRIM_FILE_SUFFIX))
     }
 
     fn make_manifest_from_archive(zip_archive: &mut ZipArchive<File>) -> DamlLfResult<DarManifest> {

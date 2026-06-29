@@ -42,7 +42,7 @@ pub enum DamlExpr<'a> {
     FromAnyException(DamlFromAnyException<'a>),
     Throw(DamlThrow<'a>),
     /// Interface-related expressions (To/FromInterface,
-    /// CallInterface, ViewInterface, …) introduced in LF2.
+    /// `CallInterface`, `ViewInterface`, …) introduced in LF2.
     InterfaceOp(DamlInterfaceExpr<'a>),
 }
 
@@ -448,7 +448,7 @@ pub enum DamlPrimLit<'a> {
     Int64(i64),
     /// Represents a UTF8 string.
     Text(Cow<'a, str>),
-    /// A LitParty represents a party.
+    /// A `LitParty` represents a party.
     Party(Cow<'a, str>),
     /// Represents the number of day since 1970-01-01 with allowed range from 0001-01-01 to 9999-12-31 and
     /// using a year-month-day format.
