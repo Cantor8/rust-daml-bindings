@@ -153,11 +153,11 @@ pub fn convert_type_con<'a>(
 
 /// Convert an LF2 `TypeConId` into a [`DamlTyConName::Absolute`].
 ///
-/// 3.4 always produces the `Absolute` variant — the `Local` /
-/// `NonLocal` distinction in the element layer is a stylistic
-/// convenience for downstream code rather than a correctness
-/// requirement; lookups via `DamlArchive::data_by_tycon_name` work
-/// against `Absolute` just fine.
+/// Always produces the `Absolute` variant — the `Local` / `NonLocal`
+/// distinction in the element layer is a stylistic convenience for
+/// downstream code rather than a correctness requirement; lookups
+/// via `DamlArchive::data_by_tycon_name` work against `Absolute`
+/// just fine.
 pub fn convert_tycon_id<'a>(
     proto: &daml_lf_2::TypeConId,
     package: &'a DamlPackagePayload<'a>,

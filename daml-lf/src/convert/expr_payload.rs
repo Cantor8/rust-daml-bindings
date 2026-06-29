@@ -1,39 +1,24 @@
 //! LF2 expression-tree → element/ conversion.
 //!
-//! 3.8g closes out 3.8 with the `Update` sub-oneof, the effect
-//! language used inside every template choice body. The LF2 update
-//! sub-oneof carries 16 variants; the 11 that already existed in
-//! [`DamlUpdate`] (Pure / Block / Create / Exercise / `ExerciseByKey`
-//! / Fetch / `GetTime` / `LookupByKey` / `FetchByKey` / `EmbedExpr` /
-//! `TryCatch`) are wired through, and the 5 LF2 additions
-//! (`QueryNByKey`, `CreateInterface`, `ExerciseInterface`,
-//! `FetchInterface`, `LedgerTimeLt`) joined the element layer in
-//! this checkpoint.
+//! Converts the entire LF2 expression sub-language (including the
+//! `Update` effect language used by template choice bodies) under
+//! `--features full`. The conversion is shape-preserving: every
+//! prost-generated `ExprSum` / `UpdateSum` / `CaseAltSum` variant
+//! maps to an element-layer `Daml*` counterpart with the same
+//! structure.
 //!
-//! After 3.8g the *entire* LF2 expression sub-language is convertible
-//! under `--features full`. The remaining `MissingRequiredField`
-//! surfaces are: the 2.dev `InternedExpr` (references the package's
-//! interned-expressions table, not yet exposed), the 2.dev
-//! `Experimental` escape hatch, the LF2-only builtins / literals
-//! whose element-layer enum variants we haven't added yet (see
-//! 3.8b), and `FailureCategory` literals.
-//!
-//! Per-checkpoint scope:
-//!  - 3.8b: leaves.
-//!  - 3.8c: record / variant / enum / struct + To/FromAny.
-//!  - 3.8d: App / Abs / Case / Let / Cons / `OptionalSome`.
-//!  - 3.8e: Throw / `ToAnyException` / `FromAnyException`.
-//!  - 3.8f: interface expressions.
-//!  - 3.8g: Update statement (this checkpoint).
-//!
-//! LF2 grew several builtins and literals (`FailWithStatus`,
-//! `Keccak256Text`, hex codecs, `FailureCategory` literals,
-//! `TypeRepTyconName`) that the [`DamlBuiltinFunction`] /
-//! [`DamlPrimLit`] enums in `element/` don't model yet. These
-//! variants surface as `MissingRequiredField` until a real consumer
-//! needs them; the path to fix is "add the enum variant in
-//! `element/` and the corresponding arm here", not a structural
-//! change.
+//! Known gaps:
+//!  - 2.dev `InternedExpr` references the package's interned-
+//!    expressions table, which isn't yet exposed on the element
+//!    layer — surfaces as `InternalError`.
+//!  - 2.dev `Experimental` escape hatch and `PackageImportId`
+//!    package refs surface as `UnsupportedFeatureUsed`.
+//!  - LF2-only builtins / literals that have no element-layer enum
+//!    variant yet (`FailWithStatus`, `Keccak256Text`, hex codecs,
+//!    `TypeRepTyconName`) surface as `UnknownBuiltinFunction` with
+//!    the wire integer. The fix per case is "add the enum variant
+//!    in `element/` and the corresponding arm here", not a
+//!    structural change.
 
 use std::borrow::Cow;
 

@@ -16,10 +16,7 @@ use crate::lf_protobuf::daml_lf_2;
 
 /// Convert an LF2 `DefValue` into a [`DamlDefValue`].
 ///
-/// The expression body is delegated to [`convert_expr`]; until the
-/// 3.8b+ checkpoints land, that returns an error for every variant,
-/// so any DAR containing values will currently fail to convert under
-/// the `full` feature.
+/// The expression body is delegated to [`convert_expr`].
 pub fn convert_def_value<'a>(
     proto: &daml_lf_2::DefValue,
     package: &'a DamlPackagePayload<'a>,

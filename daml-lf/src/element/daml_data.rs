@@ -173,8 +173,8 @@ pub struct DamlTemplate<'a> {
     param: Cow<'a, str>,
     /// Interfaces this template implements (LF2 first-class concept;
     /// each entry is the interface's tycon-name). The bodies of the
-    /// implementations (methods + view expression) live behind the
-    /// `full` feature once expression conversion lands in 3.8.
+    /// implementations (methods + view expression) are gated on the
+    /// `full` feature.
     implements: Vec<DamlTyConName<'a>>,
     #[cfg(feature = "full")]
     precond: Option<DamlExpr<'a>>,

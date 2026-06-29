@@ -5,12 +5,6 @@ use crate::lf_protobuf::daml_lf_2::def_data_type::DataCons;
 /// index. The actual conversion to the element-layer [`DamlData`]
 /// happens in `convert.rs`; this wrapper just gives callers a typed
 /// handle over the LF2 message.
-///
-/// 3.3 only consumes `name_interned_dname`, `serializable`, and the
-/// `data_cons` shape (record / variant / enum / interface marker).
-/// `params` (a list of `TypeVarWithKind`) is read in 3.4 once the
-/// type system lands; the `Fields` inside record/variant variants
-/// carries `FieldWithType` whose `Type` half is likewise 3.4 work.
 #[derive(Debug, Clone, Copy)]
 pub struct DamlDataPayload<'a> {
     pub def: &'a daml_lf_2::DefDataType,

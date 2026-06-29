@@ -16,8 +16,7 @@ use crate::element::{DamlChoice, DamlType, DamlTyConName};
 ///
 /// `view` carries the type of the interface's `view` method (the
 /// "what does this contract look like through this interface" return
-/// type). The view's expression body is `full`-gated and lands in
-/// 3.8 alongside other expression conversion.
+/// type). The view's expression body is `full`-gated.
 #[derive(Debug, Serialize, Clone, ToStatic)]
 pub struct DamlInterface<'a> {
     name: Cow<'a, str>,

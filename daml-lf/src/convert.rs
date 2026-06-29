@@ -43,9 +43,9 @@ use crate::element::{
     DamlArchive, DamlData, DamlDefTypeSyn, DamlEnum, DamlException, DamlFeatureFlags, DamlInterface, DamlModule,
     DamlPackage, DamlRecord, DamlTemplate, DamlVariant,
 };
+use crate::error::DamlLfConvertError;
 use crate::lf_protobuf::daml_lf_2;
 use crate::lf_protobuf::daml_lf_2::def_data_type::DataCons;
-use crate::error::DamlLfConvertError;
 use crate::{DamlLfArchive, DamlLfArchivePayload, DamlLfHashFunction, DamlLfResult, DarFile};
 
 /// Create an owned [`DamlArchive`] from a [`DarFile`].
@@ -259,15 +259,10 @@ fn build_synonyms<'a>(
 /// Convert every `DefDataType` in `module` into a `DamlData` keyed
 /// by its (final-segment) name.
 ///
-/// 3.3 leaves field types, type-parameter kinds, and synonym bodies
-/// empty — those need the [`crate::element::DamlType`] machinery
-/// that 3.4 lands. Enum constructors *are* fully populated; they
-/// carry interned strings only and don't need the type system.
-///
 /// `DefDataType` entries whose `data_cons` is the `Interface` marker
 /// are filtered out — the actual interface definitions live on the
-/// module's `interfaces` list and 3.6 will wire those into
-/// `element/`.
+/// module's `interfaces` list and `convert_interface` wires those
+/// into `element/`.
 /// Output of [`build_data_types`]: data that goes straight into
 /// the LF module's own bucket, plus data routed into synthetic
 /// child modules to mirror dotted-name prefixes (the
@@ -377,7 +372,7 @@ fn build_data_type<'a>(
                 payload.serializable(),
             ))
         },
-        // Interface marker — DefInterface carries the real surface; 3.6 wires it up.
+        // Interface marker — DefInterface carries the real surface; wired up by convert_interface.
         Some(DataCons::Interface(_)) => return Ok(None),
         None => return Err(crate::error::DamlLfConvertError::MissingRequiredField.into()),
     };

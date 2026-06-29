@@ -12,11 +12,11 @@ use crate::lf_protobuf::daml_lf_2;
 /// Convert an LF2 `DefInterface` into the element-layer
 /// [`DamlInterface`].
 ///
-/// 3.6 handles everything structural: name, param, methods, view
+/// Always handles the structural fields: name, param, methods, view
 /// type, requires-list, and fixed choices (with their arg/return
 /// types). The Expr-typed parts of fixed choices (controllers,
 /// observers, update, authorizers) and the view's expression body
-/// are `full`-feature and land in 3.8.
+/// are gated on the `full` feature.
 pub fn convert_interface<'a>(
     proto: &daml_lf_2::DefInterface,
     package: &'a DamlPackagePayload<'a>,

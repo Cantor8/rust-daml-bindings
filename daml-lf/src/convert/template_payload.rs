@@ -77,9 +77,8 @@ pub fn convert_def_key<'a>(
 }
 
 /// Build the list of interfaces a template implements, by tycon name.
-/// Body conversion (method values + view expression) is deferred:
-/// methods and view expressions live behind `#[cfg(feature =
-/// "full")]` and land in 3.8.
+/// Only the tycon names are surfaced here; the method bodies and
+/// view expression live behind `#[cfg(feature = "full")]`.
 pub fn convert_implements<'a>(
     implements: &[daml_lf_2::def_template::Implements],
     package: &'a DamlPackagePayload<'a>,
