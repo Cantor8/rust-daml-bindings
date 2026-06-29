@@ -1,7 +1,6 @@
 use crate::element::DamlPackage;
-use crate::lf_protobuf::daml_lf::Archive;
-use crate::DamlLfResult;
-use crate::{convert, DamlLfArchivePayload};
+use crate::lf_protobuf::daml_lf::{Archive, HashFunction as ProtoHashFunction};
+use crate::{convert, DamlLfArchivePayload, DamlLfError, DamlLfResult};
 use bytes::Bytes;
 use prost::Message;
 use std::ffi::OsStr;
@@ -110,10 +109,24 @@ impl DamlLfArchive {
     /// [`DamlLfArchivePayload`]: DamlLfArchivePayload
     pub fn from_bytes_named(name: impl Into<String>, bytes: impl Into<Bytes>) -> DamlLfResult<Self> {
         let archive: Archive = Archive::decode(bytes.into())?;
+        // Honour the on-wire `hash_function` field instead of hard-coding `Sha256`.
+        // The proto today only declares `SHA256 = 0`; an unknown enum int means either
+        // a corrupt archive or a future hash variant we haven't modelled yet — fail
+        // loudly rather than silently mislabelling the hash as SHA-256. Checked
+        // before payload decoding so a malformed envelope surfaces this error first
+        // (and so the unit test below can drive it without a valid payload).
+        let hash_function = match ProtoHashFunction::try_from(archive.hash_function) {
+            Ok(ProtoHashFunction::Sha256) => DamlLfHashFunction::Sha256,
+            Err(_) =>
+                return Err(DamlLfError::new_dar_parse_error(format!(
+                    "unknown hash function id {} in archive envelope",
+                    archive.hash_function
+                ))),
+        };
         let payload = DamlLfArchivePayload::from_bytes(archive.payload)?;
         let archive_name = name.into();
         let sanitized_name = archive_name.rfind(&archive.hash).map_or(&archive_name[..], |i| &archive_name[..i - 1]);
-        Ok(Self::new(sanitized_name, payload, DamlLfHashFunction::Sha256, archive.hash))
+        Ok(Self::new(sanitized_name, payload, hash_function, archive.hash))
     }
 
     /// Read and parse an archive from a `dalf` file.
@@ -192,4 +205,28 @@ impl DamlLfArchive {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum DamlLfHashFunction {
     Sha256,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_bytes_named_rejects_unknown_hash_function() {
+        // Synthesize an Archive proto with a hash_function int that
+        // isn't in the on-wire `HashFunction` enum. We use 99 — the
+        // proto today only declares SHA256 = 0.
+        let archive = Archive {
+            hash_function: 99,
+            payload: Vec::new(),
+            hash: String::new(),
+        };
+        let bytes = archive.encode_to_vec();
+        let err = DamlLfArchive::from_bytes(bytes).expect_err("should reject unknown hash function");
+        match err {
+            DamlLfError::DarParseError(msg) =>
+                assert!(msg.contains("unknown hash function id 99"), "unexpected message: {msg}"),
+            other => panic!("expected DarParseError, got {other:?}"),
+        }
+    }
 }
