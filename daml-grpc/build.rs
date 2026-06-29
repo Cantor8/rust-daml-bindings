@@ -19,23 +19,27 @@ const ALL_PROTO_SRC_PATHS: &[&str] = &[
 const PROTO_ROOT_PATH: &str = "resources/protobuf";
 
 fn main() -> Result<(), Box<dyn error::Error>> {
-    let all_protos = get_all_protos(ALL_PROTO_SRC_PATHS)?;
+    let root = Path::new(PROTO_ROOT_PATH);
+    let all_protos = get_all_protos(root, ALL_PROTO_SRC_PATHS)?;
     tonic_prost_build::configure()
         .build_server(false)
         .build_client(true)
-        .compile_protos(all_protos.as_slice(), &[PathBuf::from(PROTO_ROOT_PATH)])?;
+        .compile_protos(all_protos.as_slice(), &[root.to_path_buf()])?;
     Ok(())
 }
 
-fn get_all_protos(src_paths: &[&str]) -> Result<Vec<PathBuf>, Error> {
-    src_paths.iter().map(Path::new).map(get_protos_from_dir).fold_ok(vec![], |mut acc: Vec<PathBuf>, v| {
-        acc.extend(v);
-        acc
-    })
+fn get_all_protos(root: &Path, src_paths: &[&str]) -> Result<Vec<PathBuf>, Error> {
+    src_paths
+        .iter()
+        .map(|s| get_protos_from_dir(root, Path::new(s)))
+        .fold_ok(vec![], |mut acc: Vec<PathBuf>, v| {
+            acc.extend(v);
+            acc
+        })
 }
 
-fn get_protos_from_dir(dir: &Path) -> Result<Vec<PathBuf>, Error> {
-    fs::read_dir(Path::new(PROTO_ROOT_PATH).join(dir))?
+fn get_protos_from_dir(root: &Path, dir: &Path) -> Result<Vec<PathBuf>, Error> {
+    fs::read_dir(root.join(dir))?
         .filter_map(|entry| match entry {
             Ok(d) => match d.path().extension() {
                 Some(a) if a == "proto" => Some(Ok(d.path())),
