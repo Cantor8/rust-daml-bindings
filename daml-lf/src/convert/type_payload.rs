@@ -96,7 +96,7 @@ fn convert_builtin<'a>(
     builtin: &daml_lf_2::r#type::Builtin,
     package: &'a DamlPackagePayload<'a>,
 ) -> DamlLfConvertResult<DamlType<'a>> {
-    let kind = BuiltinType::from_i32(builtin.builtin).req()?;
+    let kind = BuiltinType::try_from(builtin.builtin).ok().req()?;
     let args = convert_types(&builtin.args, package)?;
     Ok(match kind {
         BuiltinType::Unit => DamlType::Unit,

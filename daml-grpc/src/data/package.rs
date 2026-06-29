@@ -58,7 +58,7 @@ impl TryFrom<GetPackageResponse> for DamlPackage {
     type Error = DamlError;
 
     fn try_from(response: GetPackageResponse) -> DamlResult<Self> {
-        Ok(Self::new(response.archive_payload, response.hash, HashFunction::from_i32(response.hash_function).req()?))
+        Ok(Self::new(response.archive_payload, response.hash, HashFunction::try_from(response.hash_function).ok().req()?))
     }
 }
 

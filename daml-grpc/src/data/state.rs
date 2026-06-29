@@ -165,7 +165,7 @@ impl TryFrom<ConnectedSynchronizer> for DamlConnectedSynchronizer {
         // (proto doesn't model it as a separate Option). Treat
         // Unspecified as None so callers can distinguish "no party
         // scoped — no permission to report" from a real permission.
-        let permission = match ParticipantPermission::from_i32(c.permission).req()? {
+        let permission = match ParticipantPermission::try_from(c.permission).ok().req()? {
             ParticipantPermission::Unspecified => None,
             other => Some(DamlParticipantPermission::from(other)),
         };

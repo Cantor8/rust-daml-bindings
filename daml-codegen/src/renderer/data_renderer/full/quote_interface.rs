@@ -15,12 +15,10 @@
 //! to 4c.
 
 use crate::renderer::data_renderer::full::quote_contract_struct::quote_contract_id_struct_name;
-use crate::renderer::data_renderer::full::quote_method_params::quote_method_arguments;
-use crate::renderer::renderable::IsRenderable;
 use crate::renderer::renderer_utils::quote_escaped_ident;
 use crate::renderer::type_renderer::quote_type;
 use crate::renderer::{to_module_path, RenderContext};
-use daml_lf::element::{DamlField, DamlInterface, DamlTyConName, DamlType};
+use daml_lf::element::{DamlInterface, DamlTyConName};
 use heck::ToSnakeCase;
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -142,34 +140,6 @@ pub fn quote_interface_choices(
             }
         )
     }
-}
-
-/// Mirror of `quote_choices::quote_all_choice_fields` — builds the
-/// `params` record from a slice of `DamlField`s. Inlined here to
-/// avoid making the choice-body helpers public.
-fn quote_choice_field_body(ctx: &RenderContext<'_>, fields: &[&DamlField<'_>]) -> TokenStream {
-    if fields.is_empty() {
-        quote!(let params = DamlValue::Record(DamlRecord::new(vec![], None::<DamlIdentifier>));)
-    } else {
-        let field_stmts: Vec<_> = fields.iter().map(|f| quote_choice_field(ctx, f.name(), f.ty())).collect();
-        quote!(
-            let mut records = vec![];
-            #( #field_stmts )*
-            let params = DamlValue::Record(DamlRecord::new(records, None::<DamlIdentifier>));
-        )
-    }
-}
-
-fn quote_choice_field(ctx: &RenderContext<'_>, field_name: &str, field_type: &DamlType<'_>) -> TokenStream {
-    let field_ident = quote_escaped_ident(field_name);
-    let ty_tokens = quote_type(ctx, field_type);
-    let name_lit = quote!(#field_name);
-    quote!(
-        records.push(DamlRecordField::new(
-            Some(#name_lit),
-            <#ty_tokens as DamlSerializeInto<DamlValue>>::serialize_into(#field_ident.into()),
-        ));
-    )
 }
 
 pub fn quote_daml_interface(ctx: &RenderContext<'_>, interface: &DamlInterface<'_>) -> TokenStream {

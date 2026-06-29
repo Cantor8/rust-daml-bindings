@@ -122,7 +122,9 @@ impl TryFrom<ParticipantAuthorizationAdded> for DamlParticipantAuthorizationAdde
         Ok(Self {
             party_id: e.party_id,
             participant_id: e.participant_id,
-            permission: DamlParticipantPermission::from(ParticipantPermission::from_i32(e.participant_permission).req()?),
+            permission: DamlParticipantPermission::from(
+                ParticipantPermission::try_from(e.participant_permission).ok().req()?,
+            ),
         })
     }
 }
@@ -143,7 +145,9 @@ impl TryFrom<ParticipantAuthorizationChanged> for DamlParticipantAuthorizationCh
         Ok(Self {
             party_id: e.party_id,
             participant_id: e.participant_id,
-            permission: DamlParticipantPermission::from(ParticipantPermission::from_i32(e.participant_permission).req()?),
+            permission: DamlParticipantPermission::from(
+                ParticipantPermission::try_from(e.participant_permission).ok().req()?,
+            ),
         })
     }
 }
@@ -181,7 +185,9 @@ impl TryFrom<ParticipantAuthorizationOnboarding> for DamlParticipantAuthorizatio
         Ok(Self {
             party_id: e.party_id,
             participant_id: e.participant_id,
-            permission: DamlParticipantPermission::from(ParticipantPermission::from_i32(e.participant_permission).req()?),
+            permission: DamlParticipantPermission::from(
+                ParticipantPermission::try_from(e.participant_permission).ok().req()?,
+            ),
         })
     }
 }

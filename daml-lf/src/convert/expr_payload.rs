@@ -540,7 +540,7 @@ fn convert_value_id<'a>(
 
 /// Map the LF2 `BuiltinCon` enum to a [`DamlPrimCon`].
 fn convert_builtin_con(code: i32) -> DamlLfConvertResult<DamlPrimCon> {
-    let kind = BuiltinConProto::from_i32(code).req()?;
+    let kind = BuiltinConProto::try_from(code).ok().req()?;
     Ok(match kind {
         BuiltinConProto::ConUnit => DamlPrimCon::Unit,
         BuiltinConProto::ConFalse => DamlPrimCon::False,
@@ -568,7 +568,7 @@ fn convert_builtin_lit<'a>(
         BuiltinLitSum::RoundingMode(code) => {
             use crate::element::RoundingMode;
             use crate::lf_protobuf::daml_lf_2::builtin_lit::RoundingMode as ProtoRm;
-            let mode = ProtoRm::from_i32(*code).req()?;
+            let mode = ProtoRm::try_from(*code).ok().req()?;
             Ok(DamlPrimLit::RoundingMode(match mode {
                 ProtoRm::Up => RoundingMode::Up,
                 ProtoRm::Down => RoundingMode::Down,
@@ -583,7 +583,7 @@ fn convert_builtin_lit<'a>(
         BuiltinLitSum::FailureCategory(code) => {
             use crate::element::FailureCategory;
             use crate::lf_protobuf::daml_lf_2::builtin_lit::FailureCategory as ProtoFc;
-            let cat = ProtoFc::from_i32(*code).req()?;
+            let cat = ProtoFc::try_from(*code).ok().req()?;
             Ok(DamlPrimLit::FailureCategory(match cat {
                 ProtoFc::InvalidIndependentOfSystemState => FailureCategory::InvalidIndependentOfSystemState,
                 ProtoFc::InvalidGivenCurrentSystemStateOther => FailureCategory::InvalidGivenCurrentSystemStateOther,
@@ -596,7 +596,7 @@ fn convert_builtin_lit<'a>(
 /// [`DamlBuiltinFunction`]. Variants that exist only in LF2 (no
 /// element-layer analog yet) surface as `MissingRequiredField`.
 fn convert_builtin_function(code: i32) -> DamlLfConvertResult<DamlBuiltinFunction> {
-    let kind = BuiltinFunctionProto::from_i32(code).req()?;
+    let kind = BuiltinFunctionProto::try_from(code).ok().req()?;
     Ok(match kind {
         BuiltinFunctionProto::Trace => DamlBuiltinFunction::Trace,
         BuiltinFunctionProto::Error => DamlBuiltinFunction::Error,

@@ -3,11 +3,10 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::renderer::data_renderer::full::quote_contract_struct::quote_contract_id_struct_name;
-use crate::renderer::data_renderer::full::quote_method_arguments;
 use crate::renderer::renderer_utils::quote_escaped_ident;
 use crate::renderer::type_renderer::quote_type;
-use crate::renderer::{IsRenderable, RenderContext};
-use daml_lf::element::{DamlChoice, DamlField, DamlType};
+use crate::renderer::RenderContext;
+use daml_lf::element::DamlChoice;
 use heck::ToSnakeCase;
 
 pub fn quote_choice(ctx: &RenderContext<'_>, name: &str, items: &[DamlChoice<'_>]) -> TokenStream {
@@ -54,40 +53,6 @@ fn quote_choice_method(ctx: &RenderContext<'_>, struct_name: &str, choice: &Daml
                 params
             )
         }
-    )
-}
-
-/// Generate the `DamlValue::Record` containing all choice fields.
-fn quote_all_choice_fields(ctx: &RenderContext<'_>, supported_fields: &[&DamlField<'_>]) -> TokenStream {
-    let all_choice_fields = quote_declare_all_choice_fields(ctx, supported_fields);
-    if all_choice_fields.is_empty() {
-        quote!(
-            let params = DamlValue::Record(DamlRecord::new(vec![], None::<DamlIdentifier>));
-        )
-    } else {
-        quote!(
-            let mut records = vec![];
-            #all_choice_fields
-            let params = DamlValue::Record(DamlRecord::new(records, None::<DamlIdentifier>));
-        )
-    }
-}
-
-/// Generate all choice fields.
-fn quote_declare_all_choice_fields(ctx: &RenderContext<'_>, choice_parameters: &[&DamlField<'_>]) -> TokenStream {
-    choice_parameters.iter().map(|&field| quote_declare_choice_field(ctx, field.name(), field.ty())).collect()
-}
-
-/// Generate a choice field.
-fn quote_declare_choice_field(ctx: &RenderContext<'_>, field_name: &str, field_type: &DamlType<'_>) -> TokenStream {
-    let field_source_tokens = quote_escaped_ident(field_name);
-    let name_string = quote!(#field_name);
-    let choice_type_tokens = quote_type(ctx, field_type);
-    let serialize_value_tokens = quote!(
-        <#choice_type_tokens as DamlSerializeInto<DamlValue>>::serialize_into(#field_source_tokens.into())
-    );
-    quote!(
-        records.push(DamlRecordField::new(Some(#name_string), #serialize_value_tokens));
     )
 }
 

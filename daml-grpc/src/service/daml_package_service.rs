@@ -74,7 +74,7 @@ impl<'a> DamlPackageService<'a> {
         trace!(payload = ?payload, token = ?self.auth_token);
         let response = self.client().get_package_status(make_request(payload, self.auth_token)?).await?.into_inner();
         trace!(?response);
-        Ok(DamlPackageStatus::from(PackageStatus::from_i32(response.package_status).req()?))
+        Ok(DamlPackageStatus::from(PackageStatus::try_from(response.package_status).ok().req()?))
     }
 
     /// List packages vetted on the network, optionally filtered by package
