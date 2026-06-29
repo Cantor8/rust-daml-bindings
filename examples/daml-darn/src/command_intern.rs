@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use anyhow::{Context, Result};
-use clap::{Arg, ArgGroup, ArgMatches, Command};
+use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use itertools::Itertools;
 use prettytable::color::Color;
 use prettytable::format;
@@ -19,44 +19,71 @@ impl DarnCommand for CommandIntern {
         "intern"
     }
 
-    fn args<'a>(&self) -> Command<'a> {
+    fn args(&self) -> Command {
         Command::new("intern")
             .about("Show interned strings and dotted names in a dar")
             .arg(Arg::new("dar").help("Sets the input dar file to use").required(true).index(1))
-            .arg(Arg::new("string").short('s').long("string").help("Show interned strings"))
-            .arg(Arg::new("dotted").short('d').long("dotted").help("Show interned dotted names"))
+            .arg(Arg::new("string").short('s').long("string").action(ArgAction::SetTrue).help("Show interned strings"))
+            .arg(
+                Arg::new("dotted")
+                    .short('d')
+                    .long("dotted")
+                    .action(ArgAction::SetTrue)
+                    .help("Show interned dotted names"),
+            )
             .arg(
                 Arg::new("index")
                     .short('i')
                     .long("index")
-                    .multiple_occurrences(true)
-                    .use_value_delimiter(true)
-                    .takes_value(true)
+                    .num_args(1..)
+                    .value_delimiter(',')
                     .required(false)
                     .help("the intern indices"),
             )
-            .arg(Arg::new("show-mangled").short('f').long("show-mangled").required(false).help("show mangled names"))
-            .arg(Arg::new("order-by-index").required(false).long("order-by-index").help("order by index"))
-            .arg(Arg::new("order-by-name").required(false).long("order-by-name").help("order by name"))
+            .arg(
+                Arg::new("show-mangled")
+                    .short('f')
+                    .long("show-mangled")
+                    .action(ArgAction::SetTrue)
+                    .required(false)
+                    .help("show mangled names"),
+            )
+            .arg(
+                Arg::new("order-by-index")
+                    .required(false)
+                    .long("order-by-index")
+                    .action(ArgAction::SetTrue)
+                    .help("order by index"),
+            )
+            .arg(
+                Arg::new("order-by-name")
+                    .required(false)
+                    .long("order-by-name")
+                    .action(ArgAction::SetTrue)
+                    .help("order by name"),
+            )
             .group(ArgGroup::new("mode").required(true).arg("string").arg("dotted"))
             .group(ArgGroup::new("order").required(false).arg("order-by-index").arg("order-by-name"))
     }
 
     fn execute(&self, matches: &ArgMatches) -> Result<()> {
-        let dar_path = matches.value_of("dar").unwrap();
+        let dar_path = matches.get_one::<String>("dar").map(String::as_str).unwrap();
         let filter: Vec<usize> = matches
-            .values_of("index")
-            .unwrap_or_default()
-            .map(|i| usize::from_str(i).context(format!("parsing index from '{}'", i)))
-            .collect::<Result<Vec<_>>>()?;
-        let show_mangled = matches.is_present("show-mangled");
-        let sort = match (matches.is_present("order-by-index"), matches.is_present("order-by-name")) {
+            .get_many::<String>("index")
+            .map(|vals| {
+                vals.map(|i| usize::from_str(i).context(format!("parsing index from '{}'", i)))
+                    .collect::<Result<Vec<_>>>()
+            })
+            .transpose()?
+            .unwrap_or_default();
+        let show_mangled = matches.get_flag("show-mangled");
+        let sort = match (matches.get_flag("order-by-index"), matches.get_flag("order-by-name")) {
             (true, false) => SortOrder::ByIndex,
             _ => SortOrder::ByName,
         };
-        if matches.is_present("dotted") {
+        if matches.get_flag("dotted") {
             intern_dotted(dar_path, show_mangled, &sort, filter.as_slice())
-        } else if matches.is_present("string") {
+        } else if matches.get_flag("string") {
             intern_string(dar_path, show_mangled, &sort, filter.as_slice())
         } else {
             unreachable!()

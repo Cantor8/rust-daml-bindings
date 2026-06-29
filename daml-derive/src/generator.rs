@@ -14,14 +14,15 @@ use daml_lf::element::{
     DamlVariant,
 };
 use daml_lf::{DarFile, LanguageVersion};
+use darling::ast::NestedMeta;
 use darling::FromMeta;
 use quote::quote;
 use std::borrow::Cow;
 use std::collections::HashMap;
-use syn::{AttributeArgs, Data, DataStruct, DeriveInput, Fields, ItemImpl};
+use syn::{Data, DataStruct, DeriveInput, Fields, ItemImpl};
 
 /// Generate a Rust `TokenStream` representing the supplied Daml Archive.
-pub fn generate_tokens(args: AttributeArgs) -> proc_macro::TokenStream {
+pub fn generate_tokens(args: Vec<NestedMeta>) -> proc_macro::TokenStream {
     let params: CodeGeneratorParameters = CodeGeneratorParameters::from_list(&args).unwrap_or_else(|e| panic!("{}", e));
     let archive = DarFile::from_file(&params.dar_file)
         .unwrap_or_else(|e| panic!("failed to load Dar file from {}, error was: {}", &params.dar_file, e));

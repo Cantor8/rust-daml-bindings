@@ -15,8 +15,8 @@ publish = false
 
 [dependencies]
 daml = { path = "../../daml", features = [ "prelude", "grpc", "util", "macros" ] }
-tokio = { version = "1.17.0", features = [ "macros", "rt-multi-thread" ] }
-anyhow = "1.0.55"
+tokio = { version = "1.52", features = [ "macros", "rt-multi-thread" ] }
+anyhow = "1.0.103"
 
 [build-dependencies]
 daml = { path = "../../daml", features = [ "codegen" ] }

@@ -2,7 +2,7 @@ use crate::error::{DamlLfError, DamlLfResult};
 use itertools::Itertools;
 use std::convert::Into;
 use std::fmt::{Display, Formatter};
-use yaml_rust::YamlLoader;
+use yaml_rust2::YamlLoader;
 
 const MANIFEST_VERSION_KEY: &str = "Manifest-Version";
 const CREATED_BY_KEY: &str = "Created-By";

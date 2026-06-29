@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use hyper::client::HttpConnector;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig};
 #[cfg(test)]
 use tonic::transport::Uri;
@@ -314,47 +313,43 @@ impl DamlGrpcClient {
     }
 
     async fn make_channel(config: &DamlGrpcClientConfig) -> DamlResult<Channel> {
-        let mut channel = Channel::from_shared(config.uri.clone())?;
+        let mut endpoint = Channel::from_shared(config.uri.clone())?;
         if let Some(limit) = config.concurrency_limit {
-            channel = channel.concurrency_limit(limit);
+            endpoint = endpoint.concurrency_limit(limit);
         }
         if let Some((limit, duration)) = config.rate_limit {
-            channel = channel.rate_limit(limit, duration);
+            endpoint = endpoint.rate_limit(limit, duration);
         }
         if let Some(size) = config.initial_stream_window_size {
-            channel = channel.initial_stream_window_size(size);
+            endpoint = endpoint.initial_stream_window_size(size);
         }
         if let Some(size) = config.initial_connection_window_size {
-            channel = channel.initial_connection_window_size(size);
+            endpoint = endpoint.initial_connection_window_size(size);
         }
         if let Some(duration) = config.tcp_keepalive {
-            channel = channel.tcp_keepalive(Some(duration));
+            endpoint = endpoint.tcp_keepalive(Some(duration));
         }
-        channel = channel.tcp_nodelay(config.tcp_nodelay);
-        channel = channel.timeout(config.timeout);
+        endpoint = endpoint.tcp_nodelay(config.tcp_nodelay);
+        endpoint = endpoint.timeout(config.timeout);
+        if let Some(duration) = config.connect_timeout {
+            endpoint = endpoint.connect_timeout(duration);
+        }
         match &config.tls_config {
             Some(DamlGrpcTlsConfig {
                 ca_cert: Some(cert),
             }) => {
-                channel = channel.tls_config(ClientTlsConfig::new().ca_certificate(Certificate::from_pem(cert)))?;
+                endpoint =
+                    endpoint.tls_config(ClientTlsConfig::new().ca_certificate(Certificate::from_pem(cert)))?;
             },
             Some(DamlGrpcTlsConfig {
                 ca_cert: None,
             }) => {
-                channel = channel.tls_config(ClientTlsConfig::new())?;
+                endpoint = endpoint.tls_config(ClientTlsConfig::new())?;
             },
             _ => {},
         }
 
-        // Tonic does not currently allow setting a connect timeout directly
-        // (see https://github.com/hyperium/tonic/issues/498); work around by
-        // building the Hyper HttpConnector explicitly.
-        let mut http = HttpConnector::new();
-        http.enforce_http(false);
-        http.set_nodelay(config.tcp_nodelay);
-        http.set_keepalive(config.tcp_keepalive);
-        http.set_connect_timeout(config.connect_timeout);
-        channel.connect_with_connector(http).await.map_err(DamlError::from)
+        endpoint.connect().await.map_err(DamlError::from)
     }
 
     #[cfg(test)]

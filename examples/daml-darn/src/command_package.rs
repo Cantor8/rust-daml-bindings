@@ -14,14 +14,14 @@ impl DarnCommand for CommandPackage {
         "package"
     }
 
-    fn args<'a>(&self) -> Command<'a> {
+    fn args(&self) -> Command {
         Command::new("package")
             .about("Show dar package details")
             .arg(Arg::new("dar").help("Sets the input dar file to use").required(true).index(1))
     }
 
     fn execute(&self, matches: &ArgMatches) -> Result<()> {
-        let dar_path = matches.value_of("dar").unwrap();
+        let dar_path = matches.get_one::<String>("dar").map(String::as_str).unwrap();
         execute(dar_path)
     }
 }

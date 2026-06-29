@@ -4,6 +4,8 @@ use std::fs;
 use std::io::Error;
 use std::path::Path;
 use std::path::PathBuf;
+#[allow(unused_imports)]
+use tonic_prost_build as _;
 
 const ALL_PROTO_SRC_PATHS: &[&str] = &[
     "com/daml/ledger/api/v2",
@@ -18,11 +20,10 @@ const PROTO_ROOT_PATH: &str = "resources/protobuf";
 
 fn main() -> Result<(), Box<dyn error::Error>> {
     let all_protos = get_all_protos(ALL_PROTO_SRC_PATHS)?;
-    tonic_build::configure()
+    tonic_prost_build::configure()
         .build_server(false)
         .build_client(true)
-        .format(false)
-        .compile(all_protos.as_slice(), vec![<str as AsRef<Path>>::as_ref(PROTO_ROOT_PATH)].as_slice())?;
+        .compile_protos(all_protos.as_slice(), &[PathBuf::from(PROTO_ROOT_PATH)])?;
     Ok(())
 }
 

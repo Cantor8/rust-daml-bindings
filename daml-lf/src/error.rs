@@ -32,8 +32,8 @@ impl DamlLfError {
     }
 }
 
-impl From<yaml_rust::scanner::ScanError> for DamlLfError {
-    fn from(e: yaml_rust::scanner::ScanError) -> Self {
+impl From<yaml_rust2::scanner::ScanError> for DamlLfError {
+    fn from(e: yaml_rust2::scanner::ScanError) -> Self {
         DamlLfError::DarParseError(e.to_string())
     }
 }

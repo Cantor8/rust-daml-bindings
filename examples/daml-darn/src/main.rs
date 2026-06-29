@@ -23,7 +23,7 @@ pub mod command_package;
 #[doc(hidden)]
 pub trait DarnCommand {
     fn name(&self) -> &str;
-    fn args<'a>(&self) -> Command<'a>;
+    fn args(&self) -> Command;
     fn execute(&self, matches: &ArgMatches) -> Result<()>;
 }
 

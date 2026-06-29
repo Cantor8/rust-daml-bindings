@@ -1,4 +1,4 @@
-use syn::{Attribute, FnArg, ImplItem, ImplItemMethod, Pat, PatType, ReturnType, Type};
+use syn::{FnArg, ImplItem, ImplItemFn, Pat, PatType, ReturnType, Type};
 
 use crate::convert::{data_type_string_from_path, AttrField, AttrType};
 
@@ -14,18 +14,15 @@ pub fn extract_all_choices(items: &[ImplItem]) -> Vec<AttrChoice> {
 }
 
 fn get_single_attr_method(impl_item: &ImplItem) -> Option<AttrChoice> {
-    if let ImplItem::Method(ImplItemMethod {
+    if let ImplItem::Fn(ImplItemFn {
         attrs,
         sig,
         ..
     }) = impl_item
     {
         match attrs.as_slice() {
-            [Attribute {
-                path,
-                ..
-            }] => Some(AttrChoice {
-                choice_name: data_type_string_from_path(path),
+            [attr] => Some(AttrChoice {
+                choice_name: data_type_string_from_path(attr.path()),
                 choice_arguments: sig.inputs.iter().filter_map(self::simple_method_name_and_type).collect(),
                 choice_return_type: output_type(&sig.output),
             }),

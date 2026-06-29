@@ -16,11 +16,11 @@ proc-macro = true
 [dependencies]
 daml-codegen = { version = "0.3.0", path = "../daml-codegen" }
 daml-lf = { version = "0.3.0", path = "../daml-lf" }
-syn = { version = "1.0.86", features = ["full"] }
-quote = "1.0.15"
-proc-macro2 = "1.0.36"
-darling = "0.13.1"
-itertools = "0.10.3"
+syn = { version = "2.0.118", features = ["full"] }
+quote = "1.0.46"
+proc-macro2 = "1.0.106"
+darling = "0.23.0"
+itertools = "0.15.0"
 
 # Phase 8 dropped the v1 attribute/codegen test trees outright;
 # the macro surface still has coverage via doc-tests embedded in

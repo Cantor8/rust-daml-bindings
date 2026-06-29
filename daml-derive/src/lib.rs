@@ -328,8 +328,16 @@
 mod convert;
 mod generator;
 
+use darling::ast::NestedMeta;
 use darling::FromMeta;
-use syn::{parse_macro_input, AttributeArgs, DeriveInput, ItemImpl};
+use syn::{parse_macro_input, DeriveInput, ItemImpl};
+
+fn parse_attr_args(attr: proc_macro::TokenStream) -> Vec<NestedMeta> {
+    match NestedMeta::parse_meta_list(attr.into()) {
+        Ok(args) => args,
+        Err(e) => panic!("{}", darling::Error::from(e)),
+    }
+}
 
 /// Custom attribute for modelling Daml templates.
 ///
@@ -406,7 +414,7 @@ use syn::{parse_macro_input, AttributeArgs, DeriveInput, ItemImpl};
 #[proc_macro_attribute]
 pub fn DamlTemplate(attr: proc_macro::TokenStream, input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let template_info: DamlTemplateInfo =
-        DamlTemplateInfo::from_list(&parse_macro_input!(attr as AttributeArgs)).unwrap_or_else(|e| panic!("{}", e));
+        DamlTemplateInfo::from_list(&parse_attr_args(attr)).unwrap_or_else(|e| panic!("{}", e));
     let input: DeriveInput = parse_macro_input!(input as DeriveInput);
     if template_info.package_name.is_none() && template_info.package_id.is_none() {
         panic!("#[DamlTemplate] requires at least one of `package_name = \"...\"` or `package_id = \"...\"`");
@@ -437,7 +445,7 @@ pub fn DamlTemplate(attr: proc_macro::TokenStream, input: proc_macro::TokenStrea
 #[proc_macro_attribute]
 pub fn DamlInterface(attr: proc_macro::TokenStream, input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let interface_info: DamlInterfaceInfo =
-        DamlInterfaceInfo::from_list(&parse_macro_input!(attr as AttributeArgs)).unwrap_or_else(|e| panic!("{}", e));
+        DamlInterfaceInfo::from_list(&parse_attr_args(attr)).unwrap_or_else(|e| panic!("{}", e));
     let input: DeriveInput = parse_macro_input!(input as DeriveInput);
     if interface_info.package_name.is_none() && interface_info.package_id.is_none() {
         panic!("#[DamlInterface] requires at least one of `package_name = \"...\"` or `package_id = \"...\"`");
@@ -748,7 +756,7 @@ pub fn DamlEnum(_attr: proc_macro::TokenStream, input: proc_macro::TokenStream) 
 /// Panics (compile-time only) if errors are detected during code generation.
 #[proc_macro]
 pub fn daml_codegen(attr: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let args = parse_macro_input!(attr as AttributeArgs);
+    let args = parse_attr_args(attr);
     generator::generate_tokens(args)
 }
 
