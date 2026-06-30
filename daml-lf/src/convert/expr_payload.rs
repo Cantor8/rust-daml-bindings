@@ -88,22 +88,13 @@ pub fn convert_expr<'a>(
             let record = convert_expr(ru.record.as_deref().req()?, package)?;
             let update = convert_expr(ru.update.as_deref().req()?, package)?;
             let field = package.resolve_string(ru.field_interned_str)?;
-            Ok(DamlExpr::RecUpd(DamlRecUpd::new(
-                tycon,
-                Box::new(record),
-                Box::new(update),
-                Cow::Borrowed(field),
-            )))
+            Ok(DamlExpr::RecUpd(DamlRecUpd::new(tycon, Box::new(record), Box::new(update), Cow::Borrowed(field))))
         },
         ExprSum::VariantCon(vc) => {
             let tycon = convert_type_con(vc.tycon.as_ref().req()?, package)?;
             let variant_arg = convert_expr(vc.variant_arg.as_deref().req()?, package)?;
             let variant_con = package.resolve_string(vc.variant_con_interned_str)?;
-            Ok(DamlExpr::VariantCon(DamlVariantCon::new(
-                tycon,
-                Box::new(variant_arg),
-                Cow::Borrowed(variant_con),
-            )))
+            Ok(DamlExpr::VariantCon(DamlVariantCon::new(tycon, Box::new(variant_arg), Cow::Borrowed(variant_con))))
         },
         ExprSum::EnumCon(ec) => {
             let tycon = convert_tycon_id(ec.tycon.as_ref().req()?, package)?;
@@ -123,11 +114,7 @@ pub fn convert_expr<'a>(
             let struct_expr = convert_expr(su.r#struct.as_deref().req()?, package)?;
             let update = convert_expr(su.update.as_deref().req()?, package)?;
             let field = package.resolve_string(su.field_interned_str)?;
-            Ok(DamlExpr::StructUpd(DamlStructUpd::new(
-                Box::new(struct_expr),
-                Box::new(update),
-                Cow::Borrowed(field),
-            )))
+            Ok(DamlExpr::StructUpd(DamlStructUpd::new(Box::new(struct_expr), Box::new(update), Cow::Borrowed(field))))
         },
         ExprSum::ToAny(ta) => {
             let ty = convert_type(ta.r#type.as_ref().req()?, package)?;
@@ -146,16 +133,12 @@ pub fn convert_expr<'a>(
         },
         ExprSum::TyApp(ta) => {
             let expr = convert_expr(ta.expr.as_deref().req()?, package)?;
-            let types =
-                ta.types.iter().map(|t| convert_type(t, package)).collect::<DamlLfConvertResult<Vec<_>>>()?;
+            let types = ta.types.iter().map(|t| convert_type(t, package)).collect::<DamlLfConvertResult<Vec<_>>>()?;
             Ok(DamlExpr::TyApp(DamlTyApp::new(Box::new(expr), types)))
         },
         ExprSum::Abs(abs) => {
-            let params = abs
-                .param
-                .iter()
-                .map(|p| convert_var_with_type(p, package))
-                .collect::<DamlLfConvertResult<Vec<_>>>()?;
+            let params =
+                abs.param.iter().map(|p| convert_var_with_type(p, package)).collect::<DamlLfConvertResult<Vec<_>>>()?;
             let body = convert_expr(abs.body.as_deref().req()?, package)?;
             Ok(DamlExpr::Abs(DamlAbs::new(params, Box::new(body))))
         },
@@ -177,8 +160,7 @@ pub fn convert_expr<'a>(
         ExprSum::Let(block) => Ok(DamlExpr::Let(convert_block(block, package)?)),
         ExprSum::Cons(cons) => {
             let ty = convert_type(cons.r#type.as_ref().req()?, package)?;
-            let front =
-                cons.front.iter().map(|e| convert_expr(e, package)).collect::<DamlLfConvertResult<Vec<_>>>()?;
+            let front = cons.front.iter().map(|e| convert_expr(e, package)).collect::<DamlLfConvertResult<Vec<_>>>()?;
             let tail = convert_expr(cons.tail.as_deref().req()?, package)?;
             Ok(DamlExpr::Cons(DamlCons::new(ty, front, Box::new(tail))))
         },
@@ -244,13 +226,11 @@ pub fn convert_expr<'a>(
             requiring_interface: Box::new(convert_tycon_id(tri.requiring_interface.as_ref().req()?, package)?),
             expr: Box::new(convert_expr(tri.expr.as_deref().req()?, package)?),
         })),
-        ExprSum::FromRequiredInterface(fri) => {
-            Ok(DamlExpr::InterfaceOp(DamlInterfaceExpr::FromRequiredInterface {
-                required_interface: Box::new(convert_tycon_id(fri.required_interface.as_ref().req()?, package)?),
-                requiring_interface: Box::new(convert_tycon_id(fri.requiring_interface.as_ref().req()?, package)?),
-                expr: Box::new(convert_expr(fri.expr.as_deref().req()?, package)?),
-            }))
-        },
+        ExprSum::FromRequiredInterface(fri) => Ok(DamlExpr::InterfaceOp(DamlInterfaceExpr::FromRequiredInterface {
+            required_interface: Box::new(convert_tycon_id(fri.required_interface.as_ref().req()?, package)?),
+            requiring_interface: Box::new(convert_tycon_id(fri.requiring_interface.as_ref().req()?, package)?),
+            expr: Box::new(convert_expr(fri.expr.as_deref().req()?, package)?),
+        })),
         ExprSum::UnsafeFromRequiredInterface(ufri) => {
             Ok(DamlExpr::InterfaceOp(DamlInterfaceExpr::UnsafeFromRequiredInterface {
                 required_interface: Box::new(convert_tycon_id(ufri.required_interface.as_ref().req()?, package)?),
@@ -511,12 +491,13 @@ fn convert_value_id<'a>(
     let pkg_id = match module.package_id.as_ref().req()?.sum.as_ref().req()? {
         PackageRefSum::SelfPackageId(_) => Cow::Borrowed(package.package_id),
         PackageRefSum::ImportedPackageIdInternedStr(idx) => Cow::Borrowed(package.resolve_string(*idx)?),
-        PackageRefSum::PackageImportId(_) =>
+        PackageRefSum::PackageImportId(_) => {
             return Err(DamlLfConvertError::UnsupportedFeatureUsed(
                 package.language_version().to_string(),
                 "PackageImportId in value-name PackageRef".into(),
                 "2.dev".into(),
-            )),
+            ));
+        },
     };
     let module_path: Vec<Cow<'a, str>> =
         package.resolve_dotted(module.module_name_interned_dname)?.into_iter().map(Cow::Borrowed).collect();
@@ -528,12 +509,7 @@ fn convert_value_id<'a>(
     let mut full_module_path = module_path;
     full_module_path.extend(prefix.iter().copied().map(Cow::Borrowed));
     let package_name = crate::convert::type_payload::resolve_package_name(package, &pkg_id);
-    Ok(DamlValueName::Local(DamlLocalValueName::new(
-        Cow::Borrowed(*name),
-        pkg_id,
-        package_name,
-        full_module_path,
-    )))
+    Ok(DamlValueName::Local(DamlLocalValueName::new(Cow::Borrowed(*name), pkg_id, package_name, full_module_path)))
 }
 
 /// Map the LF2 `BuiltinCon` enum to a [`DamlPrimCon`].
@@ -581,7 +557,9 @@ fn convert_builtin_lit<'a>(
         BuiltinLitSum::FailureCategory(code) => {
             use crate::element::FailureCategory;
             use crate::lf_protobuf::daml_lf_2::builtin_lit::FailureCategory as ProtoFc;
-            let cat = ProtoFc::try_from(*code).ok().req()?;
+            let cat = ProtoFc::try_from(*code).map_err(|_| {
+                DamlLfConvertError::InternalError(format!("unknown FailureCategory enum variant {code}"))
+            })?;
             Ok(DamlPrimLit::FailureCategory(match cat {
                 ProtoFc::InvalidIndependentOfSystemState => FailureCategory::InvalidIndependentOfSystemState,
                 ProtoFc::InvalidGivenCurrentSystemStateOther => FailureCategory::InvalidGivenCurrentSystemStateOther,
