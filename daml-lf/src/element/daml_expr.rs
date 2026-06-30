@@ -160,10 +160,10 @@ impl<'a> DamlVisitableElement<'a> for DamlValueName<'a> {
 /// A Daml local value name.
 #[derive(Debug, Serialize, Clone, ToStatic)]
 pub struct DamlLocalValueName<'a> {
-    pub name: Cow<'a, str>,
-    pub package_id: Cow<'a, str>,
-    pub package_name: Cow<'a, str>,
-    pub module_path: Vec<Cow<'a, str>>,
+    name: Cow<'a, str>,
+    package_id: Cow<'a, str>,
+    package_name: Cow<'a, str>,
+    module_path: Vec<Cow<'a, str>>,
 }
 
 impl<'a> DamlLocalValueName<'a> {
