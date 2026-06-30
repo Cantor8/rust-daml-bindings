@@ -23,10 +23,12 @@ pub fn convert_interface<'a>(
     module_path: &[Cow<'a, str>],
 ) -> DamlLfConvertResult<DamlInterface<'a>> {
     let name_segments = package.resolve_dotted(proto.tycon_interned_dname)?;
-    let (name, prefix) = name_segments
-        .split_last()
-        .map(|(last, rest)| (*last, rest))
-        .ok_or(crate::error::DamlLfConvertError::MissingRequiredField)?;
+    let (name, prefix) = name_segments.split_last().map(|(last, rest)| (*last, rest)).ok_or_else(|| {
+        crate::error::DamlLfConvertError::InternalError(format!(
+            "interface tycon_interned_dname {} resolves to an empty dotted-name",
+            proto.tycon_interned_dname
+        ))
+    })?;
     let package_id = Cow::Borrowed(package.package_id);
     let mut full_module_path: Vec<Cow<'a, str>> = module_path.to_vec();
     full_module_path.extend(prefix.iter().copied().map(Cow::Borrowed));

@@ -22,10 +22,12 @@ pub fn convert_exception<'a>(
     module_path: &[Cow<'a, str>],
 ) -> DamlLfConvertResult<DamlException<'a>> {
     let name_segments = package.resolve_dotted(proto.name_interned_dname)?;
-    let (name, prefix) = name_segments
-        .split_last()
-        .map(|(last, rest)| (*last, rest))
-        .ok_or(crate::error::DamlLfConvertError::MissingRequiredField)?;
+    let (name, prefix) = name_segments.split_last().map(|(last, rest)| (*last, rest)).ok_or_else(|| {
+        crate::error::DamlLfConvertError::InternalError(format!(
+            "exception name_interned_dname {} resolves to an empty dotted-name",
+            proto.name_interned_dname
+        ))
+    })?;
     let mut full_module_path: Vec<Cow<'a, str>> = module_path.to_vec();
     full_module_path.extend(prefix.iter().copied().map(Cow::Borrowed));
     #[cfg(feature = "full")]
