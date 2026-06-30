@@ -33,7 +33,5 @@ pub fn convert_def_value<'a>(
     };
     let ty = convert_type(name_with_type.r#type.as_ref().req()?, package)?;
     let expr = convert_expr(proto.expr.as_ref().req()?, package)?;
-    // LF2 dropped both no_party_literals and is_test flags; element
-    // layer keeps the fields for API stability, so default them.
-    Ok(DamlDefValue::new(name, ty, expr, false, false))
+    Ok(DamlDefValue::new(name, ty, expr))
 }

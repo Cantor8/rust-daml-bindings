@@ -4,30 +4,25 @@ use bounded_static::ToStatic;
 use serde::Serialize;
 use std::borrow::Cow;
 
-/// A Daml value.
+/// A Daml value (top-level `let`-bound definition).
+///
+/// LF2 dropped LF1's per-value `no_party_literals` and `is_test`
+/// flags — `forbid_party_literals` is now a module-wide invariant
+/// and "test" classification moved up to Daml Script. Neither field
+/// is surfaced on this struct.
 #[derive(Debug, Serialize, Clone, ToStatic)]
 pub struct DamlDefValue<'a> {
-    pub name: Cow<'a, str>,
-    pub ty: DamlType<'a>,
-    pub expr: DamlExpr<'a>,
-    pub no_party_literals: bool,
-    pub is_test: bool,
+    name: Cow<'a, str>,
+    ty: DamlType<'a>,
+    expr: DamlExpr<'a>,
 }
 
 impl<'a> DamlDefValue<'a> {
-    pub const fn new(
-        name: Cow<'a, str>,
-        ty: DamlType<'a>,
-        expr: DamlExpr<'a>,
-        no_party_literals: bool,
-        is_test: bool,
-    ) -> Self {
+    pub const fn new(name: Cow<'a, str>, ty: DamlType<'a>, expr: DamlExpr<'a>) -> Self {
         Self {
             name,
             ty,
             expr,
-            no_party_literals,
-            is_test,
         }
     }
 
@@ -50,14 +45,6 @@ impl<'a> DamlDefValue<'a> {
 
     pub const fn expr(&self) -> &DamlExpr<'a> {
         &self.expr
-    }
-
-    pub const fn no_party_literals(&self) -> bool {
-        self.no_party_literals
-    }
-
-    pub const fn is_test(&self) -> bool {
-        self.is_test
     }
 }
 
