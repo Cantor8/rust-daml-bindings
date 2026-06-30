@@ -55,7 +55,7 @@ pub type DamlOptional<T> = Option<T>;
 /// A Daml `Party`.
 #[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone)]
 pub struct DamlParty {
-    pub party: String,
+    pub(crate) party: String,
 }
 
 impl DamlParty {
@@ -112,10 +112,15 @@ impl std::fmt::Display for DamlParty {
     }
 }
 
-/// A Daml `ContractId`.
+/// A raw Daml `ContractId` string.
+///
+/// **Note:** template-specific phantom-typing is provided one layer up
+/// via codegen-emitted per-template newtypes (e.g. `FooContractId
+/// { contract_id: DamlContractId }`); `DamlContractId` itself is the
+/// universal raw-id carrier used inside `DamlValue::ContractId`.
 #[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone)]
 pub struct DamlContractId {
-    pub contract_id: String,
+    pub(crate) contract_id: String,
 }
 
 impl DamlContractId {
@@ -252,14 +257,14 @@ impl<V> FromIterator<(DamlText, V)> for DamlTextMapImpl<V> {
 /// A fixed precision numeric type.  Currently a simple wrapper around a `BigDecimal`.
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone)]
 pub struct DamlFixedNumeric<T: Nat> {
-    pub _phantom: PhantomData<T>,
+    phantom: PhantomData<T>,
     pub value: BigDecimal,
 }
 
 impl<T: Nat> DamlFixedNumeric<T> {
     pub fn new(value: BigDecimal) -> Self {
         Self {
-            _phantom: PhantomData::<T>::default(),
+            phantom: PhantomData::<T>,
             value,
         }
     }
