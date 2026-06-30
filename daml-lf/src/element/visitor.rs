@@ -1,15 +1,13 @@
 #[cfg(feature = "full")]
-use crate::element::daml_expr::DamlScenario;
-#[cfg(feature = "full")]
 use crate::element::{
     DamlAbs, DamlApp, DamlBinding, DamlBlock, DamlBuiltinFunction, DamlCase, DamlCaseAlt, DamlCaseAltCons,
-    DamlCaseAltEnum, DamlCaseAltOptionalSome, DamlCaseAltSum, DamlCaseAltVariant, DamlCommit, DamlCons, DamlCreate,
+    DamlCaseAltEnum, DamlCaseAltOptionalSome, DamlCaseAltSum, DamlCaseAltVariant, DamlCons, DamlCreate,
     DamlCreateInterface, DamlDefValue, DamlEnumCon, DamlExercise, DamlExerciseByKey, DamlExerciseInterface, DamlExpr,
     DamlFetch, DamlFetchInterface, DamlFieldWithExpr, DamlFromAny, DamlFromAnyException, DamlInterfaceExpr,
     DamlLocalValueName, DamlNonLocalValueName, DamlOptionalSome, DamlPrimCon, DamlPrimLit, DamlPure, DamlQueryNByKey,
-    DamlRecCon, DamlRecProj, DamlRecUpd, DamlRetrieveByKey, DamlScenarioEmbedExpr, DamlStructCon, DamlStructProj,
-    DamlStructUpd, DamlThrow, DamlToAny, DamlToAnyException, DamlTryCatch, DamlTyAbs, DamlTyApp, DamlUpdate,
-    DamlUpdateEmbedExpr, DamlValueName, DamlVarWithType, DamlVariantCon, RoundingMode,
+    DamlRecCon, DamlRecProj, DamlRecUpd, DamlRetrieveByKey, DamlStructCon, DamlStructProj, DamlStructUpd, DamlThrow,
+    DamlToAny, DamlToAnyException, DamlTryCatch, DamlTyAbs, DamlTyApp, DamlUpdate, DamlUpdateEmbedExpr, DamlValueName,
+    DamlVarWithType, DamlVariantCon, RoundingMode,
 };
 use crate::element::{
     DamlAbsoluteTyCon, DamlArchive, DamlArrow, DamlChoice, DamlData, DamlDefKey, DamlDefTypeSyn, DamlEnum,
@@ -272,18 +270,6 @@ pub trait DamlElementVisitor {
     fn pre_visit_update_embed_expr(&mut self, update_embed_expr: &DamlUpdateEmbedExpr<'_>) {}
     #[cfg(feature = "full")]
     fn post_visit_update_embed_expr(&mut self, update_embed_expr: &DamlUpdateEmbedExpr<'_>) {}
-    #[cfg(feature = "full")]
-    fn pre_visit_scenario(&mut self, scenario: &DamlScenario<'_>) {}
-    #[cfg(feature = "full")]
-    fn post_visit_scenario(&mut self, scenario: &DamlScenario<'_>) {}
-    #[cfg(feature = "full")]
-    fn pre_visit_commit(&mut self, commit: &DamlCommit<'_>) {}
-    #[cfg(feature = "full")]
-    fn post_visit_commit(&mut self, commit: &DamlCommit<'_>) {}
-    #[cfg(feature = "full")]
-    fn pre_visit_scenario_embed_expr(&mut self, scenario_embed_expr: &DamlScenarioEmbedExpr<'_>) {}
-    #[cfg(feature = "full")]
-    fn post_visit_scenario_embed_expr(&mut self, scenario_embed_expr: &DamlScenarioEmbedExpr<'_>) {}
     #[cfg(feature = "full")]
     fn pre_visit_case_alt(&mut self, case_alt: &DamlCaseAlt<'_>) {}
     #[cfg(feature = "full")]

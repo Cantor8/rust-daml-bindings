@@ -32,7 +32,6 @@ pub enum DamlExpr<'a> {
     Nil(DamlType<'a>),
     Cons(DamlCons<'a>),
     Update(DamlUpdate<'a>),
-    Scenario(DamlScenario<'a>),
     OptionalNone(DamlType<'a>),
     OptionalSome(DamlOptionalSome<'a>),
     ToAny(DamlToAny<'a>),
@@ -70,7 +69,6 @@ impl<'a> DamlVisitableElement<'a> for DamlExpr<'a> {
             DamlExpr::Let(block) => block.accept(visitor),
             DamlExpr::Cons(cons) => cons.accept(visitor),
             DamlExpr::Update(update) => update.accept(visitor),
-            DamlExpr::Scenario(scenario) => scenario.accept(visitor),
             DamlExpr::OptionalSome(opt_some) => opt_some.accept(visitor),
             DamlExpr::ToAny(to_any) => to_any.accept(visitor),
             DamlExpr::FromAny(from_any) => from_any.accept(visitor),
@@ -1732,107 +1730,6 @@ impl<'a> DamlVisitableElement<'a> for DamlUpdateEmbedExpr<'a> {
         self.ty.accept(visitor);
         self.body.accept(visitor);
         visitor.post_visit_update_embed_expr(self);
-    }
-}
-
-/// A Daml expression scenario effect.
-#[derive(Debug, Serialize, Clone, ToStatic)]
-pub enum DamlScenario<'a> {
-    Pure(DamlPure<'a>),
-    Block(DamlBlock<'a>),
-    Commit(DamlCommit<'a>),
-    MustFailAt(DamlCommit<'a>),
-    Pass(Box<DamlExpr<'a>>),
-    GetTime,
-    GetParty(Box<DamlExpr<'a>>),
-    EmbedExpr(DamlScenarioEmbedExpr<'a>),
-}
-
-impl<'a> DamlVisitableElement<'a> for DamlScenario<'a> {
-    fn accept(&'a self, visitor: &'a mut impl DamlElementVisitor) {
-        visitor.pre_visit_scenario(self);
-        match self {
-            DamlScenario::Pure(pure) => pure.accept(visitor),
-            DamlScenario::Block(block) => block.accept(visitor),
-            DamlScenario::Commit(commit) | DamlScenario::MustFailAt(commit) => commit.accept(visitor),
-            DamlScenario::Pass(expr) | DamlScenario::GetParty(expr) => expr.accept(visitor),
-            DamlScenario::GetTime => {},
-            DamlScenario::EmbedExpr(embed_expr) => embed_expr.accept(visitor),
-        }
-        visitor.post_visit_scenario(self);
-    }
-}
-
-/// A Daml expression scenario commit action.
-#[derive(Debug, Serialize, Clone, ToStatic)]
-pub struct DamlCommit<'a> {
-    party: Box<DamlExpr<'a>>,
-    expr: Box<DamlExpr<'a>>,
-    ret_type: DamlType<'a>,
-}
-
-impl<'a> DamlCommit<'a> {
-    pub fn new(party: Box<DamlExpr<'a>>, expr: Box<DamlExpr<'a>>, ret_type: DamlType<'a>) -> Self {
-        Self {
-            party,
-            expr,
-            ret_type,
-        }
-    }
-
-    pub fn party(&self) -> &DamlExpr<'a> {
-        self.party.as_ref()
-    }
-
-    pub fn expr(&self) -> &DamlExpr<'a> {
-        self.expr.as_ref()
-    }
-
-    pub fn ret_type(&self) -> &DamlType<'a> {
-        &self.ret_type
-    }
-}
-
-impl<'a> DamlVisitableElement<'a> for DamlCommit<'a> {
-    fn accept(&'a self, visitor: &'a mut impl DamlElementVisitor) {
-        visitor.pre_visit_commit(self);
-        self.party.accept(visitor);
-        self.expr.accept(visitor);
-        self.ret_type.accept(visitor);
-        visitor.post_visit_commit(self);
-    }
-}
-
-/// A Daml expression embedded scenario expression.
-#[derive(Debug, Serialize, Clone, ToStatic)]
-pub struct DamlScenarioEmbedExpr<'a> {
-    ty: DamlType<'a>,
-    body: Box<DamlExpr<'a>>,
-}
-
-impl<'a> DamlScenarioEmbedExpr<'a> {
-    pub fn new(ty: DamlType<'a>, body: Box<DamlExpr<'a>>) -> Self {
-        Self {
-            ty,
-            body,
-        }
-    }
-
-    pub fn ty(&self) -> &DamlType<'a> {
-        &self.ty
-    }
-
-    pub fn body(&self) -> &DamlExpr<'a> {
-        self.body.as_ref()
-    }
-}
-
-impl<'a> DamlVisitableElement<'a> for DamlScenarioEmbedExpr<'a> {
-    fn accept(&'a self, visitor: &'a mut impl DamlElementVisitor) {
-        visitor.pre_visit_scenario_embed_expr(self);
-        self.ty.accept(visitor);
-        self.body.accept(visitor);
-        visitor.post_visit_scenario_embed_expr(self);
     }
 }
 

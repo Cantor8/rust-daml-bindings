@@ -60,8 +60,6 @@ pub enum DamlType<'a> {
     AnyException,
     /// An update effect.
     Update,
-    /// A scenario effect.
-    Scenario,
     /// LF2 builtin: opaque category tag for `failWithStatus`.
     FailureCategory,
     /// Universal qualifier.
@@ -89,7 +87,6 @@ impl DamlType<'_> {
             DamlType::GenMap(_) => "DamlGenMap",
             DamlType::Optional(_) => "DamlOptional",
             DamlType::Update => "None (Update)",
-            DamlType::Scenario => "None (Scenario)",
             DamlType::FailureCategory => "None (FailureCategory)",
             DamlType::TyCon(_) => "None (TyCon)",
             DamlType::BoxedTyCon(_) => "None (BoxedTyCon)",
@@ -133,7 +130,6 @@ impl DamlType<'_> {
             | DamlType::Unit
             | DamlType::Date
             | DamlType::Update
-            | DamlType::Scenario
             | DamlType::Arrow
             | DamlType::Any
             | DamlType::TypeRep
@@ -184,7 +180,6 @@ impl<'a> DamlVisitableElement<'a> for DamlType<'a> {
             | DamlType::Unit
             | DamlType::Date
             | DamlType::Update
-            | DamlType::Scenario
             | DamlType::Arrow
             | DamlType::Any
             | DamlType::TypeRep
@@ -204,8 +199,8 @@ pub type DamlTypeSynName<'a> = DamlTyConName<'a>;
 /// A Daml type synonym.
 #[derive(Debug, Serialize, Clone, ToStatic)]
 pub struct DamlSyn<'a> {
-    pub tysyn: Box<DamlTypeSynName<'a>>,
-    pub args: Vec<DamlType<'a>>,
+    tysyn: Box<DamlTypeSynName<'a>>,
+    args: Vec<DamlType<'a>>,
 }
 
 impl<'a> DamlSyn<'a> {
@@ -340,7 +335,15 @@ impl Hash for DamlTyCon<'_> {
     }
 }
 
-/// Equality for `DamlTyCon` is defined on the `DamlTyConName` only, `type_arguments` are not considered.
+/// Equality and hashing of [`DamlTyCon`] are deliberately defined on
+/// the [`DamlTyConName`] alone — `type_arguments` are not considered.
+///
+/// **Consequence:** `List Int == List Bool` returns `true`, and a
+/// `HashSet<DamlTyCon>` collapses every instantiation of the same
+/// constructor to one entry. Use this when you want "same data type
+/// regardless of how it's instantiated"; otherwise compare with
+/// explicit `lhs.tycon() == rhs.tycon() && lhs.type_arguments() ==
+/// rhs.type_arguments()`.
 impl PartialEq for DamlTyCon<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.tycon == other.tycon

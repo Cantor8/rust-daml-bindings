@@ -14,7 +14,7 @@ use daml_lf::element::{DamlArchive, DamlData, DamlKind, DamlTyCon, DamlType};
 /// which contain (recursively) any `TyCon` where the target `DamlData` has been determined by the Daml compiler to be
 /// non-serializable.
 ///
-/// Fields which contain (recursively) types `Arrow`, `Update`, `Scenario`, `Any`, `TypeRep`, `Forall`, `Struct`, `Syn`
+/// Fields which contain (recursively) types `Arrow`, `Update`, `Any`, `TypeRep`, `Forall`, `Struct`, `Syn`
 /// are always excluded regardless of the mode.  Note that these types are not required for rendering data types that
 /// will be used by the Daml Ledger API.
 pub struct IsRenderable<'a> {
@@ -51,7 +51,6 @@ impl<'a> IsRenderable<'a> {
             DamlType::Var(var) => var.type_arguments().iter().all(|ty| self.check_type(ty)),
             DamlType::Arrow
             | DamlType::Update
-            | DamlType::Scenario
             | DamlType::Any
             | DamlType::TypeRep
             | DamlType::Bignumeric

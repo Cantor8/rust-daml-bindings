@@ -55,7 +55,6 @@ pub fn quote_type(ctx: &RenderContext<'_>, daml_type: &DamlType<'_>) -> TokenStr
         | DamlType::Unit
         | DamlType::Date => quote_escaped_ident(daml_type.name()),
         DamlType::Update
-        | DamlType::Scenario
         | DamlType::Arrow
         | DamlType::Any
         | DamlType::TypeRep

@@ -11,8 +11,9 @@ use crate::element::visitor::{DamlElementVisitor, DamlVisitableElement};
 /// dotted-name plus the expression that renders a user-facing error
 /// message when the exception is raised.
 ///
-/// The structural fields (name + location) are always present;
-/// the `message` expression body is `full`-gated.
+/// The structural fields (name + module path) are always present;
+/// the `message` expression body is `full`-gated. The proto's
+/// `location` field is not surfaced on the element layer.
 #[derive(Debug, Serialize, Clone, ToStatic)]
 pub struct DamlException<'a> {
     name: Cow<'a, str>,

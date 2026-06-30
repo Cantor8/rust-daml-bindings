@@ -286,7 +286,6 @@ impl<'a> DamlArchive<'a> {
                 | DamlType::RoundingMode
                 | DamlType::AnyException
                 | DamlType::Update
-                | DamlType::Scenario
                 | DamlType::FailureCategory => {},
             }
         }
