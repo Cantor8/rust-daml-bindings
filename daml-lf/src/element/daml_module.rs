@@ -207,10 +207,16 @@ impl<'a> DamlModule<'a> {
     }
 
     /// Create an empty `DamlModule` with a given `path`.
+    ///
+    /// `flags` defaults to the safe LF2 values (all three flags `true`)
+    /// so an empty / synthetic module that never goes through
+    /// [`Self::take_from`] still satisfies the LF2 invariant. The
+    /// converter's [`insert_module`](crate::convert) overwrites the
+    /// flags from the proto for real LF modules.
     fn new_empty(path: Vec<Cow<'a, str>>) -> Self {
         Self {
             path,
-            flags: DamlFeatureFlags::default(),
+            flags: DamlFeatureFlags::new(true, true, true),
             synonyms: Vec::default(),
             child_modules: HashMap::default(),
             data_types: HashMap::default(),
@@ -250,7 +256,7 @@ impl<'a> DamlVisitableElement<'a> for DamlModule<'a> {
             self.data_types.values().sorted_by_key(|ty| ty.name()).for_each(|data| data.accept(visitor));
             self.interfaces.values().sorted_by_key(|i| i.name()).for_each(|i| i.accept(visitor));
             self.exceptions.values().sorted_by_key(|e| e.name()).for_each(|e| e.accept(visitor));
-            self.child_modules.values().sorted_by_key(|&m| m.path.clone()).for_each(|module| module.accept(visitor));
+            self.child_modules.values().sorted_by_key(|m| m.path.as_slice()).for_each(|module| module.accept(visitor));
         } else {
             self.data_types.values().for_each(|data| data.accept(visitor));
             self.interfaces.values().for_each(|i| i.accept(visitor));
@@ -281,7 +287,8 @@ impl<'a> DamlDefTypeSyn<'a> {
         }
     }
 
-    ///
+    /// The type-variable parameters this synonym is parameterised over
+    /// (e.g. `k` and `v` for `type MyMap k v = Map k (List v)`).
     pub fn params(&self) -> &[DamlTypeVarWithKind<'_>] {
         &self.params
     }
@@ -291,7 +298,8 @@ impl<'a> DamlDefTypeSyn<'a> {
         &self.ty
     }
 
-    /// Name of the defined type synonym.
+    /// Dotted-name of the defined type synonym (LF allows multi-segment
+    /// names; e.g. `["Foo", "Bar"]`).
     pub fn name(&self) -> impl Iterator<Item = &str> {
         self.name.iter().map(AsRef::as_ref)
     }
