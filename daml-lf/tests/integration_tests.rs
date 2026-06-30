@@ -46,11 +46,18 @@ fn test_apply_dar() -> DamlLfResult<()> {
 fn test_apply_dalf_dependency() -> DamlLfResult<()> {
     let dar = DarFile::from_file(FIXTURE_DAR)?;
     // LF2 PackageMetadata is mandatory, so every dalf dependency
-    // carries its real package name. The first dep on this DAR is
-    // a daml-prim sub-module.
-    let any_dep = dar.dependencies.first().expect("at least one dalf dependency");
-    let name = any_dep.apply(|package| package.name().to_owned())?;
-    assert!(name.starts_with("daml-prim"), "dalf name: {name}");
+    // carries its real package name. Scan all deps for a daml-prim
+    // package rather than assuming `dependencies[0]` is one — the
+    // manifest's `Dalfs:` order is not specified.
+    let mut found_prim = false;
+    for dep in &dar.dependencies {
+        let name = dep.apply(|package| package.name().to_owned())?;
+        if name.starts_with("daml-prim") {
+            found_prim = true;
+            break;
+        }
+    }
+    assert!(found_prim, "expected at least one daml-prim dependency in dar.dependencies");
     Ok(())
 }
 
@@ -185,6 +192,54 @@ fn test_validate_fixture_archive() -> DamlLfResult<()> {
     let dar = DarFile::from_file(FIXTURE_DAR)?;
     dar.apply(|archive| archive.validate())??;
     Ok(())
+}
+
+#[test]
+fn test_validate_rejects_non_record_interface_view() {
+    // Synthesise a one-package archive whose single interface has a
+    // primitive `Int64` view type. validate() should reject it with
+    // UnexpectedType("Record", _).
+    use std::borrow::Cow;
+    use std::collections::HashMap;
+
+    use daml_lf::element::{DamlArchive, DamlFeatureFlags, DamlInterface, DamlModule, DamlPackage, DamlType};
+
+    let view_iface = DamlInterface::new(
+        Cow::Borrowed("BadIface"),
+        Cow::Borrowed("pkg-id"),
+        vec![Cow::Borrowed("M")],
+        Cow::Borrowed("this"),
+        vec![],
+        vec![],
+        DamlType::Int64, // ← deliberately not a TyCon-resolving-to-Record
+        vec![],
+    );
+    let mut interfaces = HashMap::new();
+    interfaces.insert(Cow::Borrowed("BadIface"), view_iface);
+    let module = DamlModule::new_leaf(
+        vec![Cow::Borrowed("M")],
+        DamlFeatureFlags::new(true, true, true),
+        vec![],
+        HashMap::new(),
+        interfaces,
+        HashMap::new(),
+        #[cfg(feature = "full")]
+        HashMap::new(),
+    );
+    let pkg = DamlPackage::new(
+        Cow::Borrowed("pkg"),
+        Cow::Borrowed("pkg-id"),
+        None,
+        LanguageVersion::V2_1,
+        module,
+    );
+    let mut packages = HashMap::new();
+    packages.insert(Cow::Borrowed("pkg-id"), pkg);
+    let archive = DamlArchive::new(Cow::Borrowed("test"), Cow::Borrowed("pkg-id"), packages);
+
+    let err = archive.validate().expect_err("validate should reject non-Record interface view");
+    let msg = format!("{err}");
+    assert!(msg.contains("expected type Record"), "unexpected error message: {msg}");
 }
 
 #[test]

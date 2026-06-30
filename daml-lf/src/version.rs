@@ -68,7 +68,10 @@ impl TryFrom<&str> for LanguageV2MinorVersion {
 
 #[cfg(test)]
 mod tests {
+    use std::convert::TryFrom;
+
     use super::{LanguageV2MinorVersion, LanguageVersion};
+    use crate::DamlLfError;
 
     #[test]
     fn minor_version_ordering() {
@@ -85,5 +88,23 @@ mod tests {
     fn display_version() {
         assert_eq!("v2.1", LanguageVersion::V2_1.to_string());
         assert_eq!("v2.dev", LanguageVersion::V2_DEV.to_string());
+    }
+
+    #[test]
+    fn try_from_known_minor_versions() {
+        assert_eq!(LanguageV2MinorVersion::V1, LanguageV2MinorVersion::try_from("1").unwrap());
+        assert_eq!(LanguageV2MinorVersion::Dev, LanguageV2MinorVersion::try_from("dev").unwrap());
+    }
+
+    #[test]
+    fn try_from_unknown_minor_version_errors() {
+        match LanguageV2MinorVersion::try_from("99") {
+            Err(DamlLfError::UnknownVersion(s)) => assert_eq!("99", s),
+            other => panic!("expected UnknownVersion(\"99\"), got {other:?}"),
+        }
+        match LanguageV2MinorVersion::try_from("") {
+            Err(DamlLfError::UnknownVersion(s)) => assert_eq!("", s),
+            other => panic!("expected UnknownVersion(\"\"), got {other:?}"),
+        }
     }
 }
