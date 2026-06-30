@@ -197,16 +197,15 @@ impl DarManifest {
         let format = match doc[FORMAT_KEY].as_str() {
             Some(s) if s.to_lowercase() == DAML_LF_VALUE => Ok(DarManifestFormat::DamlLf),
             Some(s) =>
-                Err(DamlLfError::new_dar_parse_error(format!("unexpected value for {DAML_LF_VALUE}, found {s}"))),
-            None => Err(DamlLfError::new_dar_parse_error(format!("key {DAML_LF_VALUE} not found"))),
+                Err(DamlLfError::new_dar_parse_error(format!("unexpected value for {FORMAT_KEY}, found {s}"))),
+            None => Err(DamlLfError::new_dar_parse_error(format!("key {FORMAT_KEY} not found"))),
         }?;
 
         let encryption = match doc[ENCRYPTION_KEY].as_str() {
             Some(s) if s.to_lowercase() == NON_ENCRYPTED_VALUE => Ok(DarEncryptionType::NotEncrypted),
-            Some(s) => Err(DamlLfError::new_dar_parse_error(format!(
-                "unexpected value for {NON_ENCRYPTED_VALUE}, found {s}"
-            ))),
-            None => Err(DamlLfError::new_dar_parse_error(format!("key {NON_ENCRYPTED_VALUE} not found"))),
+            Some(s) =>
+                Err(DamlLfError::new_dar_parse_error(format!("unexpected value for {ENCRYPTION_KEY}, found {s}"))),
+            None => Err(DamlLfError::new_dar_parse_error(format!("key {ENCRYPTION_KEY} not found"))),
         }?;
 
         Ok(Self::new(manifest_version, created_by, dalf_main, dalf_dependencies, format, encryption))
@@ -454,7 +453,7 @@ mod test {
         let manifest = DarManifest::parse(&manifest_str[..]);
         match manifest.expect_err("expected failure") {
             DamlLfError::DarParseError(s) =>
-                assert_eq!("unexpected value for daml-lf, found anything-different-from-daml-lf", s),
+                assert_eq!("unexpected value for Format, found anything-different-from-daml-lf", s),
             _ => panic!("expected failure"),
         }
     }

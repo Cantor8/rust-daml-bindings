@@ -1,5 +1,7 @@
 use crate::convert::data_payload::DamlDataPayload;
 use crate::convert::interned::PackageInternedResolver;
+use crate::convert::util::Required;
+use crate::error::DamlLfConvertResult;
 use crate::lf_protobuf::daml_lf_2;
 
 /// Borrowed view of an LF2 `Module`: the precomputed name index +
@@ -21,21 +23,25 @@ pub struct ModuleFlags {
 }
 
 impl<'a> DamlModulePayload<'a> {
-    pub fn new(module: &'a daml_lf_2::Module) -> Self {
-        let flags = module
-            .flags
-            .as_ref()
-            .map(|f| ModuleFlags {
-                forbid_party_literals: f.forbid_party_literals,
-                dont_divulge_contract_ids_in_create_arguments: f.dont_divulge_contract_ids_in_create_arguments,
-                dont_disclose_non_consuming_choices_to_observers: f.dont_disclose_non_consuming_choices_to_observers,
-            })
-            .unwrap_or_default();
-        Self {
+    pub fn new(module: &'a daml_lf_2::Module) -> DamlLfConvertResult<Self> {
+        // The proto's `flags` is `optional FeatureFlags`. Defaulting on
+        // absence used to mask the "missing message" case as
+        // (false, false, false) which then got rejected by
+        // `insert_module`'s LF1-flags guard with a misleading "LF1-only"
+        // diagnostic. Surface absence as MissingRequiredField instead so
+        // the caller sees the structural problem.
+        let flags_proto = module.flags.as_ref().req()?;
+        let flags = ModuleFlags {
+            forbid_party_literals: flags_proto.forbid_party_literals,
+            dont_divulge_contract_ids_in_create_arguments: flags_proto.dont_divulge_contract_ids_in_create_arguments,
+            dont_disclose_non_consuming_choices_to_observers: flags_proto
+                .dont_disclose_non_consuming_choices_to_observers,
+        };
+        Ok(Self {
             name_index: module.name_interned_dname,
             flags,
             module,
-        }
+        })
     }
 
     /// Resolve this module's dotted name (e.g. `["Foo", "Bar"]`)

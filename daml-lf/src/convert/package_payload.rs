@@ -126,25 +126,38 @@ impl<'a> TryFrom<&'a DamlLfArchive> for DamlPackagePayload<'a> {
         let metadata = package.metadata.as_ref().req()?;
         // Package metadata is required in LF2 (LF1 had it gated behind
         // a feature flag); resolve name + version directly.
-        let name = interned_strings
-            .get(usize::try_from(metadata.name_interned_str).unwrap_or(usize::MAX))
-            .ok_or_else(|| {
+        let name = {
+            let idx = usize::try_from(metadata.name_interned_str).map_err(|_| {
                 DamlLfConvertError::InternalError(format!(
-                    "package metadata name_interned_str {} out of range",
+                    "package metadata name_interned_str {} is negative",
                     metadata.name_interned_str
                 ))
-            })?
-            .to_owned();
-        let version = interned_strings
-            .get(usize::try_from(metadata.version_interned_str).unwrap_or(usize::MAX))
-            .ok_or_else(|| {
+            })?;
+            interned_strings
+                .get(idx)
+                .ok_or_else(|| {
+                    DamlLfConvertError::InternalError(format!("package metadata name_interned_str {idx} out of range"))
+                })?
+                .to_owned()
+        };
+        let version = {
+            let idx = usize::try_from(metadata.version_interned_str).map_err(|_| {
                 DamlLfConvertError::InternalError(format!(
-                    "package metadata version_interned_str {} out of range",
+                    "package metadata version_interned_str {} is negative",
                     metadata.version_interned_str
                 ))
-            })?
-            .to_owned();
-        let modules = package.modules.iter().map(DamlModulePayload::new).collect();
+            })?;
+            interned_strings
+                .get(idx)
+                .ok_or_else(|| {
+                    DamlLfConvertError::InternalError(format!(
+                        "package metadata version_interned_str {idx} out of range"
+                    ))
+                })?
+                .to_owned()
+        };
+        let modules =
+            package.modules.iter().map(DamlModulePayload::new).collect::<DamlLfConvertResult<Vec<_>>>()?;
         // Seed the name table with the self-mapping. The archive
         // payload (multi-package case) replaces this with the full
         // table once it's collected every package's name.

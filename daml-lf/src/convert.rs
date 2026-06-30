@@ -328,7 +328,6 @@ fn build_data_type<'a>(
                 DamlData::Template(Box::new(build_template(
                     template,
                     name_cow,
-                    package_id_cow,
                     module_path_owned,
                     daml_fields,
                     package,
@@ -397,12 +396,12 @@ fn data_key<'a>(data: &DamlData<'a>) -> Cow<'a, str> {
 fn build_template<'a>(
     template: &'a daml_lf_2::DefTemplate,
     name: Cow<'a, str>,
-    package_id: Cow<'a, str>,
     module_path: Vec<Cow<'a, str>>,
     fields: Vec<crate::element::DamlField<'a>>,
     package: &'a DamlPackagePayload<'a>,
     serializable: bool,
 ) -> DamlLfResult<DamlTemplate<'a>> {
+    let package_id = Cow::Borrowed(package.package_id);
     let param = package.resolve_string(template.param_interned_str)?;
     let choices: Vec<_> = template
         .choices

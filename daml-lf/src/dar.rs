@@ -89,10 +89,22 @@ impl DarFile {
     pub fn from_file(path: impl AsRef<Path>) -> DamlLfResult<Self> {
         let dar_file = std::fs::File::open(path)?;
         let mut zip_archive = zip::ZipArchive::new(dar_file)?;
+        // Try the fat path first; on failure fall back to legacy
+        // filename inference, but if the legacy path also fails, chain
+        // the fat-path error into the diagnostic so the user sees both
+        // attempts. (Previously the fat-path error was silently swallowed
+        // and users debugging a malformed MANIFEST.MF only saw the
+        // legacy-inference failure.)
         let manifest = match Self::parse_dar_manifest_from_file(&mut zip_archive) {
-            Ok(manifest) => Ok(manifest),
-            Err(_) => Self::make_manifest_from_archive(&mut zip_archive),
-        }?;
+            Ok(manifest) => manifest,
+            Err(fat_err) => match Self::make_manifest_from_archive(&mut zip_archive) {
+                Ok(manifest) => manifest,
+                Err(legacy_err) =>
+                    return Err(DamlLfError::new_dar_parse_error(format!(
+                        "failed to parse dar as either fat ({fat_err}) or legacy ({legacy_err})"
+                    ))),
+            },
+        };
         let dalf_main = Self::parse_dalf_from_archive(&mut zip_archive, manifest.dalf_main())?;
         let dalf_dependencies = Self::parse_dalfs_from_archive(&mut zip_archive, manifest.dalf_dependencies())?;
         Ok(Self::new(manifest, dalf_main, dalf_dependencies))
