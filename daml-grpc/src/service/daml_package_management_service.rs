@@ -146,8 +146,8 @@ impl<'a> DamlPackageManagementService<'a> {
             self.client().update_vetted_packages(make_request(payload, self.auth_token)?).await?.into_inner();
         trace!(?response);
         Ok(DamlUpdateVettedPackagesOutcome {
-            past_vetted_packages: response.past_vetted_packages.map(DamlVettedPackages::from),
-            new_vetted_packages: response.new_vetted_packages.map(DamlVettedPackages::from),
+            past_vetted_packages: response.past_vetted_packages.map(DamlVettedPackages::try_from).transpose()?,
+            new_vetted_packages: response.new_vetted_packages.map(DamlVettedPackages::try_from).transpose()?,
         })
     }
 

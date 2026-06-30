@@ -171,8 +171,8 @@ impl TryFrom<CommandStatus> for DamlCommandStatus {
 
     fn try_from(s: CommandStatus) -> DamlResult<Self> {
         Ok(Self {
-            started: util::from_grpc_timestamp(&s.started.req()?),
-            completed: s.completed.as_ref().map(util::from_grpc_timestamp),
+            started: util::from_grpc_timestamp(&s.started.req()?)?,
+            completed: s.completed.as_ref().map(util::from_grpc_timestamp).transpose()?,
             completion: s.completion.map(DamlCompletion::try_from).transpose()?,
             state: DamlCommandState::from(CommandState::try_from(s.state).ok().req()?),
             commands: s.commands.into_iter().map(DamlCommand::try_from).collect::<DamlResult<_>>()?,

@@ -103,7 +103,11 @@ impl<'a> DamlPackageService<'a> {
         let response = self.client().list_vetted_packages(make_request(payload, self.auth_token)?).await?.into_inner();
         trace!(?response);
         Ok(DamlVettedPackagesPage {
-            vetted_packages: response.vetted_packages.into_iter().map(DamlVettedPackages::from).collect(),
+            vetted_packages: response
+                .vetted_packages
+                .into_iter()
+                .map(DamlVettedPackages::try_from)
+                .collect::<DamlResult<Vec<_>>>()?,
             next_page_token: response.next_page_token,
         })
     }

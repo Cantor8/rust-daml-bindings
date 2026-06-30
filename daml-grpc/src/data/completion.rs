@@ -75,9 +75,9 @@ impl TryFrom<Completion> for DamlCompletion {
             user_id: c.user_id,
             act_as: c.act_as,
             submission_id: c.submission_id,
-            deduplication_period: c.deduplication_period.map(DamlCompletionDeduplicationPeriod::from),
+            deduplication_period: c.deduplication_period.map(DamlCompletionDeduplicationPeriod::try_from).transpose()?,
             offset: DamlLedgerOffset::new(c.offset),
-            synchronizer_time: c.synchronizer_time.map(DamlSynchronizerTime::from),
+            synchronizer_time: c.synchronizer_time.map(DamlSynchronizerTime::try_from).transpose()?,
             paid_traffic_cost: c.paid_traffic_cost,
         })
     }
@@ -100,7 +100,11 @@ impl TryFrom<OffsetCheckpoint> for DamlOffsetCheckpoint {
     fn try_from(c: OffsetCheckpoint) -> DamlResult<Self> {
         Ok(Self {
             offset: DamlLedgerOffset::new(c.offset),
-            synchronizer_times: c.synchronizer_times.into_iter().map(DamlSynchronizerTime::from).collect(),
+            synchronizer_times: c
+                .synchronizer_times
+                .into_iter()
+                .map(DamlSynchronizerTime::try_from)
+                .collect::<DamlResult<Vec<_>>>()?,
         })
     }
 }
@@ -113,12 +117,14 @@ pub struct DamlSynchronizerTime {
     pub record_time: DateTime<Utc>,
 }
 
-impl From<SynchronizerTime> for DamlSynchronizerTime {
-    fn from(s: SynchronizerTime) -> Self {
-        Self {
+impl TryFrom<SynchronizerTime> for DamlSynchronizerTime {
+    type Error = DamlError;
+
+    fn try_from(s: SynchronizerTime) -> DamlResult<Self> {
+        Ok(Self {
             synchronizer_id: s.synchronizer_id,
-            record_time: s.record_time.as_ref().map(util::from_grpc_timestamp).unwrap_or_default(),
-        }
+            record_time: s.record_time.as_ref().map(util::from_grpc_timestamp).transpose()?.unwrap_or_default(),
+        })
     }
 }
 
@@ -147,12 +153,14 @@ pub enum DamlCompletionDeduplicationPeriod {
     DeduplicationDuration(Duration),
 }
 
-impl From<DeduplicationPeriod> for DamlCompletionDeduplicationPeriod {
-    fn from(p: DeduplicationPeriod) -> Self {
-        match p {
+impl TryFrom<DeduplicationPeriod> for DamlCompletionDeduplicationPeriod {
+    type Error = DamlError;
+
+    fn try_from(p: DeduplicationPeriod) -> DamlResult<Self> {
+        Ok(match p {
             DeduplicationPeriod::DeduplicationOffset(offset) => Self::DeduplicationOffset(offset),
             DeduplicationPeriod::DeduplicationDuration(duration) =>
-                Self::DeduplicationDuration(util::from_grpc_duration(&duration)),
-        }
+                Self::DeduplicationDuration(util::from_grpc_duration(&duration)?),
+        })
     }
 }

@@ -73,7 +73,7 @@ impl TryFrom<CreatedEvent> for DamlCreatedEvent {
             witness_parties: e.witness_parties,
             signatories: e.signatories,
             observers: e.observers,
-            created_at: util::from_grpc_timestamp(&e.created_at.req()?),
+            created_at: util::from_grpc_timestamp(&e.created_at.req()?)?,
             package_name: e.package_name,
             acs_delta: e.acs_delta,
             representative_package_id: e.representative_package_id,

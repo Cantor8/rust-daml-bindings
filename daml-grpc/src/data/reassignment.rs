@@ -52,7 +52,7 @@ impl TryFrom<Reassignment> for DamlReassignment {
             workflow_id: r.workflow_id,
             offset: DamlLedgerOffset::new(r.offset),
             events: r.events.into_iter().map(DamlReassignmentEvent::try_from).collect::<DamlResult<_>>()?,
-            record_time: util::from_grpc_timestamp(&r.record_time.req()?),
+            record_time: util::from_grpc_timestamp(&r.record_time.req()?)?,
             synchronizer_id: r.synchronizer_id,
             paid_traffic_cost: r.paid_traffic_cost,
         })
@@ -119,7 +119,7 @@ impl TryFrom<UnassignedEvent> for DamlUnassignedEvent {
             target: e.target,
             submitter: e.submitter,
             reassignment_counter: e.reassignment_counter,
-            assignment_exclusivity: e.assignment_exclusivity.as_ref().map(util::from_grpc_timestamp),
+            assignment_exclusivity: e.assignment_exclusivity.as_ref().map(util::from_grpc_timestamp).transpose()?,
             witness_parties: e.witness_parties,
             package_name: e.package_name,
             offset: DamlLedgerOffset::new(e.offset),

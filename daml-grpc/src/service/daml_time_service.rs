@@ -49,7 +49,7 @@ impl<'a> DamlTimeService<'a> {
         trace!(payload = ?payload, token = ?self.auth_token);
         let response = self.client().get_time(make_request(payload, self.auth_token)?).await?.into_inner();
         trace!(?response);
-        Ok(util::from_grpc_timestamp(&response.current_time.req()?))
+        util::from_grpc_timestamp(&response.current_time.req()?)
     }
 
     /// Atomically advance the participant's static-time clock from

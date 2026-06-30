@@ -56,11 +56,11 @@ impl TryFrom<Transaction> for DamlTransaction {
             update_id: tx.update_id,
             command_id: tx.command_id,
             workflow_id: tx.workflow_id,
-            effective_at: util::from_grpc_timestamp(&tx.effective_at.req()?),
+            effective_at: util::from_grpc_timestamp(&tx.effective_at.req()?)?,
             events: tx.events.into_iter().map(DamlEvent::try_from).collect::<DamlResult<_>>()?,
             offset: DamlLedgerOffset::new(tx.offset),
             synchronizer_id: tx.synchronizer_id,
-            record_time: util::from_grpc_timestamp(&tx.record_time.req()?),
+            record_time: util::from_grpc_timestamp(&tx.record_time.req()?)?,
             external_transaction_hash: tx.external_transaction_hash,
             paid_traffic_cost: tx.paid_traffic_cost,
         })

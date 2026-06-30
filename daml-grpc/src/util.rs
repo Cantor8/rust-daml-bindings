@@ -3,14 +3,18 @@ use chrono::{DateTime, Datelike, NaiveDate, Timelike, Utc};
 use std::convert::TryFrom;
 use std::time::Duration;
 
-#[allow(clippy::cast_sign_loss)]
-pub fn from_grpc_timestamp(timestamp: &prost_types::Timestamp) -> DateTime<Utc> {
-    // `DateTime::from_timestamp` is None only for out-of-range
-    // values; the proto allows the full chrono range, so this is
-    // effectively infallible — fall back to the epoch on the
-    // pathological case rather than introducing a Result return.
-    DateTime::from_timestamp(timestamp.seconds, timestamp.nanos as u32)
-        .unwrap_or_else(|| DateTime::<Utc>::from_timestamp(0, 0).expect("epoch is in range"))
+/// Decode a `google.protobuf.Timestamp` to a `chrono::DateTime<Utc>`.
+///
+/// Returns `FailedConversion` when the proto carries a negative nanos
+/// field (the proto's `nanos: i32` is documented as `0..=999_999_999`)
+/// or when the resulting `(seconds, nanos)` pair falls outside the
+/// representable `DateTime` range.
+pub fn from_grpc_timestamp(timestamp: &prost_types::Timestamp) -> DamlResult<DateTime<Utc>> {
+    let nanos = u32::try_from(timestamp.nanos)
+        .map_err(|_| DamlError::new_failed_conversion(format!("negative nanos {}", timestamp.nanos)))?;
+    DateTime::from_timestamp(timestamp.seconds, nanos).ok_or_else(|| {
+        DamlError::new_failed_conversion(format!("timestamp ({}, {}) out of range", timestamp.seconds, nanos))
+    })
 }
 
 pub fn to_grpc_timestamp(datetime: DateTime<Utc>) -> DamlResult<prost_types::Timestamp> {
@@ -20,9 +24,17 @@ pub fn to_grpc_timestamp(datetime: DateTime<Utc>) -> DamlResult<prost_types::Tim
     })
 }
 
-#[allow(clippy::cast_sign_loss)]
-pub fn from_grpc_duration(duration: &prost_types::Duration) -> Duration {
-    Duration::new(duration.seconds as u64, duration.nanos as u32)
+/// Decode a `google.protobuf.Duration` to a `std::time::Duration`.
+///
+/// Returns `FailedConversion` when either component is negative (the
+/// proto allows signed values for "negative duration" semantics, but
+/// `std::time::Duration` is unsigned and cannot represent that).
+pub fn from_grpc_duration(duration: &prost_types::Duration) -> DamlResult<Duration> {
+    let seconds = u64::try_from(duration.seconds)
+        .map_err(|_| DamlError::new_failed_conversion(format!("negative seconds {}", duration.seconds)))?;
+    let nanos = u32::try_from(duration.nanos)
+        .map_err(|_| DamlError::new_failed_conversion(format!("negative nanos {}", duration.nanos)))?;
+    Ok(Duration::new(seconds, nanos))
 }
 
 pub fn to_grpc_duration(duration: &Duration) -> DamlResult<prost_types::Duration> {
@@ -33,8 +45,12 @@ pub fn to_grpc_duration(duration: &Duration) -> DamlResult<prost_types::Duration
 }
 
 pub fn date_from_days(days: i32) -> DamlResult<NaiveDate> {
-    NaiveDate::from_num_days_from_ce_opt(days.saturating_add(NaiveDate::from_ymd_opt(1970, 1, 1).unwrap().num_days_from_ce()))
-        .ok_or_else(|| DamlError::new_failed_conversion(format!("datetime from days {days} out of range")))
+    let epoch_ce = NaiveDate::from_ymd_opt(1970, 1, 1).expect("epoch is a valid date").num_days_from_ce();
+    let offset = days
+        .checked_add(epoch_ce)
+        .ok_or_else(|| DamlError::new_failed_conversion(format!("date from days {days} overflowed i32")))?;
+    NaiveDate::from_num_days_from_ce_opt(offset)
+        .ok_or_else(|| DamlError::new_failed_conversion(format!("date from days {days} out of range")))
 }
 
 pub fn datetime_from_micros(micros: i64) -> DamlResult<DateTime<Utc>> {

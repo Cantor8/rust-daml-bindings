@@ -71,7 +71,7 @@ impl TryFrom<TopologyTransaction> for DamlTopologyTransaction {
             update_id: t.update_id,
             offset: DamlLedgerOffset::new(t.offset),
             synchronizer_id: t.synchronizer_id,
-            record_time: util::from_grpc_timestamp(&t.record_time.req()?),
+            record_time: util::from_grpc_timestamp(&t.record_time.req()?)?,
             events: t.events.into_iter().map(DamlTopologyEvent::try_from).collect::<DamlResult<_>>()?,
         })
     }

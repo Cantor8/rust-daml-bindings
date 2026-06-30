@@ -117,7 +117,7 @@ impl TryFrom<PackageDetails> for DamlPackageDetails {
         Ok(Self {
             package_id: details.package_id,
             package_size: details.package_size,
-            known_since: util::from_grpc_timestamp(&details.known_since.req()?),
+            known_since: util::from_grpc_timestamp(&details.known_since.req()?)?,
             name: details.name,
             version: details.version,
         })
@@ -156,18 +156,20 @@ pub struct DamlVettedPackage {
     pub package_version: Option<String>,
 }
 
-impl From<VettedPackage> for DamlVettedPackage {
-    fn from(p: VettedPackage) -> Self {
-        Self {
+impl TryFrom<VettedPackage> for DamlVettedPackage {
+    type Error = DamlError;
+
+    fn try_from(p: VettedPackage) -> DamlResult<Self> {
+        Ok(Self {
             package_id: p.package_id,
-            valid_from_inclusive: p.valid_from_inclusive.as_ref().map(util::from_grpc_timestamp),
-            valid_until_exclusive: p.valid_until_exclusive.as_ref().map(util::from_grpc_timestamp),
+            valid_from_inclusive: p.valid_from_inclusive.as_ref().map(util::from_grpc_timestamp).transpose()?,
+            valid_until_exclusive: p.valid_until_exclusive.as_ref().map(util::from_grpc_timestamp).transpose()?,
             // The proto marks these as required-when-present at the participant.
             // We surface "" as None so callers don't have to disambiguate empty
             // strings from "field actually missing".
             package_name: Some(p.package_name).filter(|s| !s.is_empty()),
             package_version: Some(p.package_version).filter(|s| !s.is_empty()),
-        }
+        })
     }
 }
 
@@ -180,14 +182,20 @@ pub struct DamlVettedPackages {
     pub topology_serial: u32,
 }
 
-impl From<VettedPackages> for DamlVettedPackages {
-    fn from(v: VettedPackages) -> Self {
-        Self {
-            packages: v.packages.into_iter().map(DamlVettedPackage::from).collect(),
+impl TryFrom<VettedPackages> for DamlVettedPackages {
+    type Error = DamlError;
+
+    fn try_from(v: VettedPackages) -> DamlResult<Self> {
+        Ok(Self {
+            packages: v
+                .packages
+                .into_iter()
+                .map(DamlVettedPackage::try_from)
+                .collect::<DamlResult<Vec<_>>>()?,
             participant_id: v.participant_id,
             synchronizer_id: v.synchronizer_id,
             topology_serial: v.topology_serial,
-        }
+        })
     }
 }
 
