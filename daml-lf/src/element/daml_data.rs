@@ -20,24 +20,29 @@ impl<'a> DamlData<'a> {
     /// The name of this data type.
     pub fn name(&self) -> &str {
         match self {
-            DamlData::Record(record) => &record.name,
-            DamlData::Template(template) => &template.name,
-            DamlData::Variant(variant) => &variant.name,
-            DamlData::Enum(data_enum) => &data_enum.name,
+            DamlData::Record(record) => record.name(),
+            DamlData::Template(template) => template.name(),
+            DamlData::Variant(variant) => variant.name(),
+            DamlData::Enum(data_enum) => data_enum.name(),
         }
     }
 
     /// The id of the package which contains this `DamlData`.
     pub fn package_id(&self) -> &str {
         match self {
-            DamlData::Record(record) => &record.package_id,
-            DamlData::Template(template) => &template.package_id,
-            DamlData::Variant(variant) => &variant.package_id,
-            DamlData::Enum(data_enum) => &data_enum.package_id,
+            DamlData::Record(record) => record.package_id(),
+            DamlData::Template(template) => template.package_id(),
+            DamlData::Variant(variant) => variant.package_id(),
+            DamlData::Enum(data_enum) => data_enum.package_id(),
         }
     }
 
     /// The path to the module which contains this `DamlData`.
+    ///
+    /// Iterates the underlying `module_path` field directly — calling
+    /// each variant's `.module_path()` accessor here would produce a
+    /// distinct opaque `impl Iterator` type per arm and the match
+    /// would refuse to unify them.
     pub fn module_path(&self) -> impl Iterator<Item = &str> {
         match self {
             DamlData::Record(record) => record.module_path.iter().map(AsRef::as_ref),
@@ -50,9 +55,9 @@ impl<'a> DamlData<'a> {
     /// The fields of this data type.
     pub fn fields(&self) -> &[DamlField<'_>] {
         match self {
-            DamlData::Record(record) => &record.fields,
-            DamlData::Template(template) => &template.fields,
-            DamlData::Variant(variant) => &variant.fields,
+            DamlData::Record(record) => record.fields(),
+            DamlData::Template(template) => template.fields(),
+            DamlData::Variant(variant) => variant.fields(),
             DamlData::Enum(_) => &[],
         }
     }
@@ -60,20 +65,20 @@ impl<'a> DamlData<'a> {
     /// The type parameters applied to this data type.
     pub fn type_params(&self) -> &[DamlTypeVarWithKind<'_>] {
         match self {
-            DamlData::Record(record) => &record.type_params,
+            DamlData::Record(record) => record.type_params(),
             DamlData::Template(_) => &[],
-            DamlData::Variant(variant) => &variant.type_params,
-            DamlData::Enum(data_enum) => &data_enum.type_params,
+            DamlData::Variant(variant) => variant.type_params(),
+            DamlData::Enum(data_enum) => data_enum.type_params(),
         }
     }
 
     /// Is this data type serializable?
     pub fn serializable(&self) -> bool {
         match self {
-            DamlData::Record(record) => record.serializable,
-            DamlData::Template(template) => template.serializable,
-            DamlData::Variant(variant) => variant.serializable,
-            DamlData::Enum(data_enum) => data_enum.serializable,
+            DamlData::Record(record) => record.serializable(),
+            DamlData::Template(template) => template.serializable(),
+            DamlData::Variant(variant) => variant.serializable(),
+            DamlData::Enum(data_enum) => data_enum.serializable(),
         }
     }
 
@@ -90,6 +95,87 @@ impl<'a> DamlData<'a> {
             DamlData::Enum(data_enum) => data_enum.name.clone(),
         }
     }
+}
+
+/// Private trait capturing the (package_id, module_path, name) identity
+/// triple shared by every data-typed element. Lets the cross-type
+/// `PartialEq` impls reuse one body instead of pasting the same three
+/// comparisons into every block.
+trait DataIdentity {
+    fn package_id(&self) -> &str;
+    fn module_path(&self) -> impl Iterator<Item = &str>;
+    fn identity_name(&self) -> &str;
+}
+
+impl DataIdentity for DamlData<'_> {
+    fn package_id(&self) -> &str {
+        Self::package_id(self)
+    }
+    fn module_path(&self) -> impl Iterator<Item = &str> {
+        Self::module_path(self)
+    }
+    fn identity_name(&self) -> &str {
+        self.name()
+    }
+}
+impl DataIdentity for DamlTemplate<'_> {
+    fn package_id(&self) -> &str {
+        Self::package_id(self)
+    }
+    fn module_path(&self) -> impl Iterator<Item = &str> {
+        Self::module_path(self)
+    }
+    fn identity_name(&self) -> &str {
+        self.name()
+    }
+}
+impl DataIdentity for DamlRecord<'_> {
+    fn package_id(&self) -> &str {
+        Self::package_id(self)
+    }
+    fn module_path(&self) -> impl Iterator<Item = &str> {
+        Self::module_path(self)
+    }
+    fn identity_name(&self) -> &str {
+        self.name()
+    }
+}
+impl DataIdentity for DamlVariant<'_> {
+    fn package_id(&self) -> &str {
+        Self::package_id(self)
+    }
+    fn module_path(&self) -> impl Iterator<Item = &str> {
+        Self::module_path(self)
+    }
+    fn identity_name(&self) -> &str {
+        self.name()
+    }
+}
+impl DataIdentity for DamlEnum<'_> {
+    fn package_id(&self) -> &str {
+        Self::package_id(self)
+    }
+    fn module_path(&self) -> impl Iterator<Item = &str> {
+        Self::module_path(self)
+    }
+    fn identity_name(&self) -> &str {
+        self.name()
+    }
+}
+impl DataIdentity for DamlTyConName<'_> {
+    fn package_id(&self) -> &str {
+        Self::package_id(self)
+    }
+    fn module_path(&self) -> impl Iterator<Item = &str> {
+        Self::module_path(self)
+    }
+    fn identity_name(&self) -> &str {
+        self.data_name()
+    }
+}
+
+fn data_identity_eq<A: DataIdentity, B: DataIdentity>(a: &A, b: &B) -> bool {
+    a.package_id() == b.package_id() && cmp_all(a.module_path(), b.module_path()) && a.identity_name() == b.identity_name()
 }
 
 impl<'a> DamlVisitableElement<'a> for DamlData<'a> {
@@ -117,48 +203,34 @@ impl PartialEq<DamlData<'_>> for DamlData<'_> {
     }
 }
 
-/// Convenience impl to compare a `DamlTyConName` with a `DamlData`.
+/// Convenience cross-type equality: `DamlData` compares equal to any
+/// other identity-typed element ([`DamlTyConName`] / [`DamlTemplate`] /
+/// [`DamlRecord`] / [`DamlVariant`] / [`DamlEnum`]) when they share
+/// the same `(package_id, module_path, name)` triple. All bodies are
+/// the same — see [`data_identity_eq`].
 impl PartialEq<DamlTyConName<'_>> for DamlData<'_> {
-    fn eq(&self, tycon: &DamlTyConName<'_>) -> bool {
-        tycon.package_id() == self.package_id()
-            && cmp_all(tycon.module_path(), self.module_path())
-            && tycon.data_name() == self.name()
+    fn eq(&self, other: &DamlTyConName<'_>) -> bool {
+        data_identity_eq(self, other)
     }
 }
-
-/// Convenience impl to compare a `DamlTemplate` with a `DamlData`.
 impl PartialEq<DamlTemplate<'_>> for DamlData<'_> {
     fn eq(&self, other: &DamlTemplate<'_>) -> bool {
-        other.package_id() == self.package_id()
-            && cmp_all(other.module_path(), self.module_path())
-            && other.name() == self.name()
+        data_identity_eq(self, other)
     }
 }
-
-/// Convenience impl to compare a `DamlRecord` with a `DamlData`.
 impl PartialEq<DamlRecord<'_>> for DamlData<'_> {
     fn eq(&self, other: &DamlRecord<'_>) -> bool {
-        other.package_id() == self.package_id()
-            && cmp_all(other.module_path(), self.module_path())
-            && other.name() == self.name()
+        data_identity_eq(self, other)
     }
 }
-
-/// Convenience impl to compare a `DamlVariant` with a `DamlData`.
 impl PartialEq<DamlVariant<'_>> for DamlData<'_> {
     fn eq(&self, other: &DamlVariant<'_>) -> bool {
-        other.package_id() == self.package_id()
-            && cmp_all(other.module_path(), self.module_path())
-            && other.name() == self.name()
+        data_identity_eq(self, other)
     }
 }
-
-/// Convenience impl to compare a `DamlEnum` with a `DamlData`.
 impl PartialEq<DamlEnum<'_>> for DamlData<'_> {
     fn eq(&self, other: &DamlEnum<'_>) -> bool {
-        other.package_id() == self.package_id()
-            && cmp_all(other.module_path(), self.module_path())
-            && other.name() == self.name()
+        data_identity_eq(self, other)
     }
 }
 
@@ -342,18 +414,12 @@ impl<'a> DamlVisitableElement<'a> for DamlTemplate<'a> {
 
 impl PartialEq<DamlTemplate<'_>> for DamlTemplate<'_> {
     fn eq(&self, other: &DamlTemplate<'_>) -> bool {
-        other.package_id() == self.package_id()
-            && cmp_all(other.module_path(), self.module_path())
-            && other.name() == self.name()
+        data_identity_eq(self, other)
     }
 }
-
-/// Convenience impl to compare a `DamlData` with a `DamlTemplate`.
 impl PartialEq<DamlData<'_>> for DamlTemplate<'_> {
-    fn eq(&self, data: &DamlData<'_>) -> bool {
-        data.package_id() == self.package_id()
-            && cmp_all(data.module_path(), self.module_path())
-            && data.name() == self.name()
+    fn eq(&self, other: &DamlData<'_>) -> bool {
+        data_identity_eq(self, other)
     }
 }
 
@@ -608,18 +674,12 @@ impl<'a> DamlVisitableElement<'a> for DamlRecord<'a> {
 
 impl PartialEq<DamlRecord<'_>> for DamlRecord<'_> {
     fn eq(&self, other: &DamlRecord<'_>) -> bool {
-        other.package_id() == self.package_id()
-            && cmp_all(other.module_path(), self.module_path())
-            && other.name() == self.name()
+        data_identity_eq(self, other)
     }
 }
-
-/// Convenience impl to compare a `DamlData` with a `DamlRecord`.
 impl PartialEq<DamlData<'_>> for DamlRecord<'_> {
-    fn eq(&self, data: &DamlData<'_>) -> bool {
-        data.package_id() == self.package_id()
-            && cmp_all(data.module_path(), self.module_path())
-            && data.name() == self.name()
+    fn eq(&self, other: &DamlData<'_>) -> bool {
+        data_identity_eq(self, other)
     }
 }
 
@@ -689,18 +749,12 @@ impl<'a> DamlVisitableElement<'a> for DamlVariant<'a> {
 
 impl PartialEq<DamlVariant<'_>> for DamlVariant<'_> {
     fn eq(&self, other: &DamlVariant<'_>) -> bool {
-        other.package_id() == self.package_id()
-            && cmp_all(other.module_path(), self.module_path())
-            && other.name() == self.name()
+        data_identity_eq(self, other)
     }
 }
-
-/// Convenience impl to compare a `DamlData` with a `DamlVariant`.
 impl PartialEq<DamlData<'_>> for DamlVariant<'_> {
-    fn eq(&self, data: &DamlData<'_>) -> bool {
-        data.package_id() == self.package_id()
-            && cmp_all(data.module_path(), self.module_path())
-            && data.name() == self.name()
+    fn eq(&self, other: &DamlData<'_>) -> bool {
+        data_identity_eq(self, other)
     }
 }
 
@@ -769,18 +823,12 @@ impl<'a> DamlVisitableElement<'a> for DamlEnum<'a> {
 
 impl PartialEq<DamlEnum<'_>> for DamlEnum<'_> {
     fn eq(&self, other: &DamlEnum<'_>) -> bool {
-        other.package_id() == self.package_id()
-            && cmp_all(other.module_path(), self.module_path())
-            && other.name() == self.name()
+        data_identity_eq(self, other)
     }
 }
-
-/// Convenience impl to compare a `DamlData` with a `DamlEnum`.
 impl PartialEq<DamlData<'_>> for DamlEnum<'_> {
-    fn eq(&self, data: &DamlData<'_>) -> bool {
-        data.package_id() == self.package_id()
-            && cmp_all(data.module_path(), self.module_path())
-            && data.name() == self.name()
+    fn eq(&self, other: &DamlData<'_>) -> bool {
+        data_identity_eq(self, other)
     }
 }
 
