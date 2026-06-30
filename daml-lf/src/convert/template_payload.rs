@@ -7,23 +7,36 @@ use crate::convert::package_payload::DamlPackagePayload;
 use crate::convert::type_payload::{convert_tycon_id, convert_type};
 use crate::convert::util::Required;
 use crate::element::{DamlChoice, DamlDefKey, DamlField, DamlTyConName};
-use crate::error::DamlLfConvertResult;
+use crate::error::{DamlLfConvertError, DamlLfConvertResult};
 use crate::lf_protobuf::daml_lf_2;
 
 /// Convert an LF2 `TemplateChoice` into the element-layer
 /// [`DamlChoice`]. The arg-binder becomes a single-element `fields`
 /// vector (`Vec<DamlField>` with one entry).
 ///
+/// The choice's owning `package_id` is taken from `package` rather
+/// than passed in; `module_path` is the only piece of context the
+/// caller has to supply (it's clone-per-choice today because
+/// [`DamlChoice`] stores the path by value — a structural change to
+/// that field would let multiple choices share an `Arc<[..]>`).
+///
 /// Under `--features full`, the choice's Expr-typed bodies (update,
-/// controllers, observers) are populated via [`convert_expr`]; the
-/// LF2 `authorizers` field (only present in 2.dev) is not surfaced
-/// on the element layer yet.
+/// controllers, observers) are populated via [`convert_expr`].
+/// The LF2.dev `authorizers` field is surfaced as
+/// [`UnsupportedFeatureUsed`](DamlLfConvertError::UnsupportedFeatureUsed)
+/// rather than silently dropped.
 pub fn convert_choice<'a>(
     proto: &daml_lf_2::TemplateChoice,
     package: &'a DamlPackagePayload<'a>,
     module_path: &[Cow<'a, str>],
-    package_id: &Cow<'a, str>,
 ) -> DamlLfConvertResult<DamlChoice<'a>> {
+    if proto.authorizers.is_some() {
+        return Err(DamlLfConvertError::UnsupportedFeatureUsed(
+            package.language_version().to_string(),
+            "TemplateChoice.authorizers (LF2.dev-only)".into(),
+            "2.dev".into(),
+        ));
+    }
     let name = package.resolve_string(proto.name_interned_str)?;
     let self_binder = package.resolve_string(proto.self_binder_interned_str)?;
     let arg_binder = proto.arg_binder.as_ref().req()?;
@@ -39,7 +52,7 @@ pub fn convert_choice<'a>(
     let observers = convert_expr(proto.observers.as_ref().req()?, package)?;
     Ok(DamlChoice::new(
         Cow::Borrowed(name),
-        package_id.clone(),
+        Cow::Borrowed(package.package_id),
         module_path.to_vec(),
         vec![arg_field],
         return_type,

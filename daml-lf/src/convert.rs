@@ -407,7 +407,7 @@ fn build_template<'a>(
     let choices: Vec<_> = template
         .choices
         .iter()
-        .map(|c| convert_choice(c, package, &module_path, &package_id))
+        .map(|c| convert_choice(c, package, &module_path))
         .collect::<crate::error::DamlLfConvertResult<_>>()?;
     let key = template.key.as_ref().map(|k| convert_def_key(k, package)).transpose()?;
     let implements = convert_implements(&template.implements, package)?;

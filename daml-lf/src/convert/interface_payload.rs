@@ -39,7 +39,7 @@ pub fn convert_interface<'a>(
     let choices = proto
         .choices
         .iter()
-        .map(|c| convert_choice(c, package, &full_module_path, &package_id))
+        .map(|c| convert_choice(c, package, &full_module_path))
         .collect::<DamlLfConvertResult<Vec<_>>>()?;
     let view = convert_type(proto.view.as_ref().req()?, package)?;
     let requires =
