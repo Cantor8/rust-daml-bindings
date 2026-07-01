@@ -187,35 +187,35 @@ impl<T> DamlTextMapImpl<T> {
     }
 }
 
-/// Determine the order of `DamlTextMapImpl` objects.
+/// Lexicographic order over sorted `(key, value)` pairs.
 ///
-/// The ordering of `DamlTextMapImpl` objects is determined by the number of entries and then by the ordering of keys,
-/// values are not considered.
-impl<T: PartialEq> PartialOrd for DamlTextMapImpl<T> {
+/// Sorts each side by key first, then compares element-by-element. This
+/// gives a deterministic ordering that considers both keys AND values —
+/// contrast with the pre-0.4 behaviour, which sorted by keys only and
+/// ignored values, silently collapsing `{"a" → 1}` and `{"a" → 999}` as
+/// equal for `cmp` / `partial_cmp`.
+impl<T: PartialOrd> PartialOrd for DamlTextMapImpl<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         if self.0.len() != other.0.len() {
             return self.0.len().partial_cmp(&other.0.len());
         }
-        self.0.keys().sorted().partial_cmp(other.0.keys().sorted())
+        let sorted_self = self.0.iter().sorted_by(|(a, _), (b, _)| a.cmp(b));
+        let sorted_other = other.0.iter().sorted_by(|(a, _), (b, _)| a.cmp(b));
+        sorted_self.partial_cmp(sorted_other)
     }
 }
 
-impl<T: PartialOrd + Ord> Ord for DamlTextMapImpl<T> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).expect("PartialOrd is never None")
-    }
-}
+// `Ord` intentionally not implemented — `T: Ord` is a stricter bound than
+// most callers can satisfy (in particular `DamlValue` is `PartialOrd`
+// only). Callers who need a total order can wrap the map in a newtype and
+// impl `Ord` themselves against the concrete `T`.
 
-/// Compare `DamlTextMapImpl` for equality.
-///
-/// `DamlTextMapImpl` objects are considered equal if they contain the same number of entries and the same keys, values
-/// are not considered.
-impl<T> PartialEq for DamlTextMapImpl<T> {
+/// Delegates to `HashMap`'s value-aware equality (both keys and values
+/// must match). See the `PartialOrd` docstring for the pre-0.4 behaviour
+/// this replaces.
+impl<T: PartialEq> PartialEq for DamlTextMapImpl<T> {
     fn eq(&self, other: &Self) -> bool {
-        if self.0.len() != other.0.len() {
-            return false;
-        }
-        self.0.keys().all(|key| other.get(key).is_some())
+        self.0 == other.0
     }
 }
 
@@ -328,33 +328,60 @@ mod tests {
     }
 
     #[test]
-    fn test_daml_text_map_equal_keys() {
-        let map1: DamlTextMapImpl<DamlInt64> =
-            vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect::<DamlTextMap<DamlInt64>>();
+    fn test_daml_text_map_identical_pairs_are_equal() {
+        let map1: DamlTextMap<DamlInt64> =
+            vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
         let map2: DamlTextMap<DamlInt64> =
-            vec![("key1".into(), 100), ("key2".into(), 200)].into_iter().collect::<DamlTextMap<DamlInt64>>();
+            vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
         assert_eq!(map1, map2);
+    }
+
+    #[test]
+    fn test_daml_text_map_same_keys_different_values_are_not_equal() {
+        // Pre-0.4 this incorrectly reported the two maps as equal (keys-
+        // only comparison). The new PartialEq delegates to HashMap's, so
+        // value differences count.
+        let map1: DamlTextMap<DamlInt64> =
+            vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
+        let map2: DamlTextMap<DamlInt64> =
+            vec![("key1".into(), 100), ("key2".into(), 200)].into_iter().collect();
+        assert_ne!(map1, map2);
     }
 
     #[test]
     fn test_daml_text_map_not_equal_keys() {
         let map1: DamlTextMap<DamlInt64> =
-            vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect::<DamlTextMap<DamlInt64>>();
+            vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
         let map2: DamlTextMap<DamlInt64> =
-            vec![("key3".into(), 10), ("key4".into(), 20)].into_iter().collect::<DamlTextMap<DamlInt64>>();
+            vec![("key3".into(), 10), ("key4".into(), 20)].into_iter().collect();
         assert_ne!(map1, map2);
     }
 
     #[test]
-    fn test_daml_text_map_order() {
+    fn test_daml_text_map_partial_cmp_considers_values() {
+        // Same keys, different values — partial_cmp now walks
+        // (key, value) pairs and reports the true relation instead of
+        // returning Equal.
         let map1: DamlTextMap<DamlInt64> =
-            vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect::<DamlTextMap<DamlInt64>>();
+            vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
         let map2: DamlTextMap<DamlInt64> =
-            vec![("key2".into(), 10), ("key3".into(), 20)].into_iter().collect::<DamlTextMap<DamlInt64>>();
+            vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
         let map3: DamlTextMap<DamlInt64> =
-            vec![("key1".into(), 100), ("key2".into(), 200)].into_iter().collect::<DamlTextMap<DamlInt64>>();
-        assert_eq!(Ordering::Less, map1.cmp(&map2));
-        assert_eq!(Ordering::Greater, map2.cmp(&map1));
-        assert_eq!(Ordering::Equal, map1.cmp(&map3));
+            vec![("key1".into(), 100), ("key2".into(), 200)].into_iter().collect();
+        assert_eq!(Some(Ordering::Equal), map1.partial_cmp(&map2));
+        assert_eq!(Some(Ordering::Less), map1.partial_cmp(&map3));
+        assert_eq!(Some(Ordering::Greater), map3.partial_cmp(&map1));
+    }
+
+    #[test]
+    fn test_daml_text_map_partial_cmp_orders_by_size_then_keys() {
+        let small: DamlTextMap<DamlInt64> = vec![("k".into(), 1)].into_iter().collect();
+        let big: DamlTextMap<DamlInt64> =
+            vec![("a".into(), 1), ("b".into(), 1)].into_iter().collect();
+        assert_eq!(Some(Ordering::Less), small.partial_cmp(&big));
+
+        let a_first: DamlTextMap<DamlInt64> = vec![("a".into(), 1)].into_iter().collect();
+        let b_first: DamlTextMap<DamlInt64> = vec![("b".into(), 1)].into_iter().collect();
+        assert_eq!(Some(Ordering::Less), a_first.partial_cmp(&b_first));
     }
 }
