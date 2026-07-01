@@ -990,13 +990,22 @@ impl PartialOrd for DamlValue {
             (DamlValue::Optional(v1), DamlValue::Optional(v2)) => v1.partial_cmp(v2),
             (DamlValue::TextMap(v1), DamlValue::TextMap(v2)) =>
                 if v1.len() == v2.len() {
-                    v1.keys().sorted().partial_cmp(v2.keys().sorted())
+                    // Sort each side by key; compare (key, value) pairs
+                    // lexicographically. Considers values (pre-0.4 walked
+                    // only keys and returned Equal for maps that differed
+                    // in values).
+                    let s1 = v1.iter().sorted_by(|(a, _), (b, _)| a.cmp(b));
+                    let s2 = v2.iter().sorted_by(|(a, _), (b, _)| a.cmp(b));
+                    s1.partial_cmp(s2)
                 } else {
                     v1.len().partial_cmp(&v2.len())
                 },
             (DamlValue::GenMap(v1), DamlValue::GenMap(v2)) =>
                 if v1.len() == v2.len() {
-                    v1.keys().partial_cmp(v2.keys())
+                    // BTreeMap iterates in key-sorted order already;
+                    // walk (key, value) pairs. Same value-aware semantics
+                    // as the TextMap arm.
+                    v1.iter().partial_cmp(v2.iter())
                 } else {
                     v1.len().partial_cmp(&v2.len())
                 },
@@ -1101,5 +1110,36 @@ mod tests {
         assert_eq!(value1.cmp(&value2), Ordering::Less);
         assert_eq!(value2.cmp(&value1), Ordering::Greater);
         assert_eq!(value1.cmp(&value3), Ordering::Equal);
+    }
+
+    #[test]
+    fn test_ord_for_textmap_considers_values() {
+        // Same keys, different values — pre-0.4 partial_cmp reported
+        // Equal because it walked keys only. Now walks (key, value)
+        // pairs, so the difference matters.
+        let items1 =
+            vec![(String::from("text1"), DamlValue::Int64(10)), (String::from("text2"), DamlValue::Int64(20))];
+        let items2 =
+            vec![(String::from("text1"), DamlValue::Int64(999)), (String::from("text2"), DamlValue::Int64(20))];
+        let value1 = DamlValue::TextMap(items1.into_iter().collect::<DamlTextMap<DamlValue>>());
+        let value2 = DamlValue::TextMap(items2.into_iter().collect::<DamlTextMap<DamlValue>>());
+        assert_ne!(value1, value2);
+        assert_eq!(Ordering::Less, value1.cmp(&value2));
+    }
+
+    #[test]
+    fn test_ord_for_genmap_considers_values() {
+        let items1 = vec![
+            (DamlValue::Text(String::from("text1")), DamlValue::Int64(10)),
+            (DamlValue::Text(String::from("text2")), DamlValue::Int64(20)),
+        ];
+        let items2 = vec![
+            (DamlValue::Text(String::from("text1")), DamlValue::Int64(999)),
+            (DamlValue::Text(String::from("text2")), DamlValue::Int64(20)),
+        ];
+        let value1 = DamlValue::GenMap(items1.into_iter().collect::<DamlGenMap<DamlValue, DamlValue>>());
+        let value2 = DamlValue::GenMap(items2.into_iter().collect::<DamlGenMap<DamlValue, DamlValue>>());
+        assert_ne!(value1, value2);
+        assert_eq!(Ordering::Less, value1.cmp(&value2));
     }
 }
