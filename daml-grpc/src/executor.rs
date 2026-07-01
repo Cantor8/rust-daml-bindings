@@ -15,7 +15,7 @@ pub struct DamlSimpleExecutorBuilder<'a> {
     act_as: Option<Vec<String>>,
     read_as: Option<Vec<String>>,
     workflow_id: Option<&'a str>,
-    application_id: Option<&'a str>,
+    user_id: Option<&'a str>,
     deduplication_period: Option<DamlCommandsDeduplicationPeriod>,
     min_ledger_time: Option<DamlMinLedgerTime>,
     auth_token: Option<&'a str>,
@@ -28,7 +28,7 @@ impl<'a> DamlSimpleExecutorBuilder<'a> {
             act_as: None,
             read_as: None,
             workflow_id: None,
-            application_id: None,
+            user_id: None,
             deduplication_period: None,
             min_ledger_time: None,
             auth_token: None,
@@ -70,9 +70,12 @@ impl<'a> DamlSimpleExecutorBuilder<'a> {
         }
     }
 
-    pub fn application_id(self, application_id: &'a str) -> Self {
+    /// v2 wire name (v1's `application_id`). Sets the submission's
+    /// `user_id`, which the participant matches against the JWT's
+    /// `sub` claim when the auth layer is user-based.
+    pub fn user_id(self, user_id: &'a str) -> Self {
         Self {
-            application_id: Some(application_id),
+            user_id: Some(user_id),
             ..self
         }
     }
@@ -106,7 +109,7 @@ impl<'a> DamlSimpleExecutorBuilder<'a> {
                 self.act_as.unwrap_or_default(),
                 self.read_as.unwrap_or_default(),
                 self.workflow_id.unwrap_or("default-workflow"),
-                self.application_id.unwrap_or("default-application"),
+                self.user_id.unwrap_or("default-user"),
                 self.deduplication_period,
                 self.min_ledger_time,
                 self.auth_token,
@@ -123,14 +126,6 @@ impl<'a> DamlSimpleExecutorBuilder<'a> {
             (None, Some(read_as)) => !read_as.is_empty(),
             (Some(act_as), Some(read_as)) => !act_as.is_empty() || !read_as.is_empty(),
         }
-    }
-}
-
-/// A generic failable executor.
-#[async_trait]
-pub trait Executor {
-    fn execute<T, F: FnOnce(&Self) -> DamlResult<T>>(&self, f: F) -> DamlResult<T> {
-        f(self)
     }
 }
 
@@ -238,8 +233,6 @@ impl<'a> DamlSimpleExecutor<'a> {
         }
     }
 }
-
-impl Executor for DamlSimpleExecutor<'_> {}
 
 #[async_trait]
 #[allow(clippy::needless_lifetimes)]

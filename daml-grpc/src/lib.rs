@@ -77,7 +77,7 @@ mod command_factory;
 pub use command_factory::DamlCommandFactory;
 
 mod executor;
-pub use executor::{CommandExecutor, DamlSimpleExecutor, DamlSimpleExecutorBuilder, Executor};
+pub use executor::{CommandExecutor, DamlSimpleExecutor, DamlSimpleExecutorBuilder};
 
 /// Raw prost-generated Ledger API v2 protobuf bindings.
 ///
