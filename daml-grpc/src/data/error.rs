@@ -1,24 +1,36 @@
-use futures::io::Error;
-use std::error;
-use std::fmt;
+use std::io;
 use tonic::codegen::http;
 
 /// A Daml ledger error.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum DamlError {
-    TimeoutError(Box<DamlError>),
-    GrpcTransportError(tonic::transport::Error),
+    #[error("timeout error: {0}")]
+    TimeoutError(#[source] Box<DamlError>),
+    #[error(transparent)]
+    GrpcTransportError(#[from] tonic::transport::Error),
+    #[error(transparent)]
     GrpcStatusError(tonic::Status),
+    #[error(transparent)]
     GrpcPermissionError(tonic::Status),
-    InvalidUriError(http::uri::InvalidUri),
-    StdError(Error),
+    #[error(transparent)]
+    InvalidUriError(#[from] http::uri::InvalidUri),
+    #[error(transparent)]
+    StdError(#[from] io::Error),
+    #[error("unexpected type, expected {0} but found {1}")]
     UnexpectedType(String, String),
+    #[error("unknown field {0}")]
     UnknownField(String),
+    #[error("list index {0} out of range")]
     ListIndexOutOfRange(usize),
+    #[error("expected optional value is None")]
     MissingRequiredField,
+    #[error("unexpected variant constructor, expected {0} but found {1}")]
     UnexpectedVariant(String, String),
+    #[error("{0}")]
     Other(String),
+    #[error("failed conversion: {0}")]
     FailedConversion(String),
+    #[error("insufficient parties")]
     InsufficientParties,
 }
 
@@ -32,49 +44,15 @@ impl DamlError {
     }
 }
 
-impl fmt::Display for DamlError {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            DamlError::InvalidUriError(e) => write!(fmt, "{}", (e as &dyn error::Error)),
-            DamlError::GrpcTransportError(e) => write!(fmt, "{}", (e as &dyn error::Error)),
-            DamlError::GrpcStatusError(e) => write!(fmt, "{}", (e as &dyn error::Error)),
-            DamlError::GrpcPermissionError(e) => write!(fmt, "{}", (e as &dyn error::Error)),
-            DamlError::StdError(e) => write!(fmt, "{}", (e as &dyn error::Error)),
-            DamlError::UnexpectedType(expected, actual) =>
-                write!(fmt, "unexpected type, expected {} but found {}", expected, actual),
-            DamlError::UnknownField(name) => write!(fmt, "unknown field {}", name),
-            DamlError::ListIndexOutOfRange(index) => write!(fmt, "list index {} out of range", index),
-            DamlError::MissingRequiredField => write!(fmt, "expected optional value is None"),
-            DamlError::UnexpectedVariant(expected, actual) =>
-                write!(fmt, "unexpected variant constructor, expected {} but found {}", expected, actual),
-            DamlError::Other(e) => write!(fmt, "{}", e),
-            DamlError::FailedConversion(e) => write!(fmt, "failed conversion: {}", e),
-            DamlError::TimeoutError(e) => write!(fmt, "timeout error: {}", e),
-            DamlError::InsufficientParties => write!(fmt, "insufficient parties"),
-        }
-    }
-}
-
-impl error::Error for DamlError {}
-
+/// `tonic::Status` maps to one of two variants depending on its code —
+/// permission-vs-authn errors get their own bucket so downstream code
+/// can pattern-match on it without inspecting the status code.
 impl From<tonic::Status> for DamlError {
     fn from(e: tonic::Status) -> Self {
         match e.code() {
             tonic::Code::PermissionDenied | tonic::Code::Unauthenticated => DamlError::GrpcPermissionError(e),
             _ => DamlError::GrpcStatusError(e),
         }
-    }
-}
-
-impl From<tonic::transport::Error> for DamlError {
-    fn from(e: tonic::transport::Error) -> Self {
-        DamlError::GrpcTransportError(e)
-    }
-}
-
-impl From<http::uri::InvalidUri> for DamlError {
-    fn from(e: http::uri::InvalidUri) -> Self {
-        DamlError::InvalidUriError(e)
     }
 }
 
@@ -87,12 +65,6 @@ impl From<&str> for DamlError {
 impl From<bigdecimal::ParseBigDecimalError> for DamlError {
     fn from(e: bigdecimal::ParseBigDecimalError) -> Self {
         DamlError::FailedConversion(e.to_string())
-    }
-}
-
-impl From<Error> for DamlError {
-    fn from(e: Error) -> Self {
-        DamlError::StdError(e)
     }
 }
 

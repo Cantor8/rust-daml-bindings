@@ -35,6 +35,7 @@ prost-types = "0.14.4"
 async-trait = "0.1.89"
 itertools = "0.15.0"
 tracing = "0.1.44"
+thiserror = "2.0.18"
 
 # dev-dependencies are kept minimal here; the Phase 8 v2
 # integration smoke test lives in its own crate-local target
