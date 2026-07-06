@@ -50,7 +50,7 @@
 /// To support such cases either use `(get_party_name_str())::p` or provide a [`DamlValue`]
 /// `DamlValue::new_party(get_party_name_str())`.
 ///
-/// There is currently no support for [`DamlValue::Map`], [`DamlValue::GenMap`] or [`DamlValue::Enum`].
+/// There is currently no support for [`DamlValue::TextMap`], [`DamlValue::GenMap`] or [`DamlValue::Enum`].
 ///
 /// # Examples
 ///
@@ -109,7 +109,7 @@
 /// [`DamlValue::ContractId`]: ::daml_grpc::data::value::DamlValue::ContractId
 /// [`DamlValue::Party`]: ::daml_grpc::data::value::DamlValue::Party
 /// [`DamlValue::Text`]: ::daml_grpc::data::value::DamlValue::Text
-/// [`DamlValue::Map`]: ::daml_grpc::data::value::DamlValue::Map
+/// [`DamlValue::TextMap`]: ::daml_grpc::data::value::DamlValue::TextMap
 /// [`DamlValue::GenMap`]: ::daml_grpc::data::value::DamlValue::GenMap
 /// [`DamlValue::Enum`]: ::daml_grpc::data::value::DamlValue::Enum
 

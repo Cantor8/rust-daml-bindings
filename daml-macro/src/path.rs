@@ -89,7 +89,7 @@
 ///
 /// All `type` specifiers return references, even for simple copy types, and so must be dereferenced as needed.
 ///
-/// There is currently no support for [`DamlValue::Map`], [`DamlValue::GenMap`] or [`DamlValue::Enum`].
+/// There is currently no support for [`DamlValue::TextMap`], [`DamlValue::GenMap`] or [`DamlValue::Enum`].
 ///
 /// # Examples
 ///
@@ -140,7 +140,7 @@
 /// [`DamlValue::Timestamp`]: ::daml_grpc::data::value::DamlValue::Timestamp
 /// [`DamlValue::Bool`]: ::daml_grpc::data::value::DamlValue::Bool
 /// [`DamlValue::Date`]: ::daml_grpc::data::value::DamlValue::Date
-/// [`DamlValue::Map`]: ::daml_grpc::data::value::DamlValue::Map
+/// [`DamlValue::TextMap`]: ::daml_grpc::data::value::DamlValue::TextMap
 /// [`DamlValue::GenMap`]: ::daml_grpc::data::value::DamlValue::GenMap
 /// [`DamlValue::Enum`]: ::daml_grpc::data::value::DamlValue::Enum
 /// [`ListIndexOutOfRange`]: ::daml_grpc::data::DamlError::ListIndexOutOfRange
