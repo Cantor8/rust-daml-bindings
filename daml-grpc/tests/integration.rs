@@ -234,8 +234,7 @@ async fn smoke_test_end_to_end() -> Result<()> {
     // the process, so suffix each hint with a unique tag to keep
     // re-runs idempotent. The participant still gets to invent the
     // canonical id (the suffix only seeds the hint).
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let tag = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+    let tag = unique_tag();
     let alice_hint = format!("Alice-{tag}");
     let bob_hint = format!("Bob-{tag}");
     let alice = client
@@ -493,8 +492,8 @@ async fn state_service_all_methods() -> Result<()> {
     // the stream and stop. `active_at_offset = BEGIN` is the
     // "everything in the ACS as of the start" sentinel.
     use futures::stream::StreamExt;
-    let mut stream = client
-        .state_service()
+    let state_svc = client.state_service();
+    let mut stream = state_svc
         .get_active_contracts(DamlLedgerOffset::BEGIN, event_format_for(&alice), None)
         .await?;
     // We don't expect alice to witness anything; just verify the
@@ -573,8 +572,8 @@ async fn command_completion_service_get_completion_stream() -> Result<()> {
     // The stream sends a Completion for our just-submitted command;
     // grab the first item that mentions our command_id (or any item
     // and stop after one — Canton interleaves checkpoints).
-    let mut stream = client
-        .command_completion_service()
+    let completion_svc = client.command_completion_service();
+    let mut stream = completion_svc
         .get_completion_stream(APP_ID, vec![alice.clone()], before)
         .await?;
     let mut saw_completion = false;
@@ -681,8 +680,8 @@ async fn update_service_all_methods() -> Result<()> {
     // get_updates (streaming): bounded `[before, after]`. Drain the
     // stream and assert the create's update_id appears.
     use futures::StreamExt;
-    let mut stream = client
-        .update_service()
+    let update_svc = client.update_service();
+    let mut stream = update_svc
         .get_updates(before, Some(after), update_format_for(&alice), false)
         .await?;
     use daml_grpc::data::update::DamlUpdateResponse;
