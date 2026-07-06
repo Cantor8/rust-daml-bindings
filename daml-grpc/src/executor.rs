@@ -255,11 +255,16 @@ impl CommandExecutor for DamlSimpleExecutor<'_> {
         tx.events.swap_remove(0).try_created()
     }
 
-    /// Submit an exercise command and return the result of the
-    /// first `Exercised` event in the LedgerEffects-shaped
-    /// transaction. Non-consuming choices may return `None` from the
-    /// ledger; that surfaces here as
-    /// [`DamlError::MissingRequiredField`].
+    /// Submit an exercise command and return the result of the first
+    /// `Exercised` event whose `exercise_result` is populated.
+    ///
+    /// Returns [`DamlError::MissingRequiredField`] if the transaction
+    /// contains no `Exercised` event (e.g. a mis-routed `Create`
+    /// command) or if every `Exercised` event has an empty result. In
+    /// practice the participant populates `exercise_result` for every
+    /// choice — even non-consuming, unit-returning ones (as
+    /// `Some(DamlValue::Unit)`) — so this path only fires for
+    /// malformed responses.
     async fn execute_exercise(&self, exercise_command: DamlExerciseCommand) -> Result<DamlValue, DamlError> {
         let tx = self.submit_and_wait_for_transaction_with_effects(DamlCommand::Exercise(exercise_command)).await?;
         tx.events
