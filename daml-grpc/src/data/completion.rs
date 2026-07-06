@@ -123,7 +123,7 @@ impl TryFrom<SynchronizerTime> for DamlSynchronizerTime {
     fn try_from(s: SynchronizerTime) -> DamlResult<Self> {
         Ok(Self {
             synchronizer_id: s.synchronizer_id,
-            record_time: s.record_time.as_ref().map(util::from_grpc_timestamp).transpose()?.unwrap_or_default(),
+            record_time: util::from_grpc_timestamp(&s.record_time.req()?)?,
         })
     }
 }
@@ -132,8 +132,10 @@ impl TryFrom<SynchronizerTime> for DamlSynchronizerTime {
 pub struct DamlStatus {
     pub code: i32,
     pub message: String,
-    // TODO: surface `details` (a repeated google.protobuf.Any) once we
-    // have a use case that needs to read the structured error details.
+    /// Structured error details as a list of `google.protobuf.Any`.
+    /// Downstream decoders can match on `type_url` to recover the
+    /// concrete Daml error payload (e.g. `com.daml.error.ErrorInfo`).
+    pub details: Vec<prost_types::Any>,
 }
 
 impl From<Status> for DamlStatus {
@@ -141,6 +143,7 @@ impl From<Status> for DamlStatus {
         Self {
             code: status.code,
             message: status.message,
+            details: status.details,
         }
     }
 }
