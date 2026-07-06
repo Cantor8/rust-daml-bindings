@@ -8,13 +8,12 @@ use tracing::{debug, instrument};
 use crate::data::{DamlError, DamlResult};
 use crate::service::{
     DamlCommandCompletionService, DamlCommandService, DamlCommandSubmissionService, DamlContractService,
-    DamlEventQueryService, DamlPackageService, DamlParticipantPruningService, DamlStateService, DamlUpdateService,
-    DamlVersionService,
+    DamlEventQueryService, DamlPackageService, DamlStateService, DamlUpdateService, DamlVersionService,
 };
 #[cfg(feature = "admin")]
 use crate::service::{
     DamlCommandInspectionService, DamlIdentityProviderConfigService, DamlPackageManagementService,
-    DamlPartyManagementService, DamlUserManagementService,
+    DamlParticipantPruningService, DamlPartyManagementService, DamlUserManagementService,
 };
 use crate::service::DamlTimeService;
 
