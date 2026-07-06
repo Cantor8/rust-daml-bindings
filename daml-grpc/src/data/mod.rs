@@ -101,6 +101,6 @@ pub mod event_query;
 mod features;
 pub use features::{
     DamlExperimentalCommandInspectionService, DamlExperimentalFeatures, DamlExperimentalStaticTime,
-    DamlFeaturesDescriptor, DamlOffsetCheckpointFeature, DamlPackageFeature, DamlPartyManagementFeature,
-    DamlUserManagementFeature,
+    DamlFeaturesDescriptor, DamlLedgerApiVersion, DamlOffsetCheckpointFeature, DamlPackageFeature,
+    DamlPartyManagementFeature, DamlUserManagementFeature,
 };

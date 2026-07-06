@@ -5,6 +5,16 @@ use crate::grpc_protobuf::com::daml::ledger::api::v2::{
     OffsetCheckpointFeature, PackageFeature, PartyManagementFeature, UserManagementFeature,
 };
 
+/// Response of `VersionService.GetLedgerApiVersion`: the participant's
+/// reported version string plus its feature descriptor. `features` is
+/// wrapped in `Option` because non-compliant servers may omit it even
+/// though the v2 spec marks it required.
+#[derive(Debug, Eq, PartialEq, Clone, Default)]
+pub struct DamlLedgerApiVersion {
+    pub version: String,
+    pub features: Option<DamlFeaturesDescriptor>,
+}
+
 /// The features advertised by a Ledger API v2 endpoint, as returned by
 /// `VersionService.GetLedgerApiVersion`.
 ///

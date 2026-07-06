@@ -213,9 +213,9 @@ async fn smoke_test_end_to_end() -> Result<()> {
     let client = connect().await?;
 
     // ----- 1. VersionService -----
-    let (version, _features) = client.version_service().get_ledger_api_version().await?;
-    println!("sandbox ledger-api version: {version}");
-    assert!(!version.is_empty(), "version string should be non-empty");
+    let version_info = client.version_service().get_ledger_api_version().await?;
+    println!("sandbox ledger-api version: {}", version_info.version);
+    assert!(!version_info.version.is_empty(), "version string should be non-empty");
 
     // ----- 2. PackageManagementService.UploadDarFile -----
     let dar_bytes = std::fs::read(FIXTURE_DAR)?;
@@ -326,9 +326,13 @@ async fn smoke_test_end_to_end() -> Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn version_service_get_ledger_api_version() -> Result<()> {
     let client = connect().await?;
-    let (version, features) = client.version_service().get_ledger_api_version().await?;
-    assert!(!version.is_empty(), "version string must be non-empty");
-    println!("version={version}, features.user_management={:?}", features.is_some());
+    let version_info = client.version_service().get_ledger_api_version().await?;
+    assert!(!version_info.version.is_empty(), "version string must be non-empty");
+    println!(
+        "version={}, features.user_management={:?}",
+        version_info.version,
+        version_info.features.is_some(),
+    );
     Ok(())
 }
 

@@ -57,8 +57,8 @@ async fn main() -> Result<()> {
         .await?;
 
     // 2. VersionService
-    let (version, _features) = client.version_service().get_ledger_api_version().await?;
-    println!("  ledger API version: {version}\n");
+    let version_info = client.version_service().get_ledger_api_version().await?;
+    println!("  ledger API version: {}\n", version_info.version);
 
     // 3. Upload the fixture DAR
     println!("uploading {FIXTURE_DAR} ...");
