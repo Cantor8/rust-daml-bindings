@@ -9,7 +9,7 @@ use crate::data::package::{
     DamlPackageDetails, DamlPriorTopologySerial, DamlUpdateVettedPackagesForceFlag, DamlUpdateVettedPackagesOutcome,
     DamlVettedPackages, DamlVettedPackagesChange, DamlVettingChange,
 };
-use crate::data::{DamlError, DamlResult};
+use crate::data::DamlResult;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::package_management_service_client::PackageManagementServiceClient;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::upload_dar_file_request::VettingChange as ProtoVettingChange;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::{
@@ -85,7 +85,7 @@ impl<'a> DamlPackageManagementService<'a> {
             synchronizer_id: synchronizer_id.into(),
         };
         trace!(payload = ?payload, token = ?self.auth_token);
-        self.client().upload_dar_file(make_request(payload, self.auth_token)?).await.map_err(DamlError::from)?;
+        self.client().upload_dar_file(make_request(payload, self.auth_token)?).await?;
         Ok(())
     }
 
@@ -105,7 +105,7 @@ impl<'a> DamlPackageManagementService<'a> {
             synchronizer_id: synchronizer_id.into(),
         };
         trace!(payload = ?payload, token = ?self.auth_token);
-        self.client().validate_dar_file(make_request(payload, self.auth_token)?).await.map_err(DamlError::from)?;
+        self.client().validate_dar_file(make_request(payload, self.auth_token)?).await?;
         Ok(())
     }
 

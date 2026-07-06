@@ -5,7 +5,7 @@ use tonic::transport::Channel;
 use tracing::{instrument, trace};
 
 use crate::data::reassignment::DamlReassignmentCommands;
-use crate::data::{DamlCommands, DamlError, DamlResult};
+use crate::data::{DamlCommands, DamlResult};
 use crate::grpc_protobuf::com::daml::ledger::api::v2::command_submission_service_client::CommandSubmissionServiceClient;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::{
     Commands, ReassignmentCommands, SubmitReassignmentRequest, SubmitRequest,
@@ -52,7 +52,7 @@ impl<'a> DamlCommandSubmissionService<'a> {
             commands: Some(Commands::try_from(commands)?),
         };
         trace!(payload = ?payload, token = ?self.auth_token);
-        self.client().submit(make_request(payload, self.auth_token)?).await.map_err(DamlError::from)?;
+        self.client().submit(make_request(payload, self.auth_token)?).await?;
         trace!(?command_id);
         Ok(command_id)
     }
@@ -74,7 +74,7 @@ impl<'a> DamlCommandSubmissionService<'a> {
             reassignment_commands: Some(ReassignmentCommands::from(commands)),
         };
         trace!(payload = ?payload, token = ?self.auth_token);
-        self.client().submit_reassignment(make_request(payload, self.auth_token)?).await.map_err(DamlError::from)?;
+        self.client().submit_reassignment(make_request(payload, self.auth_token)?).await?;
         trace!(?command_id);
         Ok(command_id)
     }
