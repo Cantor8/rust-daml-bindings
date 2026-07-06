@@ -14,7 +14,7 @@ use crate::util::Required;
 pub enum DamlCommand {
     Create(DamlCreateCommand),
     Exercise(DamlExerciseCommand),
-    ExerciseByKeyCommand(DamlExerciseByKeyCommand),
+    ExerciseByKey(DamlExerciseByKeyCommand),
     CreateAndExercise(DamlCreateAndExerciseCommand),
 }
 
@@ -24,7 +24,7 @@ impl From<DamlCommand> for Command {
             command: Some(match daml_command {
                 DamlCommand::Create(c) => c.into(),
                 DamlCommand::Exercise(c) => c.into(),
-                DamlCommand::ExerciseByKeyCommand(c) => c.into(),
+                DamlCommand::ExerciseByKey(c) => c.into(),
                 DamlCommand::CreateAndExercise(c) => c.into(),
             }),
         }
@@ -38,7 +38,7 @@ impl TryFrom<Command> for DamlCommand {
         Ok(match c.command.req()? {
             CommandKind::Create(c) => Self::Create(DamlCreateCommand::try_from(c)?),
             CommandKind::Exercise(c) => Self::Exercise(DamlExerciseCommand::try_from(c)?),
-            CommandKind::ExerciseByKey(c) => Self::ExerciseByKeyCommand(DamlExerciseByKeyCommand::try_from(c)?),
+            CommandKind::ExerciseByKey(c) => Self::ExerciseByKey(DamlExerciseByKeyCommand::try_from(c)?),
             CommandKind::CreateAndExercise(c) => Self::CreateAndExercise(DamlCreateAndExerciseCommand::try_from(c)?),
         })
     }
