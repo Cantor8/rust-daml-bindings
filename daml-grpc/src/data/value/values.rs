@@ -540,6 +540,34 @@ impl DamlValue {
     fn make_unexpected_type_error(&self, expected: &str) -> DamlError {
         DamlError::UnexpectedType(expected.to_owned(), self.variant_name().to_owned())
     }
+
+    /// A stable ordinal per variant. Used by [`PartialOrd`] as the
+    /// tie-breaker when two `DamlValue`s carry different variants —
+    /// makes `partial_cmp` total, which lets `impl Ord` unwrap safely
+    /// and lets `DamlGenMap` (a `BTreeMap<DamlValue, _>`) accept
+    /// heterogeneous keys without panicking. The concrete ordering is
+    /// arbitrary but must be stable across releases so BTreeMap
+    /// snapshots survive round-trips.
+    fn ordinal(&self) -> u8 {
+        match self {
+            DamlValue::Unit => 0,
+            DamlValue::Bool(_) => 1,
+            DamlValue::Int64(_) => 2,
+            DamlValue::Numeric(_) => 3,
+            DamlValue::Text(_) => 4,
+            DamlValue::Party(_) => 5,
+            DamlValue::ContractId(_) => 6,
+            DamlValue::Timestamp(_) => 7,
+            DamlValue::Date(_) => 8,
+            DamlValue::Optional(_) => 9,
+            DamlValue::List(_) => 10,
+            DamlValue::TextMap(_) => 11,
+            DamlValue::GenMap(_) => 12,
+            DamlValue::Record(_) => 13,
+            DamlValue::Variant(_) => 14,
+            DamlValue::Enum(_) => 15,
+        }
+    }
 }
 
 impl From<()> for DamlValue {
@@ -931,8 +959,11 @@ impl From<DamlValue> for Value {
                     elements: v.into_iter().map(Value::from).collect(),
                 })),
                 DamlValue::Int64(v) => Some(Sum::Int64(v)),
-                // TODO: review the soundness of the numeric formatting here and consider using the `rust-decimal` crate
-                DamlValue::Numeric(v) => Some(Sum::Numeric(format!("{:.37}", v))),
+                // to_plain_string forces decimal notation. BigDecimal's
+                // default Display flips to scientific for very small
+                // values (e.g. 1E-38), which Canton's Numeric parser
+                // rejects.
+                DamlValue::Numeric(v) => Some(Sum::Numeric(v.to_plain_string())),
                 DamlValue::Text(v) => Some(Sum::Text(v)), // value.set_text(v),
                 DamlValue::Timestamp(v) => Some(Sum::Timestamp(v.timestamp())),
                 DamlValue::Party(v) => Some(Sum::Party(v.party)),
@@ -1009,14 +1040,21 @@ impl PartialOrd for DamlValue {
                 } else {
                     v1.len().partial_cmp(&v2.len())
                 },
-            _ => None,
+            // Cross-variant comparison falls back to a stable per-variant
+            // ordinal so `partial_cmp` is total and `impl Ord` can unwrap.
+            (a, b) => a.ordinal().partial_cmp(&b.ordinal()),
         }
     }
 }
 
 impl Ord for DamlValue {
+    /// `partial_cmp` above is total — same-variant arms delegate to
+    /// the inner type's `PartialOrd` (all of which are total in practice
+    /// for the primitives we carry), cross-variant falls back to the
+    /// stable per-variant [`ordinal`](DamlValue::ordinal). The `unwrap`
+    /// is therefore infallible.
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap()
+        self.partial_cmp(other).expect("DamlValue::partial_cmp is total")
     }
 }
 
@@ -1125,6 +1163,47 @@ mod tests {
         let value2 = DamlValue::TextMap(items2.into_iter().collect::<DamlTextMap<DamlValue>>());
         assert_ne!(value1, value2);
         assert_eq!(Ordering::Less, value1.cmp(&value2));
+    }
+
+    #[test]
+    fn cross_variant_ord_does_not_panic() {
+        // impl Ord for DamlValue used to unwrap a `None` from
+        // partial_cmp on cross-variant comparisons — putting different
+        // variants in a BTreeMap (i.e. DamlGenMap) crashed the whole
+        // process at insert time. Now partial_cmp is total via
+        // per-variant ordinals; verify a heterogeneous pair sorts
+        // deterministically.
+        use std::collections::BTreeMap;
+        let a = DamlValue::Int64(1);
+        let b = DamlValue::Text("hi".to_owned());
+        let ord = a.cmp(&b);
+        assert_ne!(ord, Ordering::Equal);
+        assert_eq!(ord, b.cmp(&a).reverse(), "ordering must be antisymmetric across variants");
+        let mut m = BTreeMap::new();
+        m.insert(a.clone(), 1u32);
+        m.insert(b.clone(), 2u32);
+        assert_eq!(m.len(), 2);
+    }
+
+    #[test]
+    fn numeric_serialisation_preserves_natural_scale() {
+        // Pre-0.4 formatted numerics as `{:.37}` which padded every
+        // value to 37 decimal places. Now uses BigDecimal's natural
+        // Display, which preserves whatever scale the value was
+        // constructed with.
+        use crate::grpc_protobuf::com::daml::ledger::api::v2::value::Sum;
+        use crate::grpc_protobuf::com::daml::ledger::api::v2::Value;
+        use bigdecimal::BigDecimal;
+        use std::str::FromStr;
+        let cases = ["0", "1.23", "0.00000000000000000000000000000000000001", "100", "-9.5"];
+        for s in cases {
+            let dv = DamlValue::Numeric(BigDecimal::from_str(s).unwrap());
+            let proto: Value = dv.into();
+            match proto.sum {
+                Some(Sum::Numeric(out)) => assert_eq!(out, s, "unexpected serialised form"),
+                other => panic!("expected Sum::Numeric, got {other:?}"),
+            }
+        }
     }
 
     #[test]
