@@ -138,11 +138,28 @@ impl DamlGrpcClientBuilder {
         }
     }
 
+    /// Enable TLS, pinning the participant's CA certificate. Pass the
+    /// PEM-encoded CA bytes. For system-root verification instead, use
+    /// [`with_tls_system_roots`](Self::with_tls_system_roots).
     pub fn with_tls(self, ca_cert: impl Into<Vec<u8>>) -> Self {
         Self {
             config: DamlGrpcClientConfig {
                 tls_config: Some(DamlGrpcTlsConfig {
                     ca_cert: Some(ca_cert.into()),
+                }),
+                ..self.config
+            },
+        }
+    }
+
+    /// Enable TLS, verifying the participant against the platform's
+    /// system root store. For a pinned CA certificate, use
+    /// [`with_tls`](Self::with_tls) instead.
+    pub fn with_tls_system_roots(self) -> Self {
+        Self {
+            config: DamlGrpcClientConfig {
+                tls_config: Some(DamlGrpcTlsConfig {
+                    ca_cert: None,
                 }),
                 ..self.config
             },
