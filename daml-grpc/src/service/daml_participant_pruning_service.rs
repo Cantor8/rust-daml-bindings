@@ -12,6 +12,7 @@ use crate::service::common::make_request;
 /// Truncate the oldest portion of the participant's ledger view in a way
 /// that preserves the set of future allowed commands. Used both for
 /// disk-footprint control and right-to-be-forgotten compliance.
+#[derive(Debug)]
 pub struct DamlParticipantPruningService<'a> {
     channel: Channel,
     auth_token: Option<&'a str>,
