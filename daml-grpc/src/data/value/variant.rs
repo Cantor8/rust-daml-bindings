@@ -53,9 +53,9 @@ impl TryFrom<Variant> for DamlVariant {
 impl From<DamlVariant> for Variant {
     fn from(daml_variant: DamlVariant) -> Self {
         Self {
+            variant_id: daml_variant.variant_id.map(Identifier::from),
             constructor: daml_variant.constructor,
             value: Some(Box::new(Value::from(*daml_variant.value))),
-            variant_id: None,
         }
     }
 }

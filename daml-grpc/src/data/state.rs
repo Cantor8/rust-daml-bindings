@@ -23,7 +23,7 @@ use crate::util::Required;
 pub struct DamlActiveContract {
     /// The most recent create-or-assign event for this contract on
     /// `synchronizer_id`. The event's offset may point at an already-
-    /// pruned update; do not assume it's looku-pable.
+    /// pruned update; do not assume it's lookup-able.
     pub created_event: DamlCreatedEvent,
     pub synchronizer_id: String,
     /// `0` when the contract has never been reassigned; strictly
