@@ -1,5 +1,5 @@
 use crate::renderer::data_renderer::full::quote_contract_struct::{
-    quote_contract_id_struct_name, quote_contract_struct_and_impl, quote_contract_struct_name,
+    quote_contract_id_struct_name, quote_contract_struct_and_impl,
 };
 use crate::renderer::data_renderer::full::quote_interface::{quote_interface_choices, quote_interface_trait_path};
 use crate::renderer::data_renderer::full::{quote_choice, quote_daml_record_and_impl};
@@ -90,13 +90,15 @@ pub fn quote_template_id_method(
 /// Generate the `pub fn create(...) & pub fn create_command()` methods.
 pub fn quote_make_create_command_method(struct_name: &str) -> TokenStream {
     let struct_name_tokens = quote_escaped_ident(struct_name);
-    let _contract_struct_name = quote_contract_struct_name(struct_name);
     quote!(
         impl #struct_name_tokens {
             pub fn create_command(&self) -> DamlCreateCommand {
                 let template_id = Self::template_id();
                 let value: DamlValue = self.to_owned().serialize_into();
-                DamlCreateCommand::new(template_id, value.try_take_record().unwrap())
+                DamlCreateCommand::new(
+                    template_id,
+                    value.try_take_record().expect("serialize_into always produces a Record"),
+                )
             }
         }
     )
