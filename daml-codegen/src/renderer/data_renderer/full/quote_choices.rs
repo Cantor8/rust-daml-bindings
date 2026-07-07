@@ -38,7 +38,6 @@ fn quote_choice_method(ctx: &RenderContext<'_>, struct_name: &str, choice: &Daml
     let choice_name = &choice.name();
     let struct_name_tokens = quote_escaped_ident(struct_name);
     let method_name_command_tokens = quote_command_method_name(&choice.name().to_snake_case());
-    let _method_name_tokens = quote_escaped_ident(&choice.name().to_snake_case());
     let arg_field = choice.fields().first().expect("choice must carry an arg field");
     let arg_type_tokens = quote_type(ctx, arg_field.ty());
     quote!(
@@ -57,5 +56,5 @@ fn quote_choice_method(ctx: &RenderContext<'_>, struct_name: &str, choice: &Daml
 }
 
 fn quote_command_method_name(name: &str) -> TokenStream {
-    quote_escaped_ident(format!("{}_command", name))
+    quote_escaped_ident(format!("{name}_command"))
 }
