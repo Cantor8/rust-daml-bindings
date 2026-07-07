@@ -27,6 +27,12 @@ impl DamlRecordField {
     pub const fn value(&self) -> &DamlValue {
         &self.value
     }
+
+    /// Consume this field, returning its `DamlValue` by value. Used by
+    /// codegen to avoid deep-cloning the value on deserialize.
+    pub fn into_value(self) -> DamlValue {
+        self.value
+    }
 }
 
 impl TryFrom<RecordField> for DamlRecordField {

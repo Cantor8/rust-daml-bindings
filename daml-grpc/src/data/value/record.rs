@@ -44,6 +44,23 @@ impl DamlRecord {
             .ok_or_else(|| DamlError::UnknownField(label.to_owned()))
     }
 
+    /// Consume the named field from this record, returning its
+    /// `DamlValue` by value. Errors with `UnknownField` when no field
+    /// carries the label. Used by codegen to move payloads out of the
+    /// record instead of cloning them on deserialize.
+    ///
+    /// O(n) — after finding the target index, `Vec::remove` shifts any
+    /// trailing fields. For records with typical field counts this is
+    /// negligible next to the per-field deep clone it replaces.
+    pub fn take_field(&mut self, label: &str) -> DamlResult<DamlValue> {
+        let idx = self
+            .fields
+            .iter()
+            .position(|rec| rec.label().as_deref() == Some(label))
+            .ok_or_else(|| DamlError::UnknownField(label.to_owned()))?;
+        Ok(self.fields.remove(idx).into_value())
+    }
+
     /// Apply a Daml data extractor function.
     ///
     /// See [`DamlValue::extract`] for details an examples.

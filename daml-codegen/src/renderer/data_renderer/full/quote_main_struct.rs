@@ -167,7 +167,7 @@ fn quote_deserialize_trait_impl_body(ctx: &RenderContext<'_>, struct_fields: &[&
     } else {
         let all_fields: Vec<_> = struct_fields.iter().map(|&f| quote_deserialize_trait_field(ctx, f)).collect();
         quote!(
-            let record = value.try_record()?;
+            let mut record = value.try_take_record()?;
             Ok(Self::new(
                 #( #all_fields ),*
             ))
@@ -188,7 +188,7 @@ fn quote_deserialize_trait_field(ctx: &RenderContext<'_>, field: &DamlField<'_>)
     let field_name_string = field.name();
     let field_type_tokens = quote_type(ctx, field.ty());
     quote!(
-        <#field_type_tokens>::deserialize_from(record.field(#field_name_string)?.to_owned())?
+        <#field_type_tokens>::deserialize_from(record.take_field(#field_name_string)?)?
     )
 }
 
