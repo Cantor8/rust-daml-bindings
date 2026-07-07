@@ -29,16 +29,22 @@ pub fn to_rust_identifier(value: impl AsRef<str>) -> String {
     escape_identifier(value.as_ref().to_snake_case())
 }
 
-/// Convert a generic param of the form `xxx_yyy` or `xxx` to `XXX`.
+/// Return the leading segment of a `xxx_yyy` identifier, or the whole
+/// input when there is no `_`. Empty input maps to empty.
 pub fn normalize_generic_param(param: &str) -> &str {
-    match param.split('_').next() {
-        Some(s) => s,
-        None => param,
-    }
+    param.split_once('_').map_or(param, |(head, _)| head)
 }
 
 fn escape_identifier(value: impl AsRef<str>) -> String {
-    let mut sanitized_ident = value.as_ref().replace('-', "_").replace('$', "_").replace('.', "_");
+    let mut sanitized_ident: String =
+        value.as_ref().chars().map(|c| if matches!(c, '-' | '$' | '.') { '_' } else { c }).collect();
+    // Rust identifiers can't start with a digit. Daml's own grammar
+    // forbids it for type / field / module names, but package and
+    // archive names on the wire can be arbitrary — guard so a package
+    // like "3d_engine" doesn't panic through Ident::new later.
+    if sanitized_ident.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+        sanitized_ident.insert(0, '_');
+    }
     escape_keyword(&mut sanitized_ident);
     sanitized_ident
 }
@@ -49,7 +55,7 @@ fn escape_keyword(ident: &mut String) -> &mut String {
         | "let" | "loop" | "match" | "mod" | "move" | "mut" | "pub" | "ref" | "return" | "static" | "struct"
         | "trait" | "true" | "type" | "unsafe" | "use" | "where" | "while" | "dyn" | "abstract" | "become" | "box"
         | "do" | "final" | "macro" | "override" | "priv" | "typeof" | "unsized" | "virtual" | "yield" | "async"
-        | "await" | "try" | "self" | "super" | "extern" | "crate" => *ident += "_",
+        | "await" | "try" | "self" | "super" | "extern" | "crate" | "gen" => *ident += "_",
         _ => (),
     }
     ident
