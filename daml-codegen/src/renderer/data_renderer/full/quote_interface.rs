@@ -6,13 +6,15 @@
 //! used by [`super::quote_template::quote_template_id_method`]).
 //!
 //! Templates that implement the interface receive an
-//! `impl <IName> for <FooContract> {}` block — emitted from
-//! `quote_template.rs` — making `FooContract` usable wherever an
+//! `impl <IName> for <FooContractId> {}` block — emitted from
+//! `quote_template.rs` — making `FooContractId` usable wherever an
 //! `<IName>`-bound value is expected.
 //!
-//! Choice-method emission via the interface (e.g.
-//! `<FooContract as <IName>>::do_thing_command(...)`) is deferred
-//! to 4c.
+//! Interface-declared choices become `<iface>_<choice>_command(...)`
+//! methods on the implementing template's contract id struct (see
+//! [`quote_interface_choices`]). The `<iface>_` prefix avoids
+//! collisions with the template's own choices and with choices from
+//! other implemented interfaces.
 
 use crate::renderer::data_renderer::full::quote_contract_struct::quote_contract_id_struct_name;
 use crate::renderer::renderer_utils::quote_escaped_ident;
@@ -101,8 +103,8 @@ pub fn quote_interface_choices(
         .iter()
         .map(|choice| {
             let choice_name_lit = choice.name();
-            let method_name = format!("{}_{}_command", iface_prefix, choice.name().to_snake_case());
-            let method_ident = quote_escaped_ident(method_name);
+            let choice_snake = choice.name().to_snake_case();
+            let method_ident = quote_escaped_ident(format!("{iface_prefix}_{choice_snake}_command"));
             // v2 Daml expects the choice argument as the bare record
             // type (e.g. `Reassign { target: Party }`), not wrapped
             // in an outer `{ arg: ... }` envelope. The convert layer
