@@ -1,4 +1,4 @@
-use crate::renderer::renderer_utils::quote_escaped_ident;
+use crate::renderer::renderer_utils::{quote_escaped_ident, quote_ident};
 use crate::renderer::RenderContext;
 use daml_lf::element::{DamlAbsoluteTyCon, DamlNonLocalTyCon, DamlTyCon, DamlTyConName, DamlType};
 use heck::ToSnakeCase;
@@ -43,7 +43,7 @@ pub fn quote_type(ctx: &RenderContext<'_>, daml_type: &DamlType<'_>) -> TokenStr
             quote!(Box<#tycon>)
         },
         DamlType::Var(var) => {
-            let var_tokens = quote_ident(normalize_generic_param(var.var()).to_uppercase());
+            let var_tokens = quote_ident(sanitize_var_name(var.var()).to_uppercase());
             quote!(#var_tokens)
         },
         DamlType::Nat(n) => quote_ident(format!("{}{}", daml_type.name(), n)),
@@ -132,11 +132,10 @@ fn quote_non_local_path(tycon: &DamlNonLocalTyCon<'_>) -> TokenStream {
     quote!( #( #supers :: )* #( #target_tail_tokens :: )* )
 }
 
-fn normalize_generic_param(var: &str) -> String {
+/// Replace spaces in a Daml type-var name with underscores so it can
+/// be used as a Rust generic-parameter identifier. Not to be confused
+/// with the crate-level `normalize_generic_param` (which strips the
+/// trailing `_yyy` from `xxx_yyy` names).
+fn sanitize_var_name(var: &str) -> String {
     var.replace(' ', "_")
-}
-
-fn quote_ident(s: impl AsRef<str>) -> TokenStream {
-    let ident = proc_macro2::Ident::new(s.as_ref(), proc_macro2::Span::call_site());
-    quote!(#ident)
 }
