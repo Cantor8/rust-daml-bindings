@@ -5,12 +5,12 @@ use quote::quote;
 
 /// Generate the `FooContract` struct name.
 pub fn quote_contract_struct_name(struct_name: &str) -> TokenStream {
-    quote_escaped_ident(format!("{}Contract", struct_name))
+    quote_escaped_ident(format!("{struct_name}Contract"))
 }
 
 /// Generate the `FooContractId` struct name.
 pub fn quote_contract_id_struct_name(struct_name: &str) -> TokenStream {
-    quote_escaped_ident(format!("{}ContractId", struct_name))
+    quote_escaped_ident(format!("{struct_name}ContractId"))
 }
 
 /// Generate the `FooContract` struct and methods.
@@ -68,10 +68,9 @@ fn quote_contract_struct_impl_try_from(struct_name: &str) -> TokenStream {
     let contract_id_struct_name_tokens = quote_contract_id_struct_name(struct_name);
     quote!(
         impl std::convert::TryFrom<DamlCreatedEvent> for #contract_struct_name_tokens {
-
             type Error = DamlError;
-            fn try_from(event: DamlCreatedEvent) -> std::result::Result<Self, <#contract_struct_name_tokens as std::convert::TryFrom<DamlCreatedEvent>>::Error> {
-                let contract_id = event.contract_id.clone();
+            fn try_from(event: DamlCreatedEvent) -> std::result::Result<Self, Self::Error> {
+                let contract_id = event.contract_id;
                 let record: DamlRecord = event.create_arguments;
                 Ok(Self {
                     id: #contract_id_struct_name_tokens::try_from(DamlContractId::new(contract_id))?,
@@ -99,7 +98,7 @@ fn quote_contract_id_struct_impl_try_from(struct_name: &str) -> TokenStream {
     quote!(
         impl std::convert::TryFrom<DamlContractId> for #contract_id_struct_name_tokens {
             type Error = DamlError;
-            fn try_from(contract_id: DamlContractId) -> std::result::Result<Self, <#contract_id_struct_name_tokens as std::convert::TryFrom<DamlContractId>>::Error> {
+            fn try_from(contract_id: DamlContractId) -> std::result::Result<Self, Self::Error> {
                 Ok(Self {
                     contract_id,
                 })
