@@ -11,7 +11,7 @@ use crate::renderer::{normalize_generic_param, quote_escaped_ident, quote_ident,
 use daml_lf::element::{DamlField, DamlType, DamlTypeVarWithKind, DamlVariant};
 use std::ops::Not;
 
-/// Generate the variant `enum` and the `DamlDeserializeFrom` and `DamlDeserializeFrom` impls.
+/// Generate the variant `enum` and the `DamlSerializeFrom` and `DamlDeserializeFrom` impls.
 pub fn quote_daml_variant(ctx: &RenderContext<'_>, variant: &DamlVariant<'_>) -> TokenStream {
     let supported_fields: Vec<_> =
         variant.fields().iter().filter(|&field| IsRenderable::new(ctx).check_type(field.ty())).collect();
