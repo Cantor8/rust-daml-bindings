@@ -21,12 +21,15 @@ fn extract_enum_field_type(variant: &Variant) -> AttrType {
                 AttrType::Unit
             } else if unnamed.len() > 1 {
                 panic!(
-                    "expected either zero or one type parameter for variant {}, found {}",
+                    "variant {} takes at most one type parameter, found {}",
                     &variant.ident,
                     unnamed.len()
                 )
             } else {
-                unnamed.first().map(|pair| AttrType::from_type(&pair.ty)).expect("Field.ty")
+                unnamed
+                    .first()
+                    .map(|pair| AttrType::from_type(&pair.ty))
+                    .expect("Unnamed variant has at least one entry after the length check")
             },
         Fields::Named(_) => panic!("only Unnamed or Unit enum variant expected"),
     }
