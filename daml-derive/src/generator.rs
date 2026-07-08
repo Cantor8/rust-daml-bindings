@@ -2,7 +2,7 @@ use crate::convert::{
     data_type_string_from_type, extract_all_choices, extract_enum, extract_record, extract_template, extract_variant,
     AttrChoice, AttrInterfaceRef, AttrRecord, AttrTemplate, AttrVariant,
 };
-use crate::CodeGeneratorParameters;
+use crate::{CodeGeneratorParameters, RenderModeArg};
 use daml_codegen::generator::{ModuleMatcher, RenderMethod};
 use daml_codegen::renderer::full::{
     quote_choice, quote_daml_enum, quote_daml_interface, quote_daml_record, quote_daml_template, quote_daml_variant,
@@ -16,7 +16,6 @@ use daml_lf::element::{
 use daml_lf::{DarFile, LanguageVersion};
 use darling::ast::NestedMeta;
 use darling::FromMeta;
-use quote::quote;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use syn::{Data, DataStruct, DeriveInput, Fields, ItemImpl};
@@ -27,11 +26,9 @@ pub fn generate_tokens(args: Vec<NestedMeta>) -> proc_macro::TokenStream {
     let archive = DarFile::from_file(&params.dar_file)
         .unwrap_or_else(|e| panic!("failed to load Dar file from {}, error was: {}", &params.dar_file, e));
     let filters: Vec<_> = params.module_filter_regex.iter().map(String::as_str).collect();
-    let render_method = match &params.mode {
-        Some(name) if name.to_ascii_lowercase() == "intermediate" => RenderMethod::Intermediate,
-        Some(name) if name.to_ascii_lowercase() == "full" => RenderMethod::Full,
-        Some(name) => panic!("unknown mode: {}, expected Intermediate or Full", name),
-        _ => RenderMethod::Full,
+    let render_method = match params.mode {
+        Some(RenderModeArg::Intermediate) => RenderMethod::Intermediate,
+        Some(RenderModeArg::Full) | None => RenderMethod::Full,
     };
     let applied =
         archive.apply(|archive| ModuleMatcher::new(&filters).map(|mm| quote_archive(archive, &mm, &render_method)));
@@ -173,10 +170,7 @@ pub fn generate_data_struct(input: DeriveInput) -> proc_macro::TokenStream {
         },
         _ => panic!("the DamlData attribute may only be applied to struct types"),
     };
-    let expanded = quote!(
-        #tokens
-    );
-    proc_macro::TokenStream::from(expanded)
+    proc_macro::TokenStream::from(tokens)
 }
 
 pub fn generate_data_variant(input: DeriveInput) -> proc_macro::TokenStream {
@@ -190,10 +184,7 @@ pub fn generate_data_variant(input: DeriveInput) -> proc_macro::TokenStream {
         },
         _ => panic!("the DamlVariant attribute may only be applied to enum types"),
     };
-    let expanded = quote!(
-        #tokens
-    );
-    proc_macro::TokenStream::from(expanded)
+    proc_macro::TokenStream::from(tokens)
 }
 
 pub fn generate_data_enum(input: DeriveInput) -> proc_macro::TokenStream {
@@ -207,8 +198,5 @@ pub fn generate_data_enum(input: DeriveInput) -> proc_macro::TokenStream {
         },
         _ => panic!("the DamlEnum attribute may only be applied to enum types"),
     };
-    let expanded = quote!(
-        #tokens
-    );
-    proc_macro::TokenStream::from(expanded)
+    proc_macro::TokenStream::from(tokens)
 }

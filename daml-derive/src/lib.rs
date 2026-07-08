@@ -775,7 +775,17 @@ struct CodeGeneratorParameters {
     #[darling(multiple)]
     pub module_filter_regex: Vec<String>,
     #[darling(default)]
-    pub mode: Option<String>,
+    pub mode: Option<RenderModeArg>,
+}
+
+/// String-shaped `mode` argument for `daml_codegen!`. darling
+/// matches by variant name (case-insensitive), so `mode = "full"`
+/// and `mode = "Full"` both parse.
+#[doc(hidden)]
+#[derive(Debug, FromMeta)]
+pub(crate) enum RenderModeArg {
+    Intermediate,
+    Full,
 }
 
 #[doc(hidden)]
