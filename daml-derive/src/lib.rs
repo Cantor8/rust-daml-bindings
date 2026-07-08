@@ -31,20 +31,21 @@
 //! [Daml build-in primitive types](https://docs.daml.com/daml/reference/data-types.html#built-in-types) and Rust type
 //! aliases:
 //!
-//! | Daml Type         | Rust Type Alias     | Concrete Rust Type       | Notes                                      |
-//! |-------------------|---------------------|--------------------------|--------------------------------------------|
-//! | `Int`             | [`DamlInt64`]       | `i64`                    |                                            |
-//! | `Numeric`         | [`DamlNumeric`]     | `bigdecimal::BigDecimal` | **Note: BigDecimal crate to be replaced**  |
-//! | `Text`            | [`DamlText`]        | `String`                 |                                            |
-//! | `Bool`            | [`DamlBool`]        | `bool`                   |                                            |
-//! | `Party`           | [`DamlParty`]       | `String`                 |                                            |
-//! | `Date`            | [`DamlDate`]        | `chrono::Date`           |                                            |
-//! | `Time`            | [`DamlTime`]        | `chrono::DateTime`       |                                            |
-//! | `()`              | [`DamlUnit`]        | `()`                     |                                            |
-//! | `ContractId a`    | [`DamlContractId`]  | `String`                 | **Note: this mapping is likely to change** |
-//! | `List a` or `[a]` | [`DamlList<T>`]     | `Vec<T>`                 | type `T` must be another Rust type alias   |
-//! | `TextMap a`       | [`DamlTextMap<T>`]  | `HashMap<String, T>`     | type `T` must be another Rust type alias   |
-//! | `Optional a`      | [`DamlOptional<T>`] | `Option<T>`              | type `T` must be another Rust type alias   |
+//! | Daml Type         | Rust Type Alias      | Concrete Rust Type                    | Notes                                          |
+//! |-------------------|----------------------|---------------------------------------|------------------------------------------------|
+//! | `Int`             | [`DamlInt64`]        | `i64`                                 |                                                |
+//! | `Numeric n`       | [`DamlNumeric`]      | `bigdecimal::BigDecimal`              |                                                |
+//! | `Text`            | [`DamlText`]         | `String`                              |                                                |
+//! | `Bool`            | [`DamlBool`]         | `bool`                                |                                                |
+//! | `Party`           | [`DamlParty`]        | newtype around `String`               |                                                |
+//! | `Date`            | [`DamlDate`]         | `chrono::NaiveDate`                   |                                                |
+//! | `Time`            | [`DamlTimestamp`]    | `chrono::DateTime<Utc>`               |                                                |
+//! | `()`              | [`DamlUnit`]         | `()`                                  |                                                |
+//! | `ContractId a`    | [`DamlContractId`]   | newtype around `String`               |                                                |
+//! | `List a` or `[a]` | [`DamlList<T>`]      | `Vec<T>`                              | type `T` must be another Rust type alias       |
+//! | `TextMap a`       | [`DamlTextMap<V>`]   | newtype around `HashMap<String, V>`   | type `V` must be another Rust type alias       |
+//! | `GenMap a b`      | [`DamlGenMap<K, V>`] | `BTreeMap<K, V>`                      | types `K`, `V` must be Rust type aliases; `K: Ord` |
+//! | `Optional a`      | [`DamlOptional<T>`]  | `Option<T>`                           | type `T` must be another Rust type alias       |
 //!
 //!
 //! Note that the concrete Rust types are shown here as a convenience only, in all cases the Rust type alias _must_ be
@@ -236,15 +237,19 @@
 //! assert_eq!("Alice", ping_contract.data().sender);
 //! assert_eq!("Bob", ping_contract.data().receiver);
 //! assert_eq!(0, ping_contract.data().count);
-//! assert_eq!("#0:0", ping_contract.id().contract_id);
+//! // Canton emits opaque hex-encoded contract ids (~130 chars); the shape
+//! // below is illustrative only.
+//! assert_eq!(
+//!     "00abc0000000000000000000000000000000000000000000000000000000000001",
+//!     ping_contract.id().contract_id,
+//! );
 //! # Ok::<(), DamlError>(())
 //! # }
 //! ```
-//! > **_NOTE:_**  The contract id may be refactored to use a separate type in future.
 //!
 //! The `PingContract` types provides a method for each `choice` defined by the Daml `template` along with any
 //! parameters that choice may have.  To exercise a choice on a Daml ledger a [`DamlExerciseCommand`] specific to our
-//! contract is needed.  The can be constructed as follows:
+//! contract is needed.  This can be constructed as follows:
 //!
 //! ```no_run
 //! # use daml::prelude::*;
@@ -290,13 +295,14 @@
 //! [`DamlNumeric`]: https://docs.rs/daml/0.4.0/daml/prelude/type.DamlNumeric.html
 //! [`DamlText`]: https://docs.rs/daml/0.4.0/daml/prelude/type.DamlText.html
 //! [`DamlBool`]: https://docs.rs/daml/0.4.0/daml/prelude/type.DamlBool.html
-//! [`DamlParty`]: https://docs.rs/daml/0.4.0/daml/prelude/type.DamlParty.html
+//! [`DamlParty`]: https://docs.rs/daml/0.4.0/daml/prelude/struct.DamlParty.html
 //! [`DamlDate`]: https://docs.rs/daml/0.4.0/daml/prelude/type.DamlDate.html
-//! [`DamlTime`]: https://docs.rs/daml/0.4.0/daml/prelude/type.DamlTime.html
+//! [`DamlTimestamp`]: https://docs.rs/daml/0.4.0/daml/prelude/type.DamlTimestamp.html
 //! [`DamlUnit`]: https://docs.rs/daml/0.4.0/daml/prelude/type.DamlUnit.html
-//! [`DamlContractId`]: https://docs.rs/daml/0.4.0/daml/prelude/type.DamlContractId.html
+//! [`DamlContractId`]: https://docs.rs/daml/0.4.0/daml/prelude/struct.DamlContractId.html
 //! [`DamlList<T>`]: https://docs.rs/daml/0.4.0/daml/prelude/type.DamlList.html
-//! [`DamlTextMap<T>`]: https://docs.rs/daml/0.4.0/daml/prelude/type.DamlTextMap.html
+//! [`DamlTextMap<V>`]: https://docs.rs/daml/0.4.0/daml/prelude/type.DamlTextMap.html
+//! [`DamlGenMap<K, V>`]: https://docs.rs/daml/0.4.0/daml/prelude/type.DamlGenMap.html
 //! [`DamlOptional<T>`]: https://docs.rs/daml/0.4.0/daml/prelude/type.DamlOptional.html
 //! [`DamlCreateCommand`]: https://docs.rs/daml-grpc/0.4.0/daml_grpc/data/command/struct.DamlCreateCommand.html
 //! [`DamlExerciseCommand`]: https://docs.rs/daml-grpc/0.4.0/daml_grpc/data/command/struct.DamlExerciseCommand.html
