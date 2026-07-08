@@ -94,11 +94,19 @@ fn daml_type_from_segments(segments: &[&PathSegment]) -> AttrType {
     }
 }
 
+/// Split a syn path into its final segment (the type name) and its
+/// preceding module segments. A leading `crate::` prefix is stripped
+/// so the module segments match the Daml module path form; any other
+/// leading segment is preserved.
 fn split_segments<'a>(segments: &'a [&PathSegment]) -> (&'a PathSegment, Vec<String>) {
     match segments {
         [] => panic!("path has no segments"),
         [segment] => (segment, vec![]),
-        [path @ .., last] => (last, path[1..].iter().map(|&s| s.ident.to_string()).collect()),
+        [path @ .., last] => {
+            let head_is_crate = path.first().is_some_and(|seg| seg.ident == "crate");
+            let module_segments = if head_is_crate { &path[1..] } else { path };
+            (last, module_segments.iter().map(|&s| s.ident.to_string()).collect())
+        },
     }
 }
 
