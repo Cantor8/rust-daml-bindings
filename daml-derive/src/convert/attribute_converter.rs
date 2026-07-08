@@ -20,26 +20,15 @@ impl<'a> From<&'a AttrRecord> for DamlRecord<'a> {
 impl<'a> From<&'a AttrTemplate> for DamlTemplate<'a> {
     fn from(attr_template: &'a AttrTemplate) -> Self {
         let fields: Vec<DamlField<'_>> = attr_template.fields.iter().map(DamlField::from).collect();
-        let implements: Vec<DamlTyConName<'a>> =
-            attr_template.implements.iter().map(DamlTyConName::from).collect();
-        if implements.is_empty() {
-            return DamlTemplate::new_with_defaults(
-                Cow::from(&attr_template.name),
-                Cow::from(&attr_template.package_id),
-                to_vec_str(&attr_template.module_path),
-                fields,
-            );
-        }
-        // We have implements — go through the full constructor so the
-        // codegen sees them. The default constructor would discard
-        // them.
         let mut tpl = DamlTemplate::new_with_defaults(
             Cow::from(&attr_template.name),
             Cow::from(&attr_template.package_id),
             to_vec_str(&attr_template.module_path),
             fields,
         );
-        tpl.set_implements(implements);
+        if !attr_template.implements.is_empty() {
+            tpl.set_implements(attr_template.implements.iter().map(DamlTyConName::from).collect());
+        }
         tpl
     }
 }
