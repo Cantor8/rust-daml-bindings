@@ -7,16 +7,6 @@ pub struct AttrRecord {
     pub type_arguments: Vec<String>,
 }
 
-impl AttrRecord {
-    pub fn new(name: String, fields: Vec<AttrField>, type_arguments: Vec<String>) -> Self {
-        Self {
-            name,
-            fields,
-            type_arguments,
-        }
-    }
-}
-
 pub struct AttrTemplate {
     pub name: String,
     pub package_id: String,
@@ -38,38 +28,10 @@ pub struct AttrInterfaceRef {
     pub entity_name: String,
 }
 
-impl AttrTemplate {
-    pub fn new(
-        name: String,
-        package_id: String,
-        module_path: Vec<String>,
-        fields: Vec<AttrField>,
-        implements: Vec<AttrInterfaceRef>,
-    ) -> Self {
-        Self {
-            name,
-            package_id,
-            module_path,
-            fields,
-            implements,
-        }
-    }
-}
-
 pub struct AttrVariant {
     pub name: String,
     pub fields: Vec<AttrField>,
     pub type_arguments: Vec<String>,
-}
-
-impl AttrVariant {
-    pub fn new(name: String, fields: Vec<AttrField>, type_arguments: Vec<String>) -> Self {
-        Self {
-            name,
-            fields,
-            type_arguments,
-        }
-    }
 }
 
 pub struct AttrEnum {
@@ -78,20 +40,12 @@ pub struct AttrEnum {
     pub type_arguments: Vec<String>,
 }
 
-impl AttrEnum {
-    pub fn new(name: String, fields: Vec<String>, type_arguments: Vec<String>) -> Self {
-        Self {
-            name,
-            fields,
-            type_arguments,
-        }
-    }
-}
-
 pub fn extract_record(name: String, fields_named: &FieldsNamed, generics: &Generics) -> AttrRecord {
-    let fields: Vec<AttrField> = extract_struct_data(fields_named);
-    let type_arguments = extract_generic_type_arguments(generics);
-    AttrRecord::new(name, fields, type_arguments)
+    AttrRecord {
+        name,
+        fields: extract_struct_data(fields_named),
+        type_arguments: extract_generic_type_arguments(generics),
+    }
 }
 
 pub fn extract_template(
@@ -101,29 +55,39 @@ pub fn extract_template(
     fields_named: &FieldsNamed,
     implements: Vec<AttrInterfaceRef>,
 ) -> AttrTemplate {
-    let module_path: Vec<String> = module_path.split('.').map(ToOwned::to_owned).collect();
-    AttrTemplate::new(name, package_id, module_path, extract_struct_data(fields_named), implements)
+    AttrTemplate {
+        name,
+        package_id,
+        module_path: module_path.split('.').map(ToOwned::to_owned).collect(),
+        fields: extract_struct_data(fields_named),
+        implements,
+    }
 }
 
 pub fn extract_variant(name: String, data_enum: &DataEnum, generics: &Generics) -> AttrVariant {
-    let type_arguments = extract_generic_type_arguments(generics);
-    AttrVariant::new(name, extract_enum_data(data_enum), type_arguments)
+    AttrVariant {
+        name,
+        fields: extract_enum_data(data_enum),
+        type_arguments: extract_generic_type_arguments(generics),
+    }
 }
 
 pub fn extract_enum(name: String, data_enum: &DataEnum, generics: &Generics) -> AttrEnum {
-    let variants = extract_enum_data(data_enum);
-    let all_constructors: Vec<String> = variants
+    let fields: Vec<String> = extract_enum_data(data_enum)
         .into_iter()
         .map(|v| {
             if AttrType::Unit == v.field_type {
                 v.field_label
             } else {
-                panic!("DamlEnum variants may not have type parameters (use DamlVariant instead))")
+                panic!("DamlEnum variants may not have type parameters (use DamlVariant instead)")
             }
         })
         .collect();
-    let type_arguments = extract_generic_type_arguments(generics);
-    AttrEnum::new(name, all_constructors, type_arguments)
+    AttrEnum {
+        name,
+        fields,
+        type_arguments: extract_generic_type_arguments(generics),
+    }
 }
 
 fn extract_generic_type_arguments(generics: &Generics) -> Vec<String> {
