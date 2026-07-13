@@ -3,9 +3,9 @@
 //! templates and interfaces.
 //!
 //! `build.rs` runs `daml::codegen::generator::daml_codegen` over
-//! the Phase 7 fixture DAR and writes the generated tree to
-//! `src/autogen/`. This binary `include!`s the generated entry-
-//! point module at crate root and then uses `Asset::new(...)`,
+//! the fixture DAR and writes the generated tree to `src/autogen/`.
+//! This binary `include!`s the generated entry-point module at
+//! crate root and then uses `Asset::new(...)`,
 //! `Asset::create_command()`, `AssetContractId::holding_reassign_command(...)`
 //! to drive the ledger.
 //!
@@ -105,9 +105,9 @@ async fn main() -> Result<()> {
     println!("  created: {}\n", created.contract_id);
 
     // Exercise the Holding.Reassign choice via the inherited
-    // interface method that Phase 4c codegen emitted. Note the
-    // method name encodes the interface (so it doesn't collide
-    // with Asset's own choices) — `holding_reassign_command`.
+    // interface method. The generated method name encodes the
+    // interface so it doesn't collide with Asset's own choices —
+    // `holding_reassign_command`.
     println!("exercising AssetContractId::holding_reassign_command(target = alice) ...");
     let exercise_factory = command_factory(&bob, "codegen-demo-reassign");
     let exercise_commands =

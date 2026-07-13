@@ -22,11 +22,11 @@ proc-macro2 = "1.0.106"
 darling = "0.23.0"
 itertools = "0.15.0"
 
-# Phase 8 dropped the v1 attribute/codegen test trees outright;
-# the macro surface still has coverage via doc-tests embedded in
-# its own source files. A round-trip suite around the v2 attribute
-# macros (#[DamlTemplate] + #[DamlInterface]) is a planned
-# follow-up.
+# The v1 attribute/codegen test trees were dropped during the v2
+# migration; the macro surface still has coverage via doc-tests
+# embedded in its own source files. A round-trip suite around the
+# v2 attribute macros (#[DamlTemplate] + #[DamlInterface]) is a
+# planned follow-up.
 
 # Pulled in for doctests so `use daml::prelude::*;` resolves. The
 # circularity (daml → daml-derive → daml) is OK because dev-deps

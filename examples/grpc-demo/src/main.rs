@@ -1,8 +1,8 @@
 //! Daml v2 gRPC API demo.
 //!
 //! Walks through the full submitter-side surface of the v2 Ledger
-//! API against the local Canton sandbox and the Phase 7
-//! `TestingTypes` fixture DAR:
+//! API against the local Canton sandbox and the `TestingTypes`
+//! fixture DAR:
 //!
 //! 1. Connect (no TLS, no auth — Canton dev mode).
 //! 2. Check the participant's reported ledger-API version.

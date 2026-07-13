@@ -1,21 +1,22 @@
 //! Renderer-level unit tests.
 //!
-//! Drive the codegen renderer against the Phase 7 LF2 fixture DAR
-//! and assert specific patterns in the emitted token stream. These
-//! run as part of the default `cargo test` — no sandbox required.
+//! Drive the codegen renderer against the LF2 fixture DAR and
+//! assert specific patterns in the emitted token stream. These run
+//! as part of the default `cargo test` — no sandbox required.
 //!
-//! The tests are written as regression coverage for bugs the
-//! migration has already produced once:
+//! The tests act as regression coverage for bugs the v2 migration
+//! has already produced once:
 //!
-//! * Phase 4a: `template_id()` must address by package-name, not
-//!   package-id.
-//! * Phase 4b/4c: interface trait + `impl Trait for ContractId` +
-//!   `<interface>_<choice>_command` methods.
-//! * Follow-up 1: cross-package `package_name` resolution at the
-//!   convert layer — every cross-package path must carry a non-empty
-//!   package-name segment.
-//! * Follow-up 2: variant-with-record-payload constructors produce
-//!   a synthetic `pub mod <variant>` containing the payload records.
+//! * v2 template addressing: `template_id()` must address by
+//!   package-name, not package-id.
+//! * Interfaces: each declared interface produces a trait + a
+//!   `impl Trait for ContractId {}` for every implementing template
+//!   + a `<interface>_<choice>_command` method per inherited choice.
+//! * Cross-package `package_name` resolution at the convert layer —
+//!   every cross-package path must carry a non-empty package-name
+//!   segment.
+//! * Variant-with-record-payload constructors produce a synthetic
+//!   `pub mod <variant>` containing the payload records.
 
 use daml_codegen::generator::{ModuleMatcher, RenderMethod};
 use daml_codegen::renderer::quote_archive;
@@ -48,8 +49,8 @@ fn assert_contains(rendered: &str, needle: &str, why: &str) {
 
 #[test]
 fn template_id_uses_package_name() {
-    // Phase 4a regression: `Asset::template_id()` must address the
-    // template by package-name, not package-id. The participant
+    // Regression: `Asset::template_id()` must address the template
+    // by package-name, not package-id. The participant
     // accepts either form, but only the name form survives a
     // package-upgrade. The renderer should never emit
     // `from_package_id`.
@@ -113,8 +114,8 @@ fn cross_package_paths_carry_package_name() {
 
 #[test]
 fn interface_trait_and_impl_emitted() {
-    // Phase 4b regression: each Daml interface produces a Rust
-    // trait, and every template that implements the interface gets
+    // Regression: each Daml interface produces a Rust trait, and
+    // every template that implements the interface gets
     // an `impl Trait for <Template>ContractId` block.
     let r = render_demo_modules();
     assert_contains(&r, "pub trait Holding", "Holding interface must produce a Rust trait");
@@ -128,8 +129,8 @@ fn interface_trait_and_impl_emitted() {
 
 #[test]
 fn interface_addressed_choice_methods_emitted() {
-    // Phase 4c regression: a contract that implements an interface
-    // gets `<interface>_<choice>_command` methods on its contract-id
+    // Regression: a contract that implements an interface gets
+    // `<interface>_<choice>_command` methods on its contract-id
     // (one per interface choice, including inherited Archive). The
     // method dispatches via the interface's `interface_id()`, not
     // the template's `template_id()`.
@@ -185,7 +186,7 @@ fn module_matcher_filters_out_unmatched_modules() {
 
 #[test]
 fn enum_constructors_round_trip_via_damlvalue() {
-    // Phase 4 regression: Daml enums get a Rust enum whose
+    // Regression: Daml enums get a Rust enum whose
     // `From<X> for DamlValue` and `TryFrom<DamlValue> for X` impls
     // round-trip every declared constructor. The fixture's `Color`
     // enum has three constructors.

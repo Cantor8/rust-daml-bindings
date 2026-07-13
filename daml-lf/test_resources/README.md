@@ -34,7 +34,7 @@ fixture targets LF 2.1 via the `--target=2.1` build option (LF
 ## Coverage
 
 The fixture is deliberately small but exercises every shape the
-Phase 3 conversion layer needs to handle:
+LF2 conversion layer needs to handle:
 
 | Shape                    | Module        | Notes                                |
 |--------------------------|---------------|--------------------------------------|
@@ -54,8 +54,8 @@ dropped key support, and adding a key triggers a
 
 Two reasons:
 
-1. `daml build` needs the Daml SDK on PATH (Phase 0 adds it via
-   `flake.nix`), but most CI runs only depend on the Nix-pinned
+1. `daml build` needs the Daml SDK on PATH (the repo's `flake.nix`
+   provides it), but most CI runs only depend on the Nix-pinned
    Rust toolchain. Checking the DAR in keeps `cargo test` working
    without spinning up the JVM.
 2. The fixture changes rarely; build-time regeneration would make

@@ -1,9 +1,9 @@
 //! Build-script-driven Daml codegen for the demo binary.
 //!
-//! Runs `daml::codegen::generator::daml_codegen` over the Phase 7
-//! LF2 fixture DAR (`TestingTypes-3_0_0-sdk_3_4_11-lf_2_1.dar`)
-//! and writes the generated Rust modules to `src/autogen/`. The
-//! demo's `main.rs` includes the entry-point module via `include!`.
+//! Runs `daml::codegen::generator::daml_codegen` over the LF2
+//! fixture DAR (`TestingTypes-3_0_0-sdk_3_4_11-lf_2_1.dar`) and
+//! writes the generated Rust modules to `src/autogen/`. The demo's
+//! `main.rs` includes the entry-point module via `include!`.
 //!
 //! Re-running `cargo build` after the DAR changes regenerates the
 //! module tree; the `cargo:rerun-if-changed` line below tells

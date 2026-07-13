@@ -37,9 +37,9 @@ itertools = "0.15.0"
 tracing = "0.1.44"
 thiserror = "2.0.18"
 
-# dev-dependencies are kept minimal here; the Phase 8 v2
-# integration smoke test lives in its own crate-local target
-# gated by `--features integration`.
+# dev-dependencies are kept minimal here; the v2 integration
+# smoke test lives in its own crate-local target gated by
+# `--features integration`.
 [dev-dependencies]
 daml = { path = "../daml", features = [ "lf", "util" ] }
 tokio = { version = "1.52", features = [ "macros", "rt-multi-thread" ] }

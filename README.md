@@ -64,7 +64,7 @@ nix develop --command canton-sandbox
 nix develop --command cargo test -p daml-grpc --features integration --test integration -- --nocapture
 ```
 
-The Phase 7 LF2 fixture DAR
+The LF2 fixture DAR
 (`daml-lf/test_resources/TestingTypes-3_0_0-sdk_3_4_11-lf_2_1.dar`) is
 uploaded by the test itself; no manual `daml ledger upload-dar` is needed.
 
