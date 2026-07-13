@@ -1,27 +1,52 @@
 version: 2
 updates:
+  # Rust workspace + published example crates. Weekly cadence keeps
+  # the PR queue manageable; `groups` bundles patch bumps so trivial
+  # dep churn doesn't produce dozens of PRs a day.
   - package-ecosystem: "cargo"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
     open-pull-requests-limit: 10
+    groups:
+      cargo-patches:
+        update-types: ["patch"]
+
   - package-ecosystem: "cargo"
     directory: "/examples/grpc-demo"
     schedule:
-      interval: "daily"
-    open-pull-requests-limit: 10
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      cargo-patches:
+        update-types: ["patch"]
+
   - package-ecosystem: "cargo"
     directory: "/examples/codegen-demo"
     schedule:
-      interval: "daily"
-    open-pull-requests-limit: 10
-  - package-ecosystem: "cargo"
-    directory: "/examples/daml-oas"
-    schedule:
-      interval: "daily"
-    open-pull-requests-limit: 10
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      cargo-patches:
+        update-types: ["patch"]
+
   - package-ecosystem: "cargo"
     directory: "/examples/daml-darn"
     schedule:
-      interval: "daily"
-    open-pull-requests-limit: 10
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      cargo-patches:
+        update-types: ["patch"]
+
+  # GitHub Actions pinned in .github/workflows/*.yml. Bumps track
+  # major security fixes on the third-party actions we use
+  # (checkout, rust-toolchain, cargo-deny-action, nix-installer-action).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      actions-patches:
+        update-types: ["patch", "minor"]
