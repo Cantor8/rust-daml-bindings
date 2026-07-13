@@ -61,7 +61,7 @@ impl DarFile {
     ///
     /// - A `dar` file containing only a single non-prim `dalf` file (anywhere)
     /// - A `dar` file containing a single non-prim `dalf` file and a single prim `dalf` file (ending with the `-prim`
-    /// suffix)
+    ///   suffix)
     /// - A `dar` file containing only a single prim (ending with the `-prim` suffix) file
     ///
     /// # Errors

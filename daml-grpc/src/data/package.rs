@@ -404,7 +404,7 @@ pub struct DamlUpdateVettedPackagesOutcome {
 mod tests {
     use super::*;
 
-    /// Each DamlVettingChange must map to a distinct proto enum
+    /// Each `DamlVettingChange` must map to a distinct proto enum
     /// value. Collisions would silently downgrade a vet operation
     /// (e.g. `VetAllPackages` -> `Unspecified` would defer to the
     /// server default unintentionally).
@@ -427,7 +427,7 @@ mod tests {
 
     /// `Prior(7)` vs `NoPrior` must remain distinguishable on the
     /// wire — confusing them with each other would either reject
-    /// every update (NoPrior on a participant with prior history)
+    /// every update (`NoPrior` on a participant with prior history)
     /// or accept any update (Prior matched against the wrong
     /// serial).
     #[test]

@@ -4,9 +4,9 @@ use crate::convert::{AttrField, AttrType, data_type_string_from_path};
 
 #[derive(Debug)]
 pub struct AttrChoice {
-    pub choice_name: String,
-    pub choice_arguments: Vec<AttrField>,
-    pub choice_return_type: AttrType,
+    pub name: String,
+    pub arguments: Vec<AttrField>,
+    pub return_type: AttrType,
 }
 
 pub fn extract_all_choices(items: &[ImplItem]) -> Vec<AttrChoice> {
@@ -22,9 +22,9 @@ fn get_single_attr_method(impl_item: &ImplItem) -> Option<AttrChoice> {
     {
         match attrs.as_slice() {
             [attr] => Some(AttrChoice {
-                choice_name: data_type_string_from_path(attr.path()),
-                choice_arguments: sig.inputs.iter().filter_map(self::simple_method_name_and_type).collect(),
-                choice_return_type: output_type(&sig.output),
+                name: data_type_string_from_path(attr.path()),
+                arguments: sig.inputs.iter().filter_map(self::simple_method_name_and_type).collect(),
+                return_type: output_type(&sig.output),
             }),
             _ => None,
         }

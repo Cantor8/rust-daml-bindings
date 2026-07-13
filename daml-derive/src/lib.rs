@@ -5,7 +5,7 @@
 //! Two mechanisms are provided for representing Daml types in Rust:
 //! * Custom attributes which can be applied to Rust structures which generate Daml type converters.
 //! * A procedural macro code generator which takes a Daml `dar` file as input and generates Rust types annotated with
-//! the custom attributes.
+//!   the custom attributes.
 //!
 //! # Custom Attributes
 //!
@@ -326,17 +326,14 @@
     clippy::manual_assert,
     // Style-only pedantic / nursery lints intentionally allowed
     // workspace-wide — none affect correctness.
-    clippy::too_long_first_doc_paragraph,
-    clippy::doc_lazy_continuation,
-    clippy::doc_markdown,
     clippy::large_enum_variant,
-    clippy::trivially_copy_pass_by_ref,
     clippy::too_many_lines,
     clippy::non_canonical_partial_ord_impl,
-    clippy::derive_partial_eq_without_eq,
+    clippy::too_long_first_doc_paragraph,
     clippy::option_if_let_else,
-    clippy::struct_field_names,
-    clippy::missing_panics_doc
+    clippy::trivially_copy_pass_by_ref,
+    // Proto-generated code (tonic-build / prost-build) derives PartialEq without Eq.
+    clippy::derive_partial_eq_without_eq,
 )]
 #![allow(non_snake_case, unused_extern_crates)]
 #![forbid(unsafe_code)]
@@ -463,6 +460,12 @@ pub fn DamlTemplate(attr: proc_macro::TokenStream, input: proc_macro::TokenStrea
 /// #[DamlInterface(package_name = "fuji", module_name = "Fuji.Asset")]
 /// pub struct MyInterface;
 /// ```
+///
+/// # Panics
+///
+/// Compile-time panic if neither `package_name` nor `package_id` is set,
+/// if `attr` fails to parse via `darling::FromMeta`, or if `input` isn't
+/// a valid Rust `struct`.
 #[proc_macro_attribute]
 pub fn DamlInterface(attr: proc_macro::TokenStream, input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let interface_info: DamlInterfaceInfo =

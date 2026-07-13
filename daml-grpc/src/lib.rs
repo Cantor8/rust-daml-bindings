@@ -51,15 +51,14 @@
     clippy::return_self_not_must_use,
     // Style-only pedantic / nursery lints intentionally allowed
     // workspace-wide — none affect correctness.
-    clippy::too_long_first_doc_paragraph,
-    clippy::doc_lazy_continuation,
-    clippy::doc_markdown,
     clippy::large_enum_variant,
-    clippy::trivially_copy_pass_by_ref,
     clippy::too_many_lines,
     clippy::non_canonical_partial_ord_impl,
+    clippy::too_long_first_doc_paragraph,
+    clippy::option_if_let_else,
+    clippy::trivially_copy_pass_by_ref,
+    // Proto-generated code (tonic-build / prost-build) derives PartialEq without Eq.
     clippy::derive_partial_eq_without_eq,
-    clippy::option_if_let_else
 )]
 #![forbid(unsafe_code)]
 #![doc(html_favicon_url = "https://docs.daml.com/_static/images/favicon/favicon-32x32.png")]
