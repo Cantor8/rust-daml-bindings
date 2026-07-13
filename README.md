@@ -1,4 +1,4 @@
-![ci](https://github.com/fujiapple852/rust-daml-bindings/actions/workflows/ci.yml/badge.svg)
+![ci](https://github.com/drsk0/rust-daml-bindings/actions/workflows/ci.yml/badge.svg)
 [![Documentation](https://docs.rs/daml/badge.svg)](https://docs.rs/daml/0.3.0)
 [![Crate](https://img.shields.io/crates/v/daml.svg)](https://crates.io/crates/daml/0.3.0)
 ![maintenance-status](https://img.shields.io/badge/maintenance-experimental-blue.svg)
@@ -16,7 +16,10 @@ Unofficial Rust bindings and tools for [Daml](https://daml.com).
 
 ## Crates
 
-The project provides the following crates:
+The project provides the following crates. **Note:** the 0.3.0
+line is not yet published to crates.io — the links below will
+resolve once the release is published. Until then, build from
+source against a local checkout (see [Integration tests](#integration-tests)).
 
 | crate                                                       | description                                        |
 |-------------------------------------------------------------|----------------------------------------------------|
@@ -43,7 +46,7 @@ See the [documentation](https://docs.rs/daml/0.3.0) for the full set of feature 
 ## Example Applications
 
 Several example applications are available in
-the [`examples`](https://github.com/fujiapple852/rust-daml-bindings/tree/master/examples) directory showcasing various
+the [`examples`](https://github.com/drsk0/rust-daml-bindings/tree/master/examples) directory showcasing various
 features of the library. Additionally, most crates provide comprehensive integration tests which demonstrate usage.
 
 ## Integration tests
@@ -70,8 +73,8 @@ uploaded by the test itself; no manual `daml ledger upload-dar` is needed.
 
 ## Minimum Supported Rust Version
 
-The current MSRV is **1.75** (required by the modern `tonic` / `prost`
-dependencies pulled in for the v2 protos).
+The current MSRV is **1.96** (required by edition 2024 and the
+modern `tonic` / `prost` dependencies pulled in for the v2 protos).
 
 ## Supported Daml Version
 
@@ -82,7 +85,7 @@ integration-test workflow above.
 
 ## Changelog
 
-Please see the [CHANGELOG](https://github.com/fujiapple852/rust-daml-bindings/blob/master/CHANGELOG.md) for a release
+Please see the [CHANGELOG](https://github.com/drsk0/rust-daml-bindings/blob/master/CHANGELOG.md) for a release
 history.
 
 ## License
@@ -94,4 +97,4 @@ in the Apache-2.0 license, shall be dual licensed as above, without any addition
 
 See [LICENSE](LICENSE) for details.
 
-Copyright 2022
+Copyright 2022-2026
