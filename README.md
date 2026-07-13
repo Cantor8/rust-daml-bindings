@@ -46,7 +46,7 @@ See the [documentation](https://docs.rs/daml/0.3.0) for the full set of feature 
 ## Example Applications
 
 Several example applications are available in
-the [`examples`](https://github.com/drsk0/rust-daml-bindings/tree/master/examples) directory showcasing various
+the [`examples`](https://github.com/drsk0/rust-daml-bindings/tree/main/examples) directory showcasing various
 features of the library. Additionally, most crates provide comprehensive integration tests which demonstrate usage.
 
 ## Integration tests
@@ -85,7 +85,7 @@ integration-test workflow above.
 
 ## Changelog
 
-Please see the [CHANGELOG](https://github.com/drsk0/rust-daml-bindings/blob/master/CHANGELOG.md) for a release
+Please see the [CHANGELOG](https://github.com/drsk0/rust-daml-bindings/blob/main/CHANGELOG.md) for a release
 history.
 
 ## License
