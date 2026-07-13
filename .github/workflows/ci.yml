@@ -82,11 +82,46 @@ jobs:
       - name: test -p daml-lf --tests
         run: cargo test -p daml-lf --tests
 
-  # The Phase 8 smoke test (`-p daml-grpc --features integration`)
-  # needs a running Canton sandbox and is gated off the default
-  # matrix. See README's "Integration tests" section for the local
-  # workflow; CI can pick it up later by booting `canton-sandbox`
-  # from the Nix flake before invoking cargo.
+  # Live-sandbox smoke test: boots Canton 3.5.1 out of the Nix
+  # flake and runs `-p daml-grpc --features integration` against
+  # it. Same tooling as the local workflow — see README's
+  # "Integration tests" section — so a green CI run means the
+  # Nix-pinned Canton + fixture DAR + client bindings agree
+  # end-to-end.
+  integration:
+    runs-on: ubuntu-latest
+    # Skip on draft PRs to keep runner minutes reasonable — the
+    # rest of the matrix is fast enough that iterating on a draft
+    # doesn't need the ~2-min sandbox boot.
+    if: github.event.pull_request.draft == false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Start Canton sandbox
+        run: |
+          nohup nix develop --command canton-sandbox > canton-sandbox.log 2>&1 &
+          # Wait up to 2 minutes for the Ledger API port to accept
+          # connections. Canton boot on a cold runner is ~30-45 s.
+          for i in $(seq 1 60); do
+            nc -z localhost 5011 && exit 0
+            sleep 2
+          done
+          echo "canton-sandbox never came up on localhost:5011" >&2
+          exit 1
+
+      - name: Run integration test
+        run: |
+          nix develop --command cargo test \
+            -p daml-grpc --features integration \
+            --test integration -- --nocapture
+
+      # Surface Canton-side logs when the test failed so failures
+      # are diagnosable without an SSH into the runner.
+      - name: Dump canton-sandbox log
+        if: failure()
+        run: tail -n 200 canton-sandbox.log || true
 
   fmt:
     runs-on: ubuntu-latest
