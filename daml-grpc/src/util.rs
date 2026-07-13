@@ -56,9 +56,10 @@ pub fn date_from_days(days: i32) -> DamlResult<NaiveDate> {
 pub fn datetime_from_micros(micros: i64) -> DamlResult<DateTime<Utc>> {
     // micros since epoch -> DateTime<Utc>
     let secs = micros.div_euclid(1_000_000);
-    let nanos_part = i64::rem_euclid(micros, 1_000_000) * 1_000;
-    #[allow(clippy::cast_sign_loss)]
-    DateTime::from_timestamp(secs, nanos_part as u32)
+    // rem_euclid(1e6) < 1e6, then * 1e3 gives < 1e9 — always fits in u32.
+    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+    let nanos_part = (i64::rem_euclid(micros, 1_000_000) * 1_000) as u32;
+    DateTime::from_timestamp(secs, nanos_part)
         .ok_or_else(|| DamlError::new_failed_conversion(format!("datetime from micros {micros} out of range")))
 }
 

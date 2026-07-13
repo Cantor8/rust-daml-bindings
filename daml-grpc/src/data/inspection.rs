@@ -51,6 +51,7 @@ impl From<DamlCommandState> for CommandState {
 }
 
 /// One stage in a command's processing pipeline, with its duration.
+///
 /// Used by the inspection service to surface per-stage timing — the
 /// stage descriptions are participant-implementation-specific and may
 /// change between releases.
@@ -149,7 +150,7 @@ pub struct DamlCommandStatus {
     /// Time at which the participant finished interpreting and
     /// committing (or rejecting) the command. `None` while pending.
     pub completed: Option<DateTime<Utc>>,
-    /// The completion that the CompletionService would emit for this
+    /// The completion that the `CompletionService` would emit for this
     /// command. Only populated once `state` leaves `Pending`.
     pub completion: Option<DamlCompletion>,
     pub state: DamlCommandState,

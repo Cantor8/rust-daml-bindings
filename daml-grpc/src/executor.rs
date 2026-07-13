@@ -191,7 +191,7 @@ impl<'a> DamlSimpleExecutor<'a> {
     }
 
     /// Submit and wait, returning a [`DamlTransaction`] populated
-    /// with both `Created` and `Exercised` events (the LedgerEffects
+    /// with both `Created` and `Exercised` events (the `LedgerEffects`
     /// shape; v1's `TransactionTree`).
     async fn submit_and_wait_for_transaction_with_effects(&self, command: DamlCommand) -> DamlResult<DamlTransaction> {
         let commands = self.command_factory.make_command(command);
@@ -272,7 +272,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_act_as() -> DamlResult<()> {
-        let client = DamlGrpcClient::dummy_for_testing().await;
+        let client = DamlGrpcClient::dummy_for_testing();
         let executor = DamlSimpleExecutorBuilder::new(&client).act_as("Alice").build()?;
         assert_eq!(&["Alice"], executor.act_as());
         assert_eq!(0, executor.read_as().len());
@@ -281,7 +281,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_as() -> DamlResult<()> {
-        let client = DamlGrpcClient::dummy_for_testing().await;
+        let client = DamlGrpcClient::dummy_for_testing();
         let executor = DamlSimpleExecutorBuilder::new(&client).read_as("Alice").build()?;
         assert_eq!(&["Alice"], executor.read_as());
         assert_eq!(0, executor.act_as().len());
@@ -290,7 +290,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_act_as_and_read_as() -> DamlResult<()> {
-        let client = DamlGrpcClient::dummy_for_testing().await;
+        let client = DamlGrpcClient::dummy_for_testing();
         let executor = DamlSimpleExecutorBuilder::new(&client).act_as("Alice").read_as("Bob").build()?;
         assert_eq!(&["Alice"], executor.act_as());
         assert_eq!(&["Bob"], executor.read_as());
@@ -299,7 +299,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_act_as_all() -> DamlResult<()> {
-        let client = DamlGrpcClient::dummy_for_testing().await;
+        let client = DamlGrpcClient::dummy_for_testing();
         let executor =
             DamlSimpleExecutorBuilder::new(&client).act_as_all(vec!["Alice".into(), "Bob".into()]).build()?;
         assert_eq!(&["Alice", "Bob"], executor.act_as());
@@ -309,7 +309,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_as_all() -> DamlResult<()> {
-        let client = DamlGrpcClient::dummy_for_testing().await;
+        let client = DamlGrpcClient::dummy_for_testing();
         let executor =
             DamlSimpleExecutorBuilder::new(&client).read_as_all(vec!["Alice".into(), "Bob".into()]).build()?;
         assert_eq!(&["Alice", "Bob"], executor.read_as());
@@ -319,7 +319,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_act_as_all_and_read_as_all() -> DamlResult<()> {
-        let client = DamlGrpcClient::dummy_for_testing().await;
+        let client = DamlGrpcClient::dummy_for_testing();
         let executor = DamlSimpleExecutorBuilder::new(&client)
             .act_as_all(vec!["Alice".into(), "Bob".into()])
             .read_as_all(vec!["John".into(), "Jill".into()])
@@ -331,12 +331,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_no_actors_should_fail() -> DamlResult<()> {
-        let client = DamlGrpcClient::dummy_for_testing().await;
+        let client = DamlGrpcClient::dummy_for_testing();
         let executor = DamlSimpleExecutorBuilder::new(&client).build();
         match executor {
             Err(DamlError::InsufficientParties) => (),
             _ => panic!("expected DamlError::InsufficientParties"),
-        };
+        }
         Ok(())
     }
 }

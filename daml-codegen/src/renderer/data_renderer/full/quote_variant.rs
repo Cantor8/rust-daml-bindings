@@ -56,7 +56,7 @@ fn quote_variant_body(ctx: &RenderContext<'_>, variants: &[&DamlField<'_>]) -> T
         .iter()
         .map(|&field| {
             let variant_name = quote_escaped_ident(field.name());
-            if let DamlType::Unit = field.ty() {
+            if matches!(field.ty(), DamlType::Unit) {
                 quote!(#variant_name)
             } else {
                 let data = quote_type(ctx, field.ty());
@@ -124,7 +124,7 @@ fn quote_from_trait_match_arm(ctx: &RenderContext<'_>, variant_name: &str, varia
     let variant_name_tokens = quote_escaped_ident(variant_name);
     let name = quote_escaped_ident(variant.name());
     let variant_string = variant.name();
-    if let DamlType::Unit = variant.ty() {
+    if matches!(variant.ty(), DamlType::Unit) {
         quote!(
             #variant_name_tokens::#name => DamlValue::new_variant(DamlVariant::new(#variant_string, Box::new(DamlValue::new_unit()), None))
         )
@@ -147,7 +147,7 @@ fn quote_try_from_trait_match_arm(ctx: &RenderContext<'_>, variant_name: &str, v
     let variant_constructor_name_tokens = quote_escaped_ident(variant.name());
     let variant_constructor_string = variant.name();
     let variant_type_tokens = quote_type(ctx, variant.ty());
-    if let DamlType::Unit = variant.ty() {
+    if matches!(variant.ty(), DamlType::Unit) {
         quote!(
             #variant_constructor_string => Ok(#variant_name_tokens::#variant_constructor_name_tokens)
         )
@@ -161,12 +161,10 @@ fn quote_try_from_trait_match_arm(ctx: &RenderContext<'_>, variant_name: &str, v
 fn quote_unused_phantom_params(params: &[DamlTypeVarWithKind<'_>], variants: &[&DamlField<'_>]) -> TokenStream {
     let unused_params: Vec<_> = params
         .iter()
-        .filter_map(|p| {
-            variants.iter().any(|&f| f.ty().contains_type_var(p.var())).not().then(|| {
+        .filter(|&p| variants.iter().any(|&f| f.ty().contains_type_var(p.var())).not()).map(|p| {
                 let param_tokens = quote_ident(normalize_generic_param(p.var()).to_uppercase());
                 quote!( std::marker::PhantomData < #param_tokens > )
             })
-        })
         .collect();
     if unused_params.is_empty() {
         quote!()

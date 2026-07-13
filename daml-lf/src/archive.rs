@@ -226,7 +226,7 @@ mod tests {
         let err = DamlLfArchive::from_bytes(bytes).expect_err("should reject unknown hash function");
         match err {
             DamlLfError::DarParseError(msg) => {
-                assert!(msg.contains("unknown hash function id 99"), "unexpected message: {msg}")
+                assert!(msg.contains("unknown hash function id 99"), "unexpected message: {msg}");
             },
             other => panic!("expected DarParseError, got {other:?}"),
         }

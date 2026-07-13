@@ -228,7 +228,7 @@ impl DamlGrpcClient {
     /// Retrieve a [`DamlUpdateService`] for reading the participant's
     /// update stream — transactions, reassignments, and topology
     /// transactions, paginated or open-ended. v2's replacement for
-    /// v1's TransactionService.
+    /// v1's `TransactionService`.
     pub fn update_service(&self) -> DamlUpdateService<'_> {
         DamlUpdateService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
@@ -236,7 +236,7 @@ impl DamlGrpcClient {
     /// Retrieve a [`DamlStateService`] for snapshotting the active
     /// contract set, listing connected synchronizers, reading the
     /// ledger end, and querying pruning watermarks. v2's
-    /// replacement for v1's ActiveContractsService.
+    /// replacement for v1's `ActiveContractsService`.
     pub fn state_service(&self) -> DamlStateService<'_> {
         DamlStateService::new(self.channel.clone(), self.config.auth_token.as_deref())
     }
@@ -320,7 +320,7 @@ impl DamlGrpcClient {
     /// `experimental.static_time` flag in
     /// `VersionService::GetLedgerApiVersion`).
     ///
-    /// v2 dropped the `sandbox` feature gate — TimeService is part
+    /// v2 dropped the `sandbox` feature gate — `TimeService` is part
     /// of every Canton participant's `testing` API; static-vs-
     /// wallclock is a server-side config switch, not a client
     /// build flag.
@@ -368,7 +368,7 @@ impl DamlGrpcClient {
     }
 
     #[cfg(test)]
-    pub(crate) async fn dummy_for_testing() -> Self {
+    pub(crate) fn dummy_for_testing() -> Self {
         DamlGrpcClient {
             config: DamlGrpcClientConfig::default(),
             channel: Channel::builder(Uri::from_static("http://dummy.for.testing")).connect_lazy(),

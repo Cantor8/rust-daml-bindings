@@ -87,6 +87,7 @@ impl TryFrom<Completion> for DamlCompletion {
 }
 
 /// Periodic offset marker emitted in the completion (and update) streams.
+///
 /// Lets clients (a) detect commands that have likely timed out (no
 /// completion received before `synchronizer_times` advanced past the
 /// command's max record time) and (b) checkpoint stream position so a

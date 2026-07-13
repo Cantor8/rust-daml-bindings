@@ -46,7 +46,7 @@ impl<'a> IsRenderable<'a> {
             | DamlType::GenMap(args)
             | DamlType::Optional(args)
             | DamlType::Numeric(args) => args.iter().all(|arg| self.check_type(arg)),
-            DamlType::ContractId(tycon) => tycon.as_ref().map_or(true, |ty| self.check_type(ty)),
+            DamlType::ContractId(tycon) => tycon.as_ref().is_none_or(|ty| self.check_type(ty)),
             DamlType::TyCon(tycon) | DamlType::BoxedTyCon(tycon) => self.check_tycon(tycon),
             DamlType::Var(var) => var.type_arguments().iter().all(|ty| self.check_type(ty)),
             DamlType::Arrow
@@ -69,10 +69,10 @@ impl<'a> IsRenderable<'a> {
 
     fn check_target_data(&self, tycon: &DamlTyCon<'_>) -> bool {
         match self.filter_mode {
-            RenderFilterMode::HigherKindedType => self.archive.data_by_tycon(tycon).map_or(true, |data| {
+            RenderFilterMode::HigherKindedType => self.archive.data_by_tycon(tycon).is_none_or(|data| {
                 !data.type_params().iter().any(|type_var| matches!(type_var.kind(), DamlKind::Arrow(_)))
             }),
-            RenderFilterMode::NonSerializable => self.archive.data_by_tycon(tycon).map_or(true, DamlData::serializable),
+            RenderFilterMode::NonSerializable => self.archive.data_by_tycon(tycon).is_none_or(DamlData::serializable),
         }
     }
 

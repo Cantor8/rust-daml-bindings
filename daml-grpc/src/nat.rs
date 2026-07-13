@@ -7,7 +7,6 @@ pub trait Nat {
     fn nat() -> u8;
 }
 
-///
 macro_rules! make_nat {
     ($name:ident, $n:literal) => {
         make_nat_struct! {$name, $n}

@@ -276,7 +276,7 @@
 //! The generated [`DamlExerciseCommand`] can then be submitted to the Daml ledger via the [`DamlCommandService`] or
 //! [`DamlCommandSubmissionService`] as usual.
 //!
-//! Note that the name of the choice method _must_ match the name of the Daml choice (in snake_case) with a `_command`
+//! Note that the name of the choice method _must_ match the name of the Daml choice (in `snake_case`) with a `_command`
 //! suffix and the choice parameters _must_ match between the Daml and Rust representations.
 //!
 //! See the documentation for [`macro@DamlTemplate`], [`macro@DamlChoices`] & [`macro@DamlData`] for full details and
@@ -323,7 +323,20 @@
     clippy::module_name_repetitions,
     clippy::default_trait_access,
     clippy::needless_pass_by_value,
-    clippy::manual_assert
+    clippy::manual_assert,
+    // Style-only pedantic / nursery lints intentionally allowed
+    // workspace-wide — none affect correctness.
+    clippy::too_long_first_doc_paragraph,
+    clippy::doc_lazy_continuation,
+    clippy::doc_markdown,
+    clippy::large_enum_variant,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::too_many_lines,
+    clippy::non_canonical_partial_ord_impl,
+    clippy::derive_partial_eq_without_eq,
+    clippy::option_if_let_else,
+    clippy::struct_field_names,
+    clippy::missing_panics_doc
 )]
 #![allow(non_snake_case, unused_extern_crates)]
 #![forbid(unsafe_code)]

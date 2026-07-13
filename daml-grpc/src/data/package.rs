@@ -439,7 +439,7 @@ mod tests {
             other => panic!("Prior(7) lost on the way to proto: {other:?}"),
         }
         match no_prior.serial {
-            Some(Serial::NoPrior(_)) => {},
+            Some(Serial::NoPrior(())) => {},
             other => panic!("NoPrior lost on the way to proto: {other:?}"),
         }
     }

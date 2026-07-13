@@ -1454,7 +1454,7 @@ impl<'a> DamlVisitableElement<'a> for DamlUpdate<'a> {
             DamlUpdate::ExerciseByKey(exercise_by_key) => exercise_by_key.accept(visitor),
             DamlUpdate::Fetch(fetch) => fetch.accept(visitor),
             DamlUpdate::LookupByKey(retrieve_by_key) | DamlUpdate::FetchByKey(retrieve_by_key) => {
-                retrieve_by_key.accept(visitor)
+                retrieve_by_key.accept(visitor);
             },
             DamlUpdate::QueryNByKey(qbk) => qbk.accept(visitor),
             DamlUpdate::EmbedExpr(embed_expr) => embed_expr.accept(visitor),

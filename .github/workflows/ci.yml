@@ -145,8 +145,22 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           components: clippy
+
+      # Default features — same set that most consumers get from
+      # `cargo add daml`.
       - name: clippy --workspace --tests
         run: cargo clippy --workspace --tests -- -Dwarnings
+
+      # All features — turning on optional deps (integration, admin,
+      # lf-full etc.) surfaces code paths the default check skips.
+      - name: clippy --workspace --tests --all-features
+        run: cargo clippy --workspace --tests --all-features -- -Dwarnings
+
+      # No default features — catches any lints that would only fire
+      # in a stripped-down build (unused-imports guarded behind
+      # #[cfg(feature = "...")]).
+      - name: clippy --workspace --tests --no-default-features
+        run: cargo clippy --workspace --tests --no-default-features -- -Dwarnings
 
   cargo-deny:
     runs-on: ubuntu-latest

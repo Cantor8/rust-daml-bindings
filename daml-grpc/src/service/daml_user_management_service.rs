@@ -100,7 +100,7 @@ impl<'a> DamlUserManagementService<'a> {
 
     /// Update modifiable fields of a user.
     ///
-    /// `update_paths` is the FieldMask: only the named paths are
+    /// `update_paths` is the `FieldMask`: only the named paths are
     /// touched. Modifiable paths today are `primary_party`,
     /// `is_deactivated`, `primary_party_authentication`, and `metadata`
     /// (and its sub-paths). The user's `id` and

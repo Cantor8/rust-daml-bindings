@@ -75,7 +75,7 @@ pub type DamlCantonTokenResult<T> = std::result::Result<T, DamlCantonTokenError>
 /// would reject as a claim-format violation).
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct DamlCantonClaims {
-    /// Issuer URL — typically the OIDC IdP. Optional.
+    /// Issuer URL — typically the OIDC `IdP`. Optional.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub iss: Option<String>,
     /// Subject — the Daml user-id the token authorises.

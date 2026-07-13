@@ -38,7 +38,7 @@ fn generate_package_source(
     let package_body = format!("{DISABLE_WARNINGS}\n{module_decl}");
     let mut package_file = create_file(&PathBuf::from(output_path), &make_package_filename(package.name()))?;
     package_file.write_all(package_body.as_bytes())?;
-    let package_dir_path = PathBuf::from(output_path).join(&to_rust_identifier(package.name()));
+    let package_dir_path = PathBuf::from(output_path).join(to_rust_identifier(package.name()));
     for module in root_modules {
         generate_module_source(ctx, module, &package_dir_path, module_matcher, render_method)?;
     }

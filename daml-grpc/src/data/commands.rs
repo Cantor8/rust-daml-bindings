@@ -21,7 +21,7 @@ pub struct DamlCommands {
     pub workflow_id: String,
     /// The participant user that issued this submission. Required unless
     /// the request is already authenticated with a user token (in which
-    /// case the token's user_id takes precedence and this field is
+    /// case the token's `user_id` takes precedence and this field is
     /// ignored). v2 renames v1's `application_id`.
     pub user_id: String,
     /// Uniquely identifies this command (together with `user_id` and

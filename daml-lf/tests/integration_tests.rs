@@ -10,7 +10,7 @@ use daml_lf::{DarEncryptionType, DarManifestFormat, DarManifestVersion};
 use std::collections::HashSet;
 
 /// Path to the canonical LF2 fixture DAR. Compiled with Daml SDK
-/// 3.4.11 against LF target 2.1; see test_resources/README.md for
+/// 3.4.11 against LF target 2.1; see `test_resources/README.md` for
 /// the rebuild procedure.
 const FIXTURE_DAR: &str = "test_resources/TestingTypes-3_0_0-sdk_3_4_11-lf_2_1.dar";
 

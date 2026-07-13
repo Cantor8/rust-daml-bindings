@@ -97,7 +97,7 @@ impl<'a> DamlData<'a> {
     }
 }
 
-/// Private trait capturing the (package_id, module_path, name) identity
+/// Private trait capturing the (`package_id`, `module_path`, name) identity
 /// triple shared by every data-typed element. Lets the cross-type
 /// `PartialEq` impls reuse one body instead of pasting the same three
 /// comparisons into every block.

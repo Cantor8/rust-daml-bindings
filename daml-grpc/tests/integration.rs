@@ -600,11 +600,10 @@ async fn update_service_all_methods() -> Result<()> {
     let mut saw = false;
     while let Some(item) = stream.next().await {
         let resp = item?;
-        if let DamlUpdateResponse::Update(DamlUpdate::Transaction(t)) = resp {
-            if t.update_id == update_id {
+        if let DamlUpdateResponse::Update(DamlUpdate::Transaction(t)) = resp
+            && t.update_id == update_id {
                 saw = true;
             }
-        }
     }
     assert!(saw, "streamed updates didn't include our create's update_id");
     Ok(())

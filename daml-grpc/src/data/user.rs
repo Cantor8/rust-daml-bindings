@@ -135,7 +135,7 @@ mod tests {
             is_deactivated: true,
             metadata: Some(DamlObjectMeta {
                 resource_version: "v7".to_owned(),
-                annotations: [("k".to_owned(), "v".to_owned())].into_iter().collect(),
+                annotations: std::iter::once(("k".to_owned(), "v".to_owned())).collect(),
             }),
             identity_provider_id: "idp-1".to_owned(),
             primary_party_authentication: true,

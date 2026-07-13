@@ -74,10 +74,7 @@ pub fn quote_template_id_method(
 ) -> TokenStream {
     let struct_name_tokens = quote_escaped_ident(struct_name);
     let entity_name = struct_name;
-    let identifier_ctor = match package_name {
-        Some(name) => quote!(DamlIdentifier::from_package_name(#name, #module_name, #entity_name)),
-        None => quote!(DamlIdentifier::new(#package_id, #module_name, #entity_name)),
-    };
+    let identifier_ctor = if let Some(name) = package_name { quote!(DamlIdentifier::from_package_name(#name, #module_name, #entity_name)) } else { quote!(DamlIdentifier::new(#package_id, #module_name, #entity_name)) };
     quote!(
         impl #struct_name_tokens {
             pub fn template_id() -> DamlIdentifier {

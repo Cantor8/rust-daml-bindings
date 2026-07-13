@@ -146,12 +146,9 @@ pub fn quote_daml_interface(ctx: &RenderContext<'_>, interface: &DamlInterface<'
     let trait_name_tokens = quote_escaped_ident(interface.name());
     let module_name = to_module_path(interface.module_path());
     let entity_name = interface.name();
-    let identifier_ctor = match ctx.package_name_for(interface.package_id()) {
-        Some(name) => quote!(DamlIdentifier::from_package_name(#name, #module_name, #entity_name)),
-        None => {
-            let package_id = interface.package_id();
-            quote!(DamlIdentifier::new(#package_id, #module_name, #entity_name))
-        },
+    let identifier_ctor = if let Some(name) = ctx.package_name_for(interface.package_id()) { quote!(DamlIdentifier::from_package_name(#name, #module_name, #entity_name)) } else {
+        let package_id = interface.package_id();
+        quote!(DamlIdentifier::new(#package_id, #module_name, #entity_name))
     };
     quote!(
         /// Marker trait for the Daml interface.

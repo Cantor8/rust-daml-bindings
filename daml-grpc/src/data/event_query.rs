@@ -6,7 +6,7 @@ use crate::grpc_protobuf::com::daml::ledger::api::v2::{Archived, Created, GetEve
 use crate::util::Required;
 
 /// A create event scoped to a single synchronizer (the one that
-/// sequenced it). EventQueryService surfaces this richer shape because
+/// sequenced it). `EventQueryService` surfaces this richer shape because
 /// the same contract can appear on multiple synchronizers — clients
 /// reading event history need the synchronizer id to disambiguate.
 #[derive(Debug, Eq, PartialEq, Clone)]

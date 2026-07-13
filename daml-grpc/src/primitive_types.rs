@@ -286,7 +286,7 @@ impl<T: Nat> From<f64> for DamlFixedNumeric<T> {
     fn from(f: f64) -> Self {
         Self::new(match BigDecimal::try_from(f) {
             Ok(bd) => bd,
-            Err(err) => panic!("invalid f64: {}", err),
+            Err(err) => panic!("invalid f64: {err}"),
         })
     }
 }
@@ -322,7 +322,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "invalid f64")]
     fn test_numeric_from_should_panic() {
         let _panic = DamlNumeric10::from(1_f64 / 0_f64);
     }

@@ -224,9 +224,7 @@ fn quote_unused_phantom_params(
 ) -> TokenStream {
     let all_params: Vec<_> = params
         .iter()
-        .filter_map(|p| {
-            struct_fields.iter().any(|&f| f.ty().contains_type_var(p.var())).not().then(|| type_var_quoter(p))
-        })
+        .filter(|&p| struct_fields.iter().any(|&f| f.ty().contains_type_var(p.var())).not()).map(type_var_quoter)
         .collect();
     quote!( #( #all_params ),* )
 }

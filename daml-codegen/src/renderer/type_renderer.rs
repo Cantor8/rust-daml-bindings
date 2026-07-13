@@ -8,38 +8,25 @@ use std::iter;
 
 pub fn quote_type(ctx: &RenderContext<'_>, daml_type: &DamlType<'_>) -> TokenStream {
     match daml_type {
-        DamlType::List(args) => {
+        DamlType::List(args) | DamlType::Optional(args) | DamlType::Numeric(args) => {
+            let prim_name_tokens = quote_escaped_ident(daml_type.name());
             if let Some(arg) = args.first() {
-                let prim_name_tokens = quote_escaped_ident(daml_type.name());
                 let prim_param_tokens = quote_type(ctx, arg);
                 quote!(#prim_name_tokens<#prim_param_tokens>)
             } else {
-                let prim_name_tokens = quote_escaped_ident(daml_type.name());
                 quote!(#prim_name_tokens)
             }
         },
         DamlType::TextMap(args) | DamlType::GenMap(args) => {
+            let prim_name_tokens = quote_escaped_ident(daml_type.name());
             if let (Some(k), Some(v)) = (args.first(), args.get(1)) {
-                let prim_name_tokens = quote_escaped_ident(daml_type.name());
                 let prim_key_param_tokens = quote_type(ctx, k);
                 let prim_value_param_tokens = quote_type(ctx, v);
                 quote!(#prim_name_tokens<#prim_key_param_tokens, #prim_value_param_tokens>)
             } else {
-                let prim_name_tokens = quote_escaped_ident(daml_type.name());
                 quote!(#prim_name_tokens)
             }
         },
-        DamlType::Optional(args) | DamlType::Numeric(args) => {
-            if let Some(arg) = args.first() {
-                let prim_name_tokens = quote_escaped_ident(daml_type.name());
-                let prim_param_tokens = quote_type(ctx, arg);
-                quote!(#prim_name_tokens<#prim_param_tokens>)
-            } else {
-                let prim_name_tokens = quote_escaped_ident(daml_type.name());
-                quote!(#prim_name_tokens)
-            }
-        },
-        DamlType::ContractId(_) => quote_escaped_ident(daml_type.name()),
         DamlType::TyCon(tycon) => quote_tycon(ctx, tycon),
         DamlType::BoxedTyCon(tycon) => {
             let tycon = quote_tycon(ctx, tycon);
@@ -50,7 +37,8 @@ pub fn quote_type(ctx: &RenderContext<'_>, daml_type: &DamlType<'_>) -> TokenStr
             quote!(#var_tokens)
         },
         DamlType::Nat(n) => quote_ident(format!("{}{}", daml_type.name(), n)),
-        DamlType::Int64
+        DamlType::ContractId(_)
+        | DamlType::Int64
         | DamlType::Text
         | DamlType::Timestamp
         | DamlType::Party

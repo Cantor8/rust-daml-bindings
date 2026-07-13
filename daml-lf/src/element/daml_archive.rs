@@ -22,7 +22,6 @@ pub struct DamlArchive<'a> {
 }
 
 impl<'a> DamlArchive<'a> {
-    ///
     pub const fn new(
         name: Cow<'a, str>,
         main_package_id: Cow<'a, str>,
@@ -149,12 +148,12 @@ impl<'a> DamlArchive<'a> {
     }
 
     /// Validate cross-references and shape constraints across the
-    /// assembled archive. Walks every TyCon reference, template
+    /// assembled archive. Walks every `TyCon` reference, template
     /// choice and interface and returns the first violation as a
     /// [`DamlLfConvertError`]:
     ///
     /// - [`UnknownPackage`] / [`UnknownModule`] / [`UnknownData`]:
-    ///   a TyCon reference points at a target that doesn't exist.
+    ///   a `TyCon` reference points at a target that doesn't exist.
     /// - [`UnexpectedChoiceData`]: a template choice's argument
     ///   type doesn't resolve to a Record.
     /// - [`UnexpectedType`]: an interface's view type doesn't

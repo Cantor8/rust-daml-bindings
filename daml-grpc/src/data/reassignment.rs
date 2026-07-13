@@ -173,7 +173,7 @@ impl TryFrom<AssignedEvent> for DamlAssignedEvent {
 pub struct DamlReassignmentCommands {
     pub workflow_id: String,
     /// Same semantics as `Commands::user_id`: ignored when the request
-    /// is authenticated with a user token (the token's user_id wins).
+    /// is authenticated with a user token (the token's `user_id` wins).
     pub user_id: String,
     pub command_id: String,
     pub submitter: String,

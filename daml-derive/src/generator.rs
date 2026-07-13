@@ -34,8 +34,8 @@ pub fn generate_tokens(args: Vec<NestedMeta>) -> proc_macro::TokenStream {
         archive.apply(|archive| ModuleMatcher::new(&filters).map(|mm| quote_archive(archive, &mm, &render_method)));
     match applied {
         Ok(Ok(tokens)) => proc_macro::TokenStream::from(tokens),
-        Ok(Err(e)) => panic!("failed to generate Daml code: {0}", e),
-        Err(e) => panic!("Daml-LF error in Daml code generator: {0}", e),
+        Ok(Err(e)) => panic!("failed to generate Daml code: {e}"),
+        Err(e) => panic!("Daml-LF error in Daml code generator: {e}"),
     }
 }
 

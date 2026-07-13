@@ -22,7 +22,7 @@ use crate::util::Required;
 /// Not yet exposed in this checkpoint:
 /// `AllocateExternalParty` and `GenerateExternalPartyTopology`. They
 /// require the v2 cryptographic types (`SigningPublicKey`, `Signature`)
-/// and TopologyTransaction wrappers, which belong to a later checkpoint.
+/// and `TopologyTransaction` wrappers, which belong to a later checkpoint.
 ///
 /// # Authorization
 ///
@@ -159,7 +159,7 @@ impl<'a> DamlPartyManagementService<'a> {
 
     /// Update modifiable fields of an existing `PartyDetails`.
     ///
-    /// `update_paths` is the FieldMask: only the paths you name are
+    /// `update_paths` is the `FieldMask`: only the paths you name are
     /// touched. Modifiable paths today are limited to `local_metadata`
     /// and its sub-paths (e.g. `local_metadata.annotations`). The other
     /// fields (`party`, `is_local`, `local_metadata.resource_version`)

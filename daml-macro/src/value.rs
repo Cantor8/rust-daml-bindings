@@ -112,7 +112,6 @@
 /// [`DamlValue::TextMap`]: ::daml_grpc::data::value::DamlValue::TextMap
 /// [`DamlValue::GenMap`]: ::daml_grpc::data::value::DamlValue::GenMap
 /// [`DamlValue::Enum`]: ::daml_grpc::data::value::DamlValue::Enum
-
 #[macro_export]
 macro_rules! daml_value {
 

@@ -19,7 +19,7 @@ pub mod user;
 /// Identity-provider configuration.
 pub mod identity_provider;
 
-/// CommandInspectionService data types — debug views of in-flight
+/// `CommandInspectionService` data types — debug views of in-flight
 /// commands.
 pub mod inspection;
 
@@ -86,15 +86,15 @@ pub mod reassignment;
 pub mod topology;
 
 /// The `DamlUpdate` envelope (Transaction / Reassignment /
-/// TopologyTransaction) and the streaming-response variant that adds
-/// OffsetCheckpoint markers.
+/// `TopologyTransaction`) and the streaming-response variant that adds
+/// `OffsetCheckpoint` markers.
 pub mod update;
 
-/// StateService data types — active-contract snapshots,
+/// `StateService` data types — active-contract snapshots,
 /// connected-synchronizer views, prune offsets.
 pub mod state;
 
-/// EventQueryService data types — per-contract event lookup
+/// `EventQueryService` data types — per-contract event lookup
 /// (Created / Archived halves scoped to a synchronizer).
 pub mod event_query;
 

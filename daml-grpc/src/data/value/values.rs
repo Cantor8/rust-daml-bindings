@@ -546,7 +546,7 @@ impl DamlValue {
     /// makes `partial_cmp` total, which lets `impl Ord` unwrap safely
     /// and lets `DamlGenMap` (a `BTreeMap<DamlValue, _>`) accept
     /// heterogeneous keys without panicking. The concrete ordering is
-    /// arbitrary but must be stable across releases so BTreeMap
+    /// arbitrary but must be stable across releases so `BTreeMap`
     /// snapshots survive round-trips.
     fn ordinal(&self) -> u8 {
         match self {
@@ -571,7 +571,7 @@ impl DamlValue {
 }
 
 impl From<()> for DamlValue {
-    fn from(_: ()) -> Self {
+    fn from((): ()) -> Self {
         Self::new_unit()
     }
 }
@@ -651,7 +651,7 @@ impl TryFrom<f64> for DamlValue {
 }
 
 impl DamlSerializeFrom<DamlUnit> for DamlValue {
-    fn serialize_from(_: DamlUnit) -> DamlValue {
+    fn serialize_from((): DamlUnit) -> DamlValue {
         Self::new_unit()
     }
 }
@@ -926,7 +926,7 @@ impl TryFrom<Value> for DamlValue {
             Sum::Timestamp(v) => DamlValue::Timestamp(util::datetime_from_micros(v)?),
             Sum::Party(v) => DamlValue::Party(DamlParty::new(v)),
             Sum::Bool(v) => DamlValue::Bool(v),
-            Sum::Unit(_) => DamlValue::Unit,
+            Sum::Unit(()) => DamlValue::Unit,
             Sum::Date(v) => DamlValue::Date(util::date_from_days(v)?),
             Sum::Optional(v) => {
                 DamlValue::Optional(v.value.map(|v| DamlValue::try_from(*v)).transpose()?.map(Box::new))
@@ -1183,8 +1183,8 @@ mod tests {
         assert_ne!(ord, Ordering::Equal);
         assert_eq!(ord, b.cmp(&a).reverse(), "ordering must be antisymmetric across variants");
         let mut m = BTreeMap::new();
-        m.insert(a.clone(), 1u32);
-        m.insert(b.clone(), 2u32);
+        m.insert(a, 1u32);
+        m.insert(b, 2u32);
         assert_eq!(m.len(), 2);
     }
 

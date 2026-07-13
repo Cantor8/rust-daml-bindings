@@ -19,8 +19,8 @@ pub struct DamlPartyDetails {
     /// Participant-local annotations + concurrency token. Modifiable.
     pub local_metadata: Option<DamlObjectMeta>,
     /// `Identity Provider` this party is assigned to. Empty string means
-    /// the default IDP. Updatable via UpdatePartyIdentityProviderId, not
-    /// UpdatePartyDetails.
+    /// the default IDP. Updatable via `UpdatePartyIdentityProviderId`, not
+    /// `UpdatePartyDetails`.
     pub identity_provider_id: String,
 }
 

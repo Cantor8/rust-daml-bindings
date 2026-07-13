@@ -334,17 +334,14 @@ impl DamlFeatureFlags {
         }
     }
 
-    ///
     pub fn forbid_party_literals(self) -> bool {
         self.forbid_party_literals
     }
 
-    ///
     pub fn dont_divulge_contract_ids_in_create_arguments(self) -> bool {
         self.dont_divulge_contract_ids_in_create_arguments
     }
 
-    ///
     pub fn dont_disclose_non_consuming_choices_to_observers(self) -> bool {
         self.dont_disclose_non_consuming_choices_to_observers
     }

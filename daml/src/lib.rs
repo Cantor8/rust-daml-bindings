@@ -76,14 +76,14 @@
 //! existing ledger as a collection of [`DamlLfArchivePayload`](daml_lf::DamlLfArchivePayload),
 //! [`DamlLfArchive`](daml_lf::DamlLfArchive) or combined into a single [`DarFile`](daml_lf::DarFile) file.
 //!
-//! You can use [DarFile::apply](::daml_lf::DarFile::apply),
-//! [DamlLfArchive::apply](::daml_lf::DamlLfArchive::apply) &
-//! [DamlLfArchivePayload::apply](::daml_lf::DamlLfArchivePayload::apply) to apply a function to the
+//! You can use [`DarFile::apply`](::daml_lf::DarFile::apply),
+//! [`DamlLfArchive::apply`](::daml_lf::DamlLfArchive::apply) &
+//! [`DamlLfArchivePayload::apply`](::daml_lf::DamlLfArchivePayload::apply) to apply a function to the
 //! [`DarFile`](daml_lf::DarFile), [`DamlLfArchive`](daml_lf::DamlLfArchive) and
 //! [`DamlLfArchivePayload`](daml_lf::DamlLfArchivePayload) types respectively.
 //!
 //! If required you may use
-//! [DarFile::to_owned_archive](daml_lf::DarFile::to_owned_archive) to convert a [`DarFile`](daml_lf::DarFile) be owned
+//! [`DarFile::to_owned_archive`](daml_lf::DarFile::to_owned_archive) to convert a [`DarFile`](daml_lf::DarFile) be owned
 //! (bounded by `'static`) such that it is suitable to be passed to a thread to async executor.
 //!
 //! ## Code Generation

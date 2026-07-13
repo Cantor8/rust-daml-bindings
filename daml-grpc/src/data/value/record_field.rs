@@ -41,7 +41,7 @@ impl TryFrom<RecordField> for DamlRecordField {
     fn try_from(field: RecordField) -> Result<Self, Self::Error> {
         let label = field.label;
         let value: DamlValue = field.value.req().and_then(DamlValue::try_from)?;
-        Ok(Self::new(label.is_empty().not().then(|| label), value))
+        Ok(Self::new(label.is_empty().not().then_some(label), value))
     }
 }
 

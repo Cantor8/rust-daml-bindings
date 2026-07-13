@@ -55,10 +55,10 @@ pub fn daml_codegen_internal(
         let module_matcher = ModuleMatcher::new(module_filter_regex)?;
         match module_output_mode {
             ModuleOutputMode::Separate => {
-                generate_archive_separate(archive, output_path.as_ref(), &module_matcher, &render_method)?
+                generate_archive_separate(archive, output_path.as_ref(), &module_matcher, &render_method)?;
             },
             ModuleOutputMode::Combined => {
-                generate_archive_combined(archive, output_path.as_ref(), &module_matcher, &render_method)?
+                generate_archive_combined(archive, output_path.as_ref(), &module_matcher, &render_method)?;
             },
         }
         Ok(())

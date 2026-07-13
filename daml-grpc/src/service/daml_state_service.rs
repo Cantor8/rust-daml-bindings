@@ -21,8 +21,8 @@ use crate::service::common::make_request;
 /// Snapshot- and topology-level queries against the participant's
 /// state at a chosen offset.
 ///
-/// v2's replacement for v1's ActiveContractsService (and absorbs
-/// pieces of LedgerIdentityService / LedgerConfigurationService).
+/// v2's replacement for v1's `ActiveContractsService` (and absorbs
+/// pieces of `LedgerIdentityService` / `LedgerConfigurationService`).
 /// The typical "catch up then tail" client pattern uses
 /// [`get_active_contracts`](Self::get_active_contracts) to seed
 /// state, then switches to
@@ -61,7 +61,7 @@ impl<'a> DamlStateService<'a> {
     ///   `GetActiveContractsResponse` to resume mid-snapshot. The
     ///   subsequent request must use the same `active_at_offset` and
     ///   `event_format`, and the participant must not have been
-    ///   pruned past the active_at_offset in between.
+    ///   pruned past the `active_at_offset` in between.
     #[instrument(skip(self))]
     pub async fn get_active_contracts(
         &self,
