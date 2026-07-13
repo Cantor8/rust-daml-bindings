@@ -1,5 +1,5 @@
-[![Documentation](https://docs.rs/daml-macro/badge.svg)](https://docs.rs/daml-macro/0.4.0)
-[![Crate](https://img.shields.io/crates/v/daml-macro.svg)](https://crates.io/crates/daml-macro/0.4.0)
+[![Documentation](https://docs.rs/daml-macro/badge.svg)](https://docs.rs/daml-macro/0.3.0)
+[![Crate](https://img.shields.io/crates/v/daml-macro.svg)](https://crates.io/crates/daml-macro/0.3.0)
 ![maintenance-status](https://img.shields.io/badge/maintenance-experimental-blue.svg)
 
 # Daml Macro
@@ -11,7 +11,7 @@ and enable the `macros` feature:
 
 ```toml
 [dependencies]
-daml = { version = "0.4.0", features = [ "macros" ] }
+daml = { version = "0.3.0", features = [ "macros" ] }
 ```
 
 ## License

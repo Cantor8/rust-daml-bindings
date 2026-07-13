@@ -5,77 +5,101 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0] - 2026-06-01
+## [0.3.0]
 
 A clean break to **Canton 3.5.1 / Ledger API v2 / Daml-LF 2.x**.
-Every crate, surface, and feature flag in this release is wire-
-and API-incompatible with the 0.2.x line.
+Wire- and API-incompatible with the 0.2.x line.
 
 ### Added
 
-- `daml-grpc` rewritten around the v2 Ledger API services:
-  `CommandService` (with `SubmitAndWait` /
-  `SubmitAndWaitForTransaction` /
-  `SubmitAndWaitForReassignment`), `UpdateService`,
-  `StateService`, `EventQueryService`, `ContractService`,
-  `InteractiveSubmissionService`, `CommandInspectionService`,
-  `IdentityProviderConfigService`, plus the upgraded
-  `VersionService` / `PackageService` / `PackageManagementService`
-  / `PartyManagementService` / `UserManagementService` /
-  `ParticipantPruningService` / `TimeService`. The `Update`
-  envelope (Transaction / Reassignment / TopologyTransaction)
-  replaces v1's `Transaction` / `TransactionTree` pair.
-- `daml-lf` switched to **Daml-LF 2.x**: `daml_lf_2::Package`,
-  the v2 expression / Update sub-oneofs (with `DamlInterfaceExpr`
-  covering the 13 LF2 interface ops), `DamlInterface` +
-  `DamlException` + `DamlInterfaceMethod` on the element layer,
-  and `DamlType::FailureCategory` for the new LF2 type-level
-  builtin.
-- `daml-codegen` / `daml-derive`: package-name-addressed
-  `template_id()` (the v2 convention), interface trait emission,
-  `impl <Interface> for <TemplateContractId> {}` for every
-  declared interface, `<iface>_<choice>_command(...)` exercise
-  methods on contract ids, new `#[DamlInterface]` attribute
-  macro, and `#[DamlTemplate]`'s `package_name = "..."` knob.
+- v2 gRPC service surface: Command / Update / State /
+  EventQuery / Contract / CommandInspection /
+  IdentityProviderConfig / Version / Package(Management) /
+  Party(Management) / User(Management) / ParticipantPruning /
+  Time. `Update` envelope (Transaction / Reassignment /
+  TopologyTransaction) replaces v1's Transaction /
+  TransactionTree pair.
+- `daml-lf` targets **Daml-LF 2.x** end-to-end: interfaces,
+  exceptions, `FailureCategory`, and the 13 LF2 interface
+  update ops.
+- Codegen / derive: package-name-addressed `template_id()`,
+  interface marker traits with `impl <Interface> for
+  <ContractId> {}`, `<iface>_<choice>_command(...)` methods,
+  `#[DamlInterface]` attribute, `#[DamlTemplate(package_name)]`.
+- `daml-util`: Canton v2 JWT builder (`DamlCantonTokenBuilder`,
+  HS256 / RS256 / ES256), plus `DamlPackages::into_dar` with
+  optional main-package selection and LF2-tree-walking
+  dependency filter.
+- `DamlArchive::validate()` catches malformed archives at load
+  time; `DamlLfConvertError::UnsupportedFeatureUsed` fires when
+  an archive uses an LF2 feature the convert layer hasn't
+  opted into.
 - Nix flake provisions Canton 3.5.1 + Daml SDK 3.4.11 + a
-  `canton-sandbox` wrapper script. Integration smoke test
-  exercises Create + exercise-via-interface end-to-end against
-  the local sandbox.
+  `canton-sandbox` wrapper; integration smoke test exercises
+  Create + interface-addressed Exercise end-to-end.
 
 ### Changed
 
-- **Ledger API v2 is the only supported protocol.** v1 services
-  / message shapes have no compatibility shim; clients targeting
-  Daml Connect 1.x must stay on the 0.2.x line.
-- The `daml-grpc` `DamlIdentifier` wraps a `package_ref` field
-  that accepts either a package-id hash or a `#<package-name>`
-  marker (the v2 wire convention for templates and interfaces).
-- `DamlSimpleExecutor`'s `execute_for_transaction_tree` is
-  renamed `execute_for_transaction_with_effects`; the
-  ledger-effects view is now selected via a `TransactionFormat`
-  rather than a dedicated `TransactionTree` RPC.
-- MSRV bumped to **Rust 1.75** (required by the modern
-  `tonic` / `prost` pulled in for v2 protos).
+- Ledger API v2 only — no v1 compat shim.
+- Deserialize now *moves* fields via `DamlRecord::take_field`
+  instead of `.field(name)?.to_owned()`; large-payload records
+  no longer pay an O(payload) clone per field on `try_into()`.
+- `DamlError` derives `thiserror::Error` and forwards
+  `source()` for wrapping variants (tonic status / transport /
+  IO / URI / timeout).
+- `DamlValue::partial_cmp` is total across variants; `impl Ord
+  for DamlValue` no longer panics on cross-variant compares
+  (fixed a `BTreeMap<DamlValue, _>` foot-gun for `GenMap`).
+- `DamlValue::Numeric` wire encoding preserves the natural
+  stored scale (was padding every value to 37 decimals /
+  flipping small magnitudes to scientific notation).
+- `DamlVariant` now preserves `variant_id` on the wire
+  round-trip; `DamlStatus` surfaces the full `details` chain;
+  `DamlSynchronizerTime` fails on missing `record_time`
+  instead of defaulting to the Unix epoch.
+- `DamlPackages::into_dar` signature is now
+  `(main_id, filter_deps, style)`.
+- Naming polish across the public surface:
+  `ExerciseByKeyCommand` variant → `ExerciseByKey`;
+  `DamlSimpleExecutorBuilder::application_id` → `user_id`;
+  version service returns a named `DamlLedgerApiVersion`
+  struct rather than a tuple.
+- `[workspace.dependencies]` centralises the 12 crates used by
+  ≥ 2 members; edition 2024, MSRV 1.96.
 
 ### Removed
 
-- `daml-json` and `daml-bridge` crates deleted -- the v1 Daml
-  JSON API is gone, replaced by a JSON Ledger API auto-generated
-  from the v2 protos. Pure-Rust JSON bridging is out of scope.
-- `examples/daml-oas` deleted (depended on `daml-json`).
-- `daml` umbrella crate's `json`, `bridge`, and `sandbox`
-  feature flags removed; `daml-grpc`'s `sandbox` feature
-  removed. `full` no longer pulls JSON.
-- `daml-util/src/sandbox_auth.rs` deleted (the v1-shaped JWT
-  token builder; the Canton v2 claim shape is different and a
-  v2 token helper is a planned follow-up).
-- Daml-LF 1.x support (DARs at LF 1.6 / 1.7 / 1.8 / 1.14 no
-  longer load).
-- The pre-existing v1 integration test trees under
-  `daml-grpc/tests/{grpc,common}/` and `daml-derive/tests/`
-  were dropped wholesale; only `daml-grpc/tests/integration.rs`
-  (gated by `--features integration`) is the live-sandbox
-  surface in 0.3.0.
+- `daml-json`, `daml-bridge` crates and `examples/daml-oas`
+  (JSON is now Canton's own JSON Ledger API).
+- v1-shaped auth helper (`daml-util/src/sandbox_auth.rs`);
+  replaced by `canton_auth.rs`.
+- Daml-LF 1.x archive support.
+- v1 integration test trees (`daml-grpc/tests/{grpc,common}/`,
+  `daml-derive/tests/`); the live-sandbox surface is
+  `daml-grpc/tests/integration.rs` under `--features
+  integration`.
+- Dead code caught during review: `Executor` trait
+  (`daml-grpc`), `DamlCantonTokenError::Expiry`,
+  `TrySwapRemove` helper, plus scattered dead bindings and
+  redundant `map_err` calls.
+
+### Fixed
+
+- `DamlLfHashFunction::Sha256` is now honoured when reading a
+  DAR manifest (was previously ignored).
+- LF2 feature flags no longer silently default to optimistic
+  values — `UnsupportedFeatureUsed` fires when a payload uses
+  something the convert layer hasn't opted into.
+- `DamlTextMap` / `GenMap` `PartialOrd` / `PartialEq` walk
+  `(key, value)` pairs — previously key-only, so maps that
+  differed in values compared equal.
+- Codegen's identifier sanitiser treats `gen` as reserved (Rust
+  2024) and prepends `_` when a name starts with a digit,
+  closing a `Ident::new` panic path on odd package / archive
+  names.
+- `daml-derive`'s `syn::Path` splitter only strips a leading
+  `crate::` segment (was always dropping the first segment,
+  silently losing user-written `foo::bar::MyType` paths).
 
 ## [0.2.2] - 2022-03-08
 

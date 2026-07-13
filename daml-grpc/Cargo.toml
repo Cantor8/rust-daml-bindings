@@ -1,6 +1,6 @@
 [package]
 name = "daml-grpc"
-version = "0.4.0"
+version = "0.3.0"
 authors = ["drsk0 <drsk0@proton.me>", "FujiApple <fujiapple852@gmail.com>"]
 description = "Daml Ledger GRPC API"
 readme = "README.md"
