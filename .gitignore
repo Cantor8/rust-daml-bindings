@@ -1,5 +1,4 @@
 .idea
-Cargo.lock
 log
 logs
 *.log
@@ -8,3 +7,6 @@ target
 local_dars/
 # Daml SDK / daml build artifact dirs inside fixture projects
 .daml/
+# Nix build output symlinks (from `nix build .#<pkg>`)
+/result
+/result-*
