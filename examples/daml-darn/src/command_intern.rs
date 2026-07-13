@@ -1,7 +1,4 @@
-use std::str::FromStr;
-
-use anyhow::{Context, Result};
-use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command};
+use anyhow::Result;
 use itertools::Itertools;
 use prettytable::color::Color;
 use prettytable::format;
@@ -9,94 +6,14 @@ use prettytable::{color, Attr, Cell, Row, Table};
 
 use daml::lf::{DamlLfPackage, DarFile};
 
-use crate::DarnCommand;
-
-/// Darn command for displaying interned strings and dotted names.
-pub struct CommandIntern {}
-
-impl DarnCommand for CommandIntern {
-    fn name(&self) -> &str {
-        "intern"
-    }
-
-    fn args(&self) -> Command {
-        Command::new("intern")
-            .about("Show interned strings and dotted names in a dar")
-            .arg(Arg::new("dar").help("Sets the input dar file to use").required(true).index(1))
-            .arg(Arg::new("string").short('s').long("string").action(ArgAction::SetTrue).help("Show interned strings"))
-            .arg(
-                Arg::new("dotted")
-                    .short('d')
-                    .long("dotted")
-                    .action(ArgAction::SetTrue)
-                    .help("Show interned dotted names"),
-            )
-            .arg(
-                Arg::new("index")
-                    .short('i')
-                    .long("index")
-                    .num_args(1..)
-                    .value_delimiter(',')
-                    .required(false)
-                    .help("the intern indices"),
-            )
-            .arg(
-                Arg::new("show-mangled")
-                    .short('f')
-                    .long("show-mangled")
-                    .action(ArgAction::SetTrue)
-                    .required(false)
-                    .help("show mangled names"),
-            )
-            .arg(
-                Arg::new("order-by-index")
-                    .required(false)
-                    .long("order-by-index")
-                    .action(ArgAction::SetTrue)
-                    .help("order by index"),
-            )
-            .arg(
-                Arg::new("order-by-name")
-                    .required(false)
-                    .long("order-by-name")
-                    .action(ArgAction::SetTrue)
-                    .help("order by name"),
-            )
-            .group(ArgGroup::new("mode").required(true).arg("string").arg("dotted"))
-            .group(ArgGroup::new("order").required(false).arg("order-by-index").arg("order-by-name"))
-    }
-
-    fn execute(&self, matches: &ArgMatches) -> Result<()> {
-        let dar_path = matches.get_one::<String>("dar").map(String::as_str).unwrap();
-        let filter: Vec<usize> = matches
-            .get_many::<String>("index")
-            .map(|vals| {
-                vals.map(|i| usize::from_str(i).context(format!("parsing index from '{}'", i)))
-                    .collect::<Result<Vec<_>>>()
-            })
-            .transpose()?
-            .unwrap_or_default();
-        let show_mangled = matches.get_flag("show-mangled");
-        let sort = match (matches.get_flag("order-by-index"), matches.get_flag("order-by-name")) {
-            (true, false) => SortOrder::ByIndex,
-            _ => SortOrder::ByName,
-        };
-        if matches.get_flag("dotted") {
-            intern_dotted(dar_path, show_mangled, &sort, filter.as_slice())
-        } else if matches.get_flag("string") {
-            intern_string(dar_path, show_mangled, &sort, filter.as_slice())
-        } else {
-            unreachable!()
-        }
-    }
-}
-
-enum SortOrder {
+/// Ordering for the intern-table output.
+pub enum SortOrder {
     ByIndex,
     ByName,
 }
 
-fn intern_string(dar_path: &str, show_mangled: bool, sort_order: &SortOrder, filter: &[usize]) -> Result<()> {
+/// Print the LF2 `interned_strings` table of the DAR's main package.
+pub fn intern_string(dar_path: &str, show_mangled: bool, sort_order: &SortOrder, filter: &[usize]) -> Result<()> {
     let dar = DarFile::from_file(dar_path)?;
     match dar.main.payload.package {
         DamlLfPackage::V2(package) => {
@@ -133,7 +50,10 @@ fn intern_string(dar_path: &str, show_mangled: bool, sort_order: &SortOrder, fil
     Ok(())
 }
 
-fn intern_dotted(dar_path: &str, show_mangled: bool, sort_order: &SortOrder, filter: &[usize]) -> Result<()> {
+/// Print the LF2 `interned_dotted_names` table of the DAR's main
+/// package, with each dotted name resolved into a `Foo(23).Bar(47)`
+/// index-annotated form.
+pub fn intern_dotted(dar_path: &str, show_mangled: bool, sort_order: &SortOrder, filter: &[usize]) -> Result<()> {
     let dar = DarFile::from_file(dar_path)?;
     match dar.main.payload.package {
         DamlLfPackage::V2(package) => {

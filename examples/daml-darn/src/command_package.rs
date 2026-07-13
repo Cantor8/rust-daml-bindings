@@ -1,32 +1,13 @@
-use crate::DarnCommand;
 use anyhow::Result;
-use clap::{Arg, ArgMatches, Command};
 use daml::lf::DarFile;
 use itertools::Itertools;
 use prettytable::format;
 use prettytable::{color, Attr, Cell, Row, Table};
 
-/// Darn command for displaying packages.
-pub struct CommandPackage {}
-
-impl DarnCommand for CommandPackage {
-    fn name(&self) -> &str {
-        "package"
-    }
-
-    fn args(&self) -> Command {
-        Command::new("package")
-            .about("Show dar package details")
-            .arg(Arg::new("dar").help("Sets the input dar file to use").required(true).index(1))
-    }
-
-    fn execute(&self, matches: &ArgMatches) -> Result<()> {
-        let dar_path = matches.get_one::<String>("dar").map(String::as_str).unwrap();
-        execute(dar_path)
-    }
-}
-
-fn execute(dar_path: &str) -> Result<()> {
+/// Print a table of every package in the DAR at `dar_path`. The main
+/// package (the one the manifest points at) is coloured green;
+/// dependencies white.
+pub fn show_package(dar_path: &str) -> Result<()> {
     let dar = DarFile::from_file(dar_path)?;
     Ok(dar.apply(|archive| {
         let mut table = Table::new();
@@ -37,11 +18,8 @@ fn execute(dar_path: &str) -> Result<()> {
             let version = package.version().unwrap_or("n/a");
             let package_id = package.package_id();
             let language_version = &package.language_version().to_string();
-            if package.package_id() == dar.main.hash {
-                table.add_row(row(name, version, package_id, language_version, color::GREEN));
-            } else {
-                table.add_row(row(name, version, package_id, language_version, color::WHITE));
-            }
+            let color = if package_id == dar.main.hash { color::GREEN } else { color::WHITE };
+            table.add_row(row(name, version, package_id, language_version, color));
         });
         table.printstd();
     })?)

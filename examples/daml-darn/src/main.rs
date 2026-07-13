@@ -9,44 +9,78 @@
 )]
 #![forbid(unsafe_code)]
 
-use crate::command_intern::CommandIntern;
-use crate::command_package::CommandPackage;
 use anyhow::Result;
-use clap::{crate_description, crate_name, crate_version, ArgMatches, Command};
-use std::collections::HashMap;
+use clap::{Parser, Subcommand};
 
-#[doc(hidden)]
-pub mod command_intern;
-#[doc(hidden)]
-pub mod command_package;
+use crate::command_intern::{intern_dotted, intern_string, SortOrder};
+use crate::command_package::show_package;
 
-#[doc(hidden)]
-pub trait DarnCommand {
-    fn name(&self) -> &str;
-    fn args(&self) -> Command;
-    fn execute(&self, matches: &ArgMatches) -> Result<()>;
+mod command_intern;
+mod command_package;
+
+/// Tools for working with Daml Archives.
+#[derive(Parser)]
+#[command(version, about)]
+struct Cli {
+    #[command(subcommand)]
+    command: DarnCommand,
 }
 
-#[doc(hidden)]
-macro_rules! command {
-    ($id:ident) => {
-        Box::new($id {})
-    };
+#[derive(Subcommand)]
+enum DarnCommand {
+    /// Show DAR package details.
+    Package {
+        /// Path to the DAR file.
+        dar: String,
+    },
+    /// Show interned strings and dotted names in a DAR.
+    Intern {
+        /// Path to the DAR file.
+        dar: String,
+        /// Show interned strings.
+        #[arg(short, long, conflicts_with = "dotted")]
+        string: bool,
+        /// Show interned dotted names.
+        #[arg(short, long)]
+        dotted: bool,
+        /// Restrict output to these intern indices (comma-separated).
+        #[arg(short, long, value_delimiter = ',')]
+        index: Vec<usize>,
+        /// Include names that start with `$` (compiler-mangled).
+        #[arg(short = 'f', long)]
+        show_mangled: bool,
+        /// Sort output by intern index.
+        #[arg(long, conflicts_with = "order_by_name")]
+        order_by_index: bool,
+        /// Sort output by rendered name (default).
+        #[arg(long)]
+        order_by_name: bool,
+    },
 }
 
-#[doc(hidden)]
-#[tokio::main]
-async fn main() -> Result<()> {
-    let commands: Vec<Box<dyn DarnCommand>> =
-        vec![command!(CommandPackage), command!(CommandIntern)];
-    let command_map: HashMap<_, _> = commands.into_iter().map(|cmd| (cmd.name().to_owned(), cmd)).collect();
-    let matches = Command::new(crate_name!())
-        .version(crate_version!())
-        .about(crate_description!())
-        .arg_required_else_help(true)
-        .subcommands(command_map.values().map(|cmd| cmd.args()))
-        .get_matches();
-    let (sub, args) = matches.subcommand().unwrap();
-    command_map[sub].execute(args)?;
-    Ok(())
+fn main() -> Result<()> {
+    match Cli::parse().command {
+        DarnCommand::Package {
+            dar,
+        } => show_package(&dar),
+        DarnCommand::Intern {
+            dar,
+            string,
+            dotted,
+            index,
+            show_mangled,
+            order_by_index,
+            order_by_name: _,
+        } => {
+            if !string && !dotted {
+                anyhow::bail!("one of --string or --dotted is required");
+            }
+            let sort = if order_by_index { SortOrder::ByIndex } else { SortOrder::ByName };
+            if dotted {
+                intern_dotted(&dar, show_mangled, &sort, &index)
+            } else {
+                intern_string(&dar, show_mangled, &sort, &index)
+            }
+        },
+    }
 }
