@@ -64,8 +64,6 @@ use thiserror::Error;
 pub enum DamlCantonTokenError {
     #[error("JWT signing failed: {0}")]
     Jwt(#[from] jsonwebtoken::errors::Error),
-    #[error("invalid expiry: {0}")]
-    Expiry(String),
 }
 
 pub type DamlCantonTokenResult<T> = std::result::Result<T, DamlCantonTokenError>;
