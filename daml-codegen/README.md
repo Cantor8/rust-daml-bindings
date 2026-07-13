@@ -33,28 +33,33 @@ cargo install daml-codegen
 ## Usage
 
 ```shell
-USAGE:
-    daml-codegen [OPTIONS] <dar>
+Daml GRPC Ledger API Code Generator
 
-ARGS:
-    <dar>    Sets the input Dar file to use
+Usage: daml-codegen [OPTIONS] <dar>
 
-OPTIONS:
-    -c, --combine-modules              Combine modules as a single file
-    -f, --module-filter <filter>...    Sets the regex module filter to apply
-    -h, --help                         Print help information
-    -i, --render-intermediate          Generate intermediate types
-    -o, --output-dir <output>          Sets the output path
-    -v, --verbose                      Sets the level of verbosity
-    -V, --version                      Print version information
+Arguments:
+  <dar>  Path to the input DAR file
+
+Options:
+  -o, --output-dir <output>        Output directory (default: '.')
+  -f, --module-filter <filter>...  Regex(es) matched against fully-qualified module names
+                                   (e.g. 'MyPackage\.Foo\..*'). Only modules matching any
+                                   of the regexes are emitted; without --module-filter,
+                                   every module is emitted.
+  -i, --render-intermediate        Render an intermediate representation instead of the
+                                   full Rust types (debugging aid)
+  -c, --combine-modules            Emit one Rust file per DAR (default: one file per module)
+  -h, --help                       Print help
+  -V, --version                    Print version
 ```
 
 ## Example
 
-To generate Rust types from Daml dar `MyModel.dar` in single src file `/tmp/my_model_0_1_0.rs`:
+To generate Rust types from `MyModel.dar` combined into a single output file under
+`src/autogen/`:
 
 ```shell
-daml-codegen MyModel.dar --combine-modules -o /tmp/MyModel.dar
+daml-codegen MyModel.dar --combine-modules -o src/autogen
 ```
 
 ## License
@@ -66,4 +71,4 @@ in the Apache-2.0 license, shall be dual licensed as above, without any addition
 
 See [LICENSE](LICENSE) for details.
 
-Copyright 2022
+Copyright 2022-2026

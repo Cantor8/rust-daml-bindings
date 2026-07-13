@@ -382,7 +382,7 @@ dependencies = [
 
 [[package]]
 name = "daml"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "daml-grpc",
  "daml-lf",
@@ -391,7 +391,7 @@ dependencies = [
 
 [[package]]
 name = "daml-darn"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -403,7 +403,7 @@ dependencies = [
 
 [[package]]
 name = "daml-grpc"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "bigdecimal",
@@ -425,7 +425,7 @@ dependencies = [
 
 [[package]]
 name = "daml-lf"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "bounded-static",
  "bytes",
@@ -441,7 +441,7 @@ dependencies = [
 
 [[package]]
 name = "daml-util"
-version = "0.4.0"
+version = "0.3.0"
 dependencies = [
  "chrono",
  "daml-grpc",

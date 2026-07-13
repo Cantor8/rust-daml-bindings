@@ -4,7 +4,7 @@
 
 # Darn
 
-Tools for working with Daml Archives and ledgers.
+Tools for working with Daml Archives.
 
 ## Install
 
@@ -15,96 +15,52 @@ cargo install daml-darn
 ## Usage
 
 ```shell
-USAGE:
-    daml-darn [SUBCOMMAND]
+Tools for working with Daml Archives and ledgers
 
-OPTIONS:
-    -h, --help       Print help information
-    -V, --version    Print version information
+Usage: daml-darn <COMMAND>
 
-SUBCOMMANDS:
-    help       Print this message or the help of the given subcommand(s)
-    intern     Show interned strings and dotted names in a dar
-    package    Show dar package details
-    token      Generate a Daml sandbox token
+Commands:
+  package  Show DAR package details
+  intern   Show interned strings and dotted names in a DAR
+  help     Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
 ```
 
-### Package Usage 
+### Package Usage
 
 ```shell
-Show dar package details
+Show DAR package details
 
-USAGE:
-    daml-darn package <dar>
+Usage: daml-darn package <DAR>
 
-ARGS:
-    <dar>    Sets the input dar file to use
+Arguments:
+  <DAR>  Path to the DAR file
 
-OPTIONS:
-    -h, --help    Print help information
-```
-
-### Token Usage
-
-```shell
-USAGE:
-    daml-darn token [OPTIONS] --token-type <token-type> --key-file <filename> --ledger-id <ledger-id> <--expiry <timestamp>|--duration <seconds>>
-
-OPTIONS:
-    -e, --expiry <timestamp>
-            Sets the token expiry time (unix timestamp)
-
-    -d, --duration <seconds>
-            Sets the duration of the token (seconds)
-
-    -t, --token-type <token-type>
-            Sets the token type [possible values: rs256, es256]
-
-    -k, --key-file <filename>
-            The file to use to sign the token
-
-    -l, --ledger-id <ledger-id>
-            Sets the token ledgerId
-
-    -P, --participant-id <participant-id>
-            Sets the token participantId
-
-    -A, --application-id <application-id>
-            Sets the token applicationId
-
-    -a, --act-as <party>...
-            Sets the token actAs list
-
-    -r, --read-as <party>...
-            Sets the token readAs list
-
-    -S, --admin
-            Sets the token admin flag
-
-    -o, --output <output>
-            Sets the output format [default: token] [possible values: token, json, both]
-
-    -h, --help
-            Print help information
+Options:
+  -h, --help  Print help
 ```
 
 ### Intern Usage
 
 ```shell
-USAGE:
-    daml-darn intern [OPTIONS] <--string|--dotted> <dar>
+Show interned strings and dotted names in a DAR
 
-ARGS:
-    <dar>    Sets the input dar file to use
+Usage: daml-darn intern [OPTIONS] <DAR>
 
-OPTIONS:
-    -d, --dotted            Show interned dotted names
-    -f, --show-mangled      show mangled names
-    -h, --help              Print help information
-    -i, --index <index>     the intern indices
-        --order-by-index    order by index
-        --order-by-name     order by name
-    -s, --string            Show interned strings
+Arguments:
+  <DAR>  Path to the DAR file
+
+Options:
+  -s, --string          Show interned strings
+  -d, --dotted          Show interned dotted names
+  -i, --index <INDEX>   Restrict output to these intern indices (comma-separated)
+  -f, --show-mangled    Include names that start with `$` (compiler-mangled)
+      --order-by-index  Sort output by intern index
+      --order-by-name   Sort output by rendered name (default)
+  -h, --help            Print help
 ```
 
 ## Examples
@@ -112,51 +68,37 @@ OPTIONS:
 ### List packages
 
 ```shell
-daml-darn package MyModel.dar
+daml-darn package TestingTypes-3_0_0-sdk_3_4_11-lf_2_1.dar
 ```
 
-Outputs (abridged):
+Outputs (abridged; the main package is highlighted green in the terminal):
 
 ```
-+--------------+---------+-----------------+-------+
-| name         | version | package_id      | lf    |
-+--------------+---------+-----------------+-------+
-| daml-script  | 1.18.1  | 0323a5247065... | v1.14 |
-| MyModel      | 1.9.0   | 80e685533134... | v1.14 |
-| daml-stdlib  | 1.18.1  | 9de3ae0bea5b... | v1.14 |
-+--------------+---------+-----------------+-------+
++---------------------------------+---------+------------------------------------------------------------------+------+
+| name                            | version | package_id                                                       | lf   |
++---------------------------------+---------+------------------------------------------------------------------+------+
+| daml-prim-DA-Internal-Erased    | 1.0.0   | 0e4a572ab1fb94744abb02243a6bbed6c78fc6e3c8d3f60c655f057692a62816 | v2.1 |
+| TestingTypes                    | 3.0.0   | 0fabbe7b63f2c6a9b453e027757d61de625aafa01a4a8b4bb122e9b8481dfa00 | v2.1 |
+| daml-stdlib                     | 3.4.11  | 3b25c9b08ac6d895417c604fc0ee4b7e47ef974ff8fa43f139daa43bb431fefc | v2.1 |
+| ...                             |         |                                                                  |      |
++---------------------------------+---------+------------------------------------------------------------------+------+
 ```
 
-### Generate Token
+### Show interned dotted names
 
 ```shell
-daml-darn token --key-file es256.key --ledger-id my-ledger --token-type es256 --duration 5000000 --admin
+daml-darn intern -d TestingTypes-3_0_0-sdk_3_4_11-lf_2_1.dar
 ```
 
 Outputs (abridged):
 
 ```
-eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJod...
-```
-
-### Show interned data
-
-```shell
-daml-darn intern -d MyModel.dar
-```
-
-Outputs (abridged):
-
-```
-+-------+----------------------+------------------------------+
-| index | rendered             | segments                     |
-+-------+----------------------+------------------------------+
-| 610   | Fuji.PingPong        | Fuji(0).PingPong(942)        |
-| 497   | Fuji.RentDemo        | Fuji(0).RentDemo(796)        |
-| 369   | Fuji.Shape           | Fuji(0).Shape(612)           |
-| 229   | Fuji.VariantExamples | Fuji(0).VariantExamples(409) |
-| 833   | Fuji.Vehicle         | Fuji(0).Vehicle(1220)        |
-+-------+----------------------+------------------------------+
++-------+-------------+---------------------+
+| index | rendered    | segments            |
++-------+-------------+---------------------+
+| 0     | Fuji.Asset  | Fuji(0).Asset(1)    |
+| 248   | Fuji.Types  | Fuji(0).Types(376)  |
++-------+-------------+---------------------+
 ```
 
 ## License
@@ -168,4 +110,4 @@ in the Apache-2.0 license, shall be dual licensed as above, without any addition
 
 See [LICENSE](LICENSE) for details.
 
-Copyright 2022
+Copyright 2022-2026

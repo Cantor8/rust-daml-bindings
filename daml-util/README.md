@@ -7,7 +7,7 @@
 This crate provides helper utilities for working with the Daml Ledgers.
 
 This crate should not be used directly, instead you should depend on the [`daml`](https://crates.io/crates/daml/0.3.0)
-crate and enable the `utils` feature:
+crate and enable the `util` feature:
 
 ```toml
 [dependencies]
@@ -23,4 +23,4 @@ in the Apache-2.0 license, shall be dual licensed as above, without any addition
 
 See [LICENSE](LICENSE) for details.
 
-Copyright 2022
+Copyright 2022-2026

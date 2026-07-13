@@ -23,4 +23,4 @@ in the Apache-2.0 license, shall be dual licensed as above, without any addition
 
 See [LICENSE](LICENSE) for details.
 
-Copyright 2022
+Copyright 2022-2026
