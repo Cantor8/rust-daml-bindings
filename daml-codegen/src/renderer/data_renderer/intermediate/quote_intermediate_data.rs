@@ -56,7 +56,8 @@ pub fn quote_daml_variant(ctx: &RenderContext<'_>, variant: &DamlVariant<'_>) ->
     let all_variants_tokens: Vec<_> = variant
         .fields()
         .iter()
-        .filter(|&field| IsRenderable::new(ctx).check_type(field.ty())).map(|field| quote_variant_field(ctx, field))
+        .filter(|&field| IsRenderable::new(ctx).check_type(field.ty()))
+        .map(|field| quote_variant_field(ctx, field))
         .collect();
     quote!(
         #[DamlVariant]

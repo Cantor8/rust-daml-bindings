@@ -56,8 +56,7 @@ impl Default for RenderMode<'_> {
 }
 
 /// Rendering filter mode.
-#[derive(Debug, Clone, Copy)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum RenderFilterMode {
     /// Exclude only fields with type constructors that contain Higher Kinded Types (HKT) only.
     #[default]
@@ -65,4 +64,3 @@ pub enum RenderFilterMode {
     /// Exclude all non-serializable fields.
     NonSerializable,
 }
-

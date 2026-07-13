@@ -143,8 +143,13 @@
           default = canton-sandbox;
         };
 
-        devShells.default = pkgs.mkShell {
-          packages = with pkgs; [
+        devShells = let
+          # Rust build surface shared by CI and local dev: the toolchain
+          # plus the native deps prost-build / tonic-build and transitive
+          # crates need. Everything here resolves from cache.nixos.org, so
+          # entering this shell on a cold runner is a fast binary fetch
+          # rather than a source build.
+          rustPackages = with pkgs; [
             rustToolchain
             rustfmtNightly
 
@@ -155,51 +160,73 @@
             pkg-config
             openssl
 
-            # Cargo tooling — cargo-deny mirrors the CI job; the rest are
-            # quality-of-life helpers for local development.
+            # Mirrors the cargo-deny CI job.
             cargo-deny
-            cargo-edit
-            cargo-outdated
-            cargo-audit
-            cargo-nextest
-
-            # Local Canton sandbox for integration tests.
-            jdk21
-            canton
-            canton-sandbox
-
-            # Daml SDK for building LF2 .dar fixtures from .daml sources.
-            damlSdk
-
-            # Handy for poking the gRPC surface from the shell.
-            grpcurl
           ];
 
-          env = {
+          rustEnv = {
             # Help tonic-build / prost-build find protoc deterministically.
             PROTOC = "${pkgs.protobuf}/bin/protoc";
             PROTOC_INCLUDE = "${pkgs.protobuf}/include";
 
             RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
-
-            # Used by Canton's launcher.
-            JAVA_HOME = "${pkgs.jdk21}/lib/openjdk";
+          };
+        in {
+          # Lightweight shell for the check / test / clippy / fmt /
+          # cargo-deny CI jobs (`nix develop .#ci`). Deliberately EXCLUDES
+          # the JDK, Canton and the Daml SDK: those are custom
+          # (non-cache.nixos.org) derivations whose ~1 GB closure would be
+          # built from scratch on every cold runner. Only the integration
+          # job's live sandbox needs them, so keeping them out of this
+          # shell keeps the bulk of CI a quick binary-cache fetch.
+          ci = pkgs.mkShell {
+            packages = rustPackages;
+            env = rustEnv;
           };
 
-          shellHook = ''
-            echo "rust-daml-bindings dev shell"
-            echo "  rustc:           $(rustc --version)"
-            echo "  cargo:           $(cargo --version)"
-            echo "  protoc:          $(protoc --version)"
-            echo "  java:            $(java -version 2>&1 | head -1)"
-            echo "  canton:          ${canton}/share/canton (v${cantonVersion})"
-            echo "  daml SDK:        ${damlSdk}/share/daml-sdk/${damlSdkVersion} (v${damlSdkVersion})"
-            echo ""
-            echo "  Start the sandbox with: canton-sandbox"
-            echo "  Ledger API listens on:  localhost:5011"
-            echo "  Admin API  listens on:  localhost:5012"
-            echo "  Build a DAR with:       daml build (in a project dir with daml.yaml)"
-          '';
+          # Full local + integration environment: the Rust surface above
+          # plus a local Canton sandbox, the Daml SDK, and dev-only cargo
+          # tooling. Used by the integration CI job and for daily work.
+          default = pkgs.mkShell {
+            packages = rustPackages ++ (with pkgs; [
+              # Cargo tooling — quality-of-life helpers for local dev.
+              cargo-edit
+              cargo-outdated
+              cargo-audit
+              cargo-nextest
+
+              # Local Canton sandbox for integration tests.
+              jdk21
+              canton
+              canton-sandbox
+
+              # Daml SDK for building LF2 .dar fixtures from .daml sources.
+              damlSdk
+
+              # Handy for poking the gRPC surface from the shell.
+              grpcurl
+            ]);
+
+            env = rustEnv // {
+              # Used by Canton's launcher.
+              JAVA_HOME = "${pkgs.jdk21}/lib/openjdk";
+            };
+
+            shellHook = ''
+              echo "rust-daml-bindings dev shell"
+              echo "  rustc:           $(rustc --version)"
+              echo "  cargo:           $(cargo --version)"
+              echo "  protoc:          $(protoc --version)"
+              echo "  java:            $(java -version 2>&1 | head -1)"
+              echo "  canton:          ${canton}/share/canton (v${cantonVersion})"
+              echo "  daml SDK:        ${damlSdk}/share/daml-sdk/${damlSdkVersion} (v${damlSdkVersion})"
+              echo ""
+              echo "  Start the sandbox with: canton-sandbox"
+              echo "  Ledger API listens on:  localhost:5011"
+              echo "  Admin API  listens on:  localhost:5012"
+              echo "  Build a DAR with:       daml build (in a project dir with daml.yaml)"
+            '';
+          };
         };
       });
 }

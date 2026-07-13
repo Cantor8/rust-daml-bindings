@@ -41,7 +41,7 @@ updates:
 
   # GitHub Actions pinned in .github/workflows/*.yml. Bumps track
   # major security fixes on the third-party actions we use
-  # (checkout, rust-toolchain, cargo-deny-action, nix-installer-action).
+  # (checkout, nix-installer-action, magic-nix-cache-action).
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

@@ -161,10 +161,11 @@ fn quote_try_from_trait_match_arm(ctx: &RenderContext<'_>, variant_name: &str, v
 fn quote_unused_phantom_params(params: &[DamlTypeVarWithKind<'_>], variants: &[&DamlField<'_>]) -> TokenStream {
     let unused_params: Vec<_> = params
         .iter()
-        .filter(|&p| variants.iter().any(|&f| f.ty().contains_type_var(p.var())).not()).map(|p| {
-                let param_tokens = quote_ident(normalize_generic_param(p.var()).to_uppercase());
-                quote!( std::marker::PhantomData < #param_tokens > )
-            })
+        .filter(|&p| variants.iter().any(|&f| f.ty().contains_type_var(p.var())).not())
+        .map(|p| {
+            let param_tokens = quote_ident(normalize_generic_param(p.var()).to_uppercase());
+            quote!( std::marker::PhantomData < #param_tokens > )
+        })
         .collect();
     if unused_params.is_empty() {
         quote!()

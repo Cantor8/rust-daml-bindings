@@ -6,81 +6,83 @@ on:
 
 name: Continuous integration
 
+# Every job runs inside the Nix flake dev shell (`nix develop --command
+# …`), the same environment described in the README's "Development
+# environment" section and already used by the `integration` job below.
+# The flake pins the Rust toolchain (1.96.0) plus the native build deps
+# — most importantly `protoc`, which `prost-build`/`tonic-build` shell
+# out to when compiling `daml-lf`/`daml-grpc`. Running the toolchain
+# through the flake keeps CI byte-for-byte reproducible with local
+# development; the trade-off is that we test one pinned toolchain rather
+# than a stable/beta/nightly matrix.
+
 jobs:
 
   check:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable, beta, nightly]
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.rust }}
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
 
       - name: check --workspace
-        run: cargo check --workspace
+        run: nix develop .#ci --command cargo check --workspace
 
       - name: check --workspace --no-default-features
-        run: cargo check --workspace --no-default-features
+        run: nix develop .#ci --command cargo check --workspace --no-default-features
 
       # Per-feature matrix: every flag the daml umbrella still ships
       # after the v2 migration. The dropped features (json, bridge,
       # sandbox) and the deleted crates (daml-json, daml-bridge) no
       # longer need coverage.
       - name: check --features grpc
-        run: cargo check -p daml --no-default-features --features grpc
+        run: nix develop .#ci --command cargo check -p daml --no-default-features --features grpc
 
       - name: check --features macros
-        run: cargo check -p daml --no-default-features --features macros
+        run: nix develop .#ci --command cargo check -p daml --no-default-features --features macros
 
       - name: check --features derive
-        run: cargo check -p daml --no-default-features --features derive
+        run: nix develop .#ci --command cargo check -p daml --no-default-features --features derive
 
       - name: check --features codegen
-        run: cargo check -p daml --no-default-features --features codegen
+        run: nix develop .#ci --command cargo check -p daml --no-default-features --features codegen
 
       - name: check --features lf
-        run: cargo check -p daml --no-default-features --features lf
+        run: nix develop .#ci --command cargo check -p daml --no-default-features --features lf
 
       - name: check --features lf-full
-        run: cargo check -p daml --no-default-features --features lf-full
+        run: nix develop .#ci --command cargo check -p daml --no-default-features --features lf-full
 
       - name: check --features util
-        run: cargo check -p daml --no-default-features --features util
+        run: nix develop .#ci --command cargo check -p daml --no-default-features --features util
 
       - name: check --features prelude
-        run: cargo check -p daml --no-default-features --features prelude
+        run: nix develop .#ci --command cargo check -p daml --no-default-features --features prelude
 
       - name: check --features full
-        run: cargo check -p daml --no-default-features --features full
+        run: nix develop .#ci --command cargo check -p daml --no-default-features --features full
 
       - name: check --all-features
-        run: cargo check --workspace --all-features
+        run: nix develop .#ci --command cargo check --workspace --all-features
 
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable, beta, nightly]
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.rust }}
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
 
       - name: test --workspace --lib
-        run: cargo test --workspace --lib
+        run: nix develop .#ci --command cargo test --workspace --lib
 
       - name: test --workspace --doc
-        run: cargo test --workspace --doc
+        run: nix develop .#ci --command cargo test --workspace --doc
 
       # The daml-lf crate's integration tests load a small LF2 DAR
       # fixture from disk -- they do not need a live ledger and
       # belong in this surface.
       - name: test -p daml-lf --tests
-        run: cargo test -p daml-lf --tests
+        run: nix develop .#ci --command cargo test -p daml-lf --tests
 
   # Live-sandbox smoke test: boots Canton 3.5.1 out of the Nix
   # flake and runs `-p daml-grpc --features integration` against
@@ -90,21 +92,33 @@ jobs:
   # end-to-end.
   integration:
     runs-on: ubuntu-latest
-    # Skip on draft PRs to keep runner minutes reasonable — the
-    # rest of the matrix is fast enough that iterating on a draft
-    # doesn't need the ~2-min sandbox boot.
-    if: github.event.pull_request.draft == false
+    # Pull requests only — never on pushes to main. This is the most
+    # expensive job (cold Canton + Daml SDK closure), so we pay for it
+    # once while a change is under review rather than again on every
+    # merge. Draft PRs are skipped too, so iterating on a draft doesn't
+    # trigger the sandbox boot.
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     steps:
       - uses: actions/checkout@v7
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
+      # Realize the dev-shell closure (Canton, the JDK, the Daml SDK,
+      # …) *before* the port-wait timer starts. On a cold runner this
+      # fetch is minutes of downloads; folding it into the wait budget
+      # below is what made the sandbox look like it "never came up".
+      - name: Prime Nix dev shell
+        run: nix develop --command true
+
       - name: Start Canton sandbox
         run: |
           nohup nix develop --command canton-sandbox > canton-sandbox.log 2>&1 &
-          # Wait up to 2 minutes for the Ledger API port to accept
-          # connections. Canton boot on a cold runner is ~30-45 s.
-          for i in $(seq 1 60); do
+          # Wait up to 5 minutes for the Ledger API port to accept
+          # connections. The closure is already realized (see above),
+          # so this now only covers Canton's JVM boot + bootstrap
+          # script — ~30-45 s warm, but cold JIT + participant init
+          # can run longer, hence the generous ceiling.
+          for i in $(seq 1 150); do
             nc -z localhost 5011 && exit 0
             sleep 2
           done
@@ -113,7 +127,7 @@ jobs:
 
       - name: Run integration test
         run: |
-          nix develop --command cargo test \
+          nix develop .#ci --command cargo test \
             -p daml-grpc --features integration \
             --test integration -- --nocapture
 
@@ -127,47 +141,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly
-          components: rustfmt
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: fmt --all -- --check
-        run: cargo fmt --all -- --check
+        run: nix develop .#ci --command cargo fmt --all -- --check
 
   clippy:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable]
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.rust }}
-          components: clippy
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
 
       # Default features — same set that most consumers get from
       # `cargo add daml`.
       - name: clippy --workspace --tests
-        run: cargo clippy --workspace --tests -- -Dwarnings
+        run: nix develop .#ci --command cargo clippy --workspace --tests -- -Dwarnings
 
       # All features — turning on optional deps (integration, admin,
       # lf-full etc.) surfaces code paths the default check skips.
       - name: clippy --workspace --tests --all-features
-        run: cargo clippy --workspace --tests --all-features -- -Dwarnings
+        run: nix develop .#ci --command cargo clippy --workspace --tests --all-features -- -Dwarnings
 
       # No default features — catches any lints that would only fire
       # in a stripped-down build (unused-imports guarded behind
       # #[cfg(feature = "...")]).
       - name: clippy --workspace --tests --no-default-features
-        run: cargo clippy --workspace --tests --no-default-features -- -Dwarnings
+        run: nix develop .#ci --command cargo clippy --workspace --tests --no-default-features -- -Dwarnings
 
   cargo-deny:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: EmbarkStudios/cargo-deny-action@v2
-        with:
-          log-level: warn
-          command: check
-          arguments: --all-features
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - name: cargo deny check
+        run: nix develop .#ci --command cargo deny --log-level warn check --all-features
