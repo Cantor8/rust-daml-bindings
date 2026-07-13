@@ -22,20 +22,20 @@ admin = []
 integration = []
 
 [dependencies]
-futures = "0.3.32"
-uuid = { version = "1.23.4", features = [ "v4" ] }
-chrono = "0.4.45"
-bigdecimal = "0.4.10"
-bytes = "1.12.0"
+futures = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+bigdecimal = { workspace = true }
+bytes = { workspace = true }
 tonic = { version = "0.14.6", features = [ "tls-ring", "tls-native-roots" ] }
 tonic-prost = "0.14.6"
-prost = "0.14.4"
-prost-derive = "0.14.4"
+prost = { workspace = true }
+prost-derive = { workspace = true }
 prost-types = "0.14.4"
 async-trait = "0.1.89"
-itertools = "0.15.0"
+itertools = { workspace = true }
 tracing = "0.1.44"
-thiserror = "2.0.18"
+thiserror = { workspace = true }
 
 # dev-dependencies are kept minimal here; the v2 integration
 # smoke test lives in its own crate-local target gated by
@@ -49,7 +49,7 @@ tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 [build-dependencies]
 tonic-build = "0.14.6"
 tonic-prost-build = "0.14.6"
-itertools = "0.15.0"
+itertools = { workspace = true }
 
 [package.metadata.docs.rs]
 all-features = true

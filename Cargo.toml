@@ -10,3 +10,22 @@ members = [
   "daml-lf"
 ]
 exclude = ["examples"]
+
+# Centralised version pins for third-party crates used by two or
+# more member crates. Members reference these via
+# `foo = { workspace = true }` and may layer extra features on
+# top with `features = [...]`. Features declared here become the
+# baseline that every member gets.
+[workspace.dependencies]
+bigdecimal = "0.4.10"
+bytes = "1.12.0"
+chrono = "0.4.45"
+futures = "0.3.32"
+itertools = "0.15.0"
+proc-macro2 = "1.0.106"
+prost = "0.14.4"
+prost-derive = "0.14.4"
+quote = "1.0.46"
+serde = { version = "1.0.228", features = ["derive"] }
+thiserror = "2.0.18"
+uuid = { version = "1.23.4", features = ["v4"] }

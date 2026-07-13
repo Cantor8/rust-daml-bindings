@@ -17,14 +17,14 @@ default = []
 full = []
 
 [dependencies]
-bytes = "1.12.0"
-prost = { version = "0.14.4", features = [ "no-recursion-limit" ] }
-prost-derive = "0.14.4"
+bytes = { workspace = true }
+prost = { workspace = true, features = [ "no-recursion-limit" ] }
+prost-derive = { workspace = true }
 zip = { version = "8.6.0", default-features = false, features = [ "deflate-flate2-zlib-rs" ] }
 yaml-rust2 = "0.11.0"
-itertools = "0.15.0"
-serde = { version = "1.0.228", features = ["derive"] }
-thiserror = "2.0.18"
+itertools = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
 bounded-static = { version = "0.8.0", features = [ "derive" ] }
 
 [dev-dependencies]
@@ -32,7 +32,7 @@ trim-margin = "0.1.0"
 
 [build-dependencies]
 prost-build = "0.14.4"
-itertools = "0.15.0"
+itertools = { workspace = true }
 
 [package.metadata.docs.rs]
 all-features = true

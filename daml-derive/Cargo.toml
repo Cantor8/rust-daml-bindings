@@ -17,10 +17,10 @@ proc-macro = true
 daml-codegen = { version = "0.4.0", path = "../daml-codegen" }
 daml-lf = { version = "0.4.0", path = "../daml-lf" }
 syn = { version = "2.0.118", features = ["full"] }
-quote = "1.0.46"
-proc-macro2 = "1.0.106"
+quote = { workspace = true }
+proc-macro2 = { workspace = true }
 darling = "0.23.0"
-itertools = "0.15.0"
+itertools = { workspace = true }
 
 # The v1 attribute/codegen test trees were dropped during the v2
 # migration; the macro surface still has coverage via doc-tests

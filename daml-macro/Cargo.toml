@@ -13,8 +13,8 @@ rust-version = "1.96.0"
 
 [dependencies]
 daml-grpc = { version = "0.4.0", path = "../daml-grpc" }
-chrono = "0.4.45"
-bigdecimal = "0.4.10"
+chrono = { workspace = true }
+bigdecimal = { workspace = true }
 
 [dev-dependencies]
 daml = { path = "../daml", features = [ "grpc", "macros" ] }

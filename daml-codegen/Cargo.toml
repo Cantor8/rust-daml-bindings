@@ -13,10 +13,10 @@ rust-version = "1.96.0"
 
 [dependencies]
 daml-lf = { version = "0.4.0", path = "../daml-lf" }
-quote = "1.0.46"
-proc-macro2 = "1.0.106"
-itertools = "0.15.0"
+quote = { workspace = true }
+proc-macro2 = { workspace = true }
+itertools = { workspace = true }
 heck = "0.5.0"
 regex = "1.12.4"
 clap = { version = "4.6.1", features = [ "cargo" ] }
-thiserror = "2.0.18"
+thiserror = { workspace = true }
