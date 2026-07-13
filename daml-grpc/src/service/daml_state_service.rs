@@ -13,8 +13,8 @@ use crate::data::state::{
 use crate::data::{DamlError, DamlResult};
 use crate::grpc_protobuf::com::daml::ledger::api::v2::state_service_client::StateServiceClient;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::{
-    GetActiveContractsPageRequest, GetActiveContractsRequest, GetConnectedSynchronizersRequest, GetLatestPrunedOffsetsRequest,
-    GetLedgerEndRequest,
+    GetActiveContractsPageRequest, GetActiveContractsRequest, GetConnectedSynchronizersRequest,
+    GetLatestPrunedOffsetsRequest, GetLedgerEndRequest,
 };
 use crate::service::common::make_request;
 

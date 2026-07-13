@@ -1,6 +1,6 @@
 use syn::{FnArg, ImplItem, ImplItemFn, Pat, PatType, ReturnType, Type};
 
-use crate::convert::{data_type_string_from_path, AttrField, AttrType};
+use crate::convert::{AttrField, AttrType, data_type_string_from_path};
 
 #[derive(Debug)]
 pub struct AttrChoice {

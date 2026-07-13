@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use crate::data::party::DamlObjectMeta;
 use crate::data::{DamlError, DamlResult};
-use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::{right, Right, User};
+use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::{Right, User, right};
 use crate::util::Required;
 
 /// A participant user — the unit of authorization on the v2 Ledger API.
@@ -93,8 +93,7 @@ impl From<DamlUserRight> for Right {
             DamlUserRight::CanExecuteAs(party) => right::Kind::CanExecuteAs(right::CanExecuteAs {
                 party,
             }),
-            DamlUserRight::IdentityProviderAdmin =>
-                right::Kind::IdentityProviderAdmin(right::IdentityProviderAdmin {}),
+            DamlUserRight::IdentityProviderAdmin => right::Kind::IdentityProviderAdmin(right::IdentityProviderAdmin {}),
             DamlUserRight::CanReadAsAnyParty => right::Kind::CanReadAsAnyParty(right::CanReadAsAnyParty {}),
             DamlUserRight::CanExecuteAsAnyParty => right::Kind::CanExecuteAsAnyParty(right::CanExecuteAsAnyParty {}),
         };

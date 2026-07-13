@@ -4,8 +4,8 @@ use std::fmt::Debug;
 use tonic::transport::Channel;
 use tracing::{instrument, trace};
 
-use crate::data::inspection::{DamlCommandState, DamlCommandStatus};
 use crate::data::DamlResult;
+use crate::data::inspection::{DamlCommandState, DamlCommandStatus};
 use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::command_inspection_service_client::CommandInspectionServiceClient;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::{CommandState, GetCommandStatusRequest};
 use crate::service::common::make_request;

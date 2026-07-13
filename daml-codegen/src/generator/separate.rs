@@ -1,6 +1,6 @@
-use crate::generator::module_matcher::ModuleMatcher;
 use crate::generator::RenderMethod;
-use crate::renderer::{quote_all_data, to_module_path, to_rust_identifier, RenderContext, RenderFilterMode};
+use crate::generator::module_matcher::ModuleMatcher;
+use crate::renderer::{RenderContext, RenderFilterMode, quote_all_data, to_module_path, to_rust_identifier};
 use daml_lf::element::{DamlArchive, DamlModule, DamlPackage};
 use itertools::Itertools;
 use std::fs::File;

@@ -117,8 +117,9 @@ impl DamlType<'_> {
             | DamlType::GenMap(args)
             | DamlType::Numeric(args) => args.iter().any(|arg| arg.contains_type_var(type_var)),
             DamlType::ContractId(inner) => inner.as_ref().is_some_and(|ty| ty.contains_type_var(type_var)),
-            DamlType::TyCon(tycon) | DamlType::BoxedTyCon(tycon) =>
-                tycon.type_arguments.iter().any(|f| f.contains_type_var(type_var)),
+            DamlType::TyCon(tycon) | DamlType::BoxedTyCon(tycon) => {
+                tycon.type_arguments.iter().any(|f| f.contains_type_var(type_var))
+            },
             DamlType::Forall(forall) => forall.body.as_ref().contains_type_var(type_var),
             DamlType::Struct(tuple) => tuple.fields.iter().any(|field| field.ty().contains_type_var(type_var)),
             DamlType::Syn(syn) => syn.args.iter().any(|arg| arg.contains_type_var(type_var)),
@@ -420,8 +421,9 @@ impl DamlTyConName<'_> {
     pub(crate) fn reference_parts(&self) -> (&str, &[Cow<'_, str>], &str) {
         match self {
             DamlTyConName::Local(local) => (&local.package_id, &local.module_path, &local.data_name),
-            DamlTyConName::NonLocal(non_local) =>
-                (&non_local.target_package_id, &non_local.target_module_path, &non_local.data_name),
+            DamlTyConName::NonLocal(non_local) => {
+                (&non_local.target_package_id, &non_local.target_module_path, &non_local.data_name)
+            },
             DamlTyConName::Absolute(abs) => (&abs.package_id, &abs.module_path, &abs.data_name),
         }
     }
@@ -430,8 +432,9 @@ impl DamlTyConName<'_> {
 impl Display for DamlTyConName<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            DamlTyConName::Local(local) =>
-                write!(f, "{}:{}:{}", local.package_name, &local.module_path.join("."), local.data_name),
+            DamlTyConName::Local(local) => {
+                write!(f, "{}:{}:{}", local.package_name, &local.module_path.join("."), local.data_name)
+            },
             DamlTyConName::NonLocal(non_local) => write!(
                 f,
                 "{}:{}:{}",
@@ -439,8 +442,9 @@ impl Display for DamlTyConName<'_> {
                 &non_local.target_module_path.join("."),
                 non_local.data_name
             ),
-            DamlTyConName::Absolute(abs) =>
-                write!(f, "{}:{}:{}", abs.package_name, &abs.module_path.join("."), abs.data_name),
+            DamlTyConName::Absolute(abs) => {
+                write!(f, "{}:{}:{}", abs.package_name, &abs.module_path.join("."), abs.data_name)
+            },
         }
     }
 }

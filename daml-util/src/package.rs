@@ -1,15 +1,15 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
+use daml_grpc::DamlGrpcClient;
 use daml_grpc::data::package::DamlPackage;
 use daml_grpc::data::{DamlError, DamlResult};
-use daml_grpc::DamlGrpcClient;
 use daml_lf::element::{
     DamlAbsoluteTyCon, DamlElementVisitor, DamlNonLocalTyCon, DamlNonLocalValueName, DamlPackage as DamlLfPackage,
     DamlVisitableElement,
 };
 use daml_lf::{DamlLfArchive, DamlLfArchivePayload, DamlLfHashFunction, DarFile, DarManifest};
-use futures::stream::FuturesUnordered;
 use futures::StreamExt;
+use futures::stream::FuturesUnordered;
 use uuid::Uuid;
 
 /// Convenience methods for working with a collection of [`DamlPackage`].

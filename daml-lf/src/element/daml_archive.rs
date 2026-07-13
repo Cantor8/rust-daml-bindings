@@ -1,7 +1,7 @@
 use crate::element::daml_package::DamlPackage;
 use crate::element::visitor::{DamlElementVisitor, DamlVisitableElement};
 use crate::element::{
-    serialize, DamlChoice, DamlData, DamlInterface, DamlModule, DamlTemplate, DamlTyCon, DamlTyConName, DamlType,
+    DamlChoice, DamlData, DamlInterface, DamlModule, DamlTemplate, DamlTyCon, DamlTyConName, DamlType, serialize,
 };
 #[cfg(feature = "full")]
 use crate::element::{DamlDefValue, DamlValueName};
@@ -258,10 +258,11 @@ impl<'a> DamlArchive<'a> {
                     self.validate_tycon_name(tycon.tycon())?;
                     stack.extend(tycon.type_arguments().iter());
                 },
-                DamlType::ContractId(inner) =>
+                DamlType::ContractId(inner) => {
                     if let Some(boxed) = inner {
                         stack.push(boxed);
-                    },
+                    }
+                },
                 DamlType::Numeric(args)
                 | DamlType::List(args)
                 | DamlType::TextMap(args)
@@ -301,12 +302,7 @@ impl<'a> DamlArchive<'a> {
             return Err(DamlLfConvertError::UnknownPackage(pkg_id.to_string()));
         }
         let module_segments: Vec<&str> = module_path.iter().map(Cow::as_ref).collect();
-        if self
-            .packages
-            .get(pkg_id)
-            .and_then(|p| p.root_module().child_module_path(&module_segments))
-            .is_none()
-        {
+        if self.packages.get(pkg_id).and_then(|p| p.root_module().child_module_path(&module_segments)).is_none() {
             return Err(DamlLfConvertError::UnknownModule(module_segments.join(".")));
         }
         Err(DamlLfConvertError::UnknownData(data_name.to_string()))
@@ -314,8 +310,9 @@ impl<'a> DamlArchive<'a> {
 
     fn resolves_to_record(&'a self, ty: &DamlType<'_>) -> bool {
         match ty {
-            DamlType::TyCon(tycon) | DamlType::BoxedTyCon(tycon) =>
-                matches!(self.data_by_tycon_name(tycon.tycon()), Some(DamlData::Record(_))),
+            DamlType::TyCon(tycon) | DamlType::BoxedTyCon(tycon) => {
+                matches!(self.data_by_tycon_name(tycon.tycon()), Some(DamlData::Record(_)))
+            },
             _ => false,
         }
     }

@@ -1,5 +1,5 @@
-use crate::renderer::renderer_utils::{quote_escaped_ident, quote_ident};
 use crate::renderer::RenderContext;
+use crate::renderer::renderer_utils::{quote_escaped_ident, quote_ident};
 use daml_lf::element::{DamlAbsoluteTyCon, DamlNonLocalTyCon, DamlTyCon, DamlTyConName, DamlType};
 use heck::ToSnakeCase;
 use proc_macro2::TokenStream;
@@ -8,7 +8,7 @@ use std::iter;
 
 pub fn quote_type(ctx: &RenderContext<'_>, daml_type: &DamlType<'_>) -> TokenStream {
     match daml_type {
-        DamlType::List(args) =>
+        DamlType::List(args) => {
             if let Some(arg) = args.first() {
                 let prim_name_tokens = quote_escaped_ident(daml_type.name());
                 let prim_param_tokens = quote_type(ctx, arg);
@@ -16,8 +16,9 @@ pub fn quote_type(ctx: &RenderContext<'_>, daml_type: &DamlType<'_>) -> TokenStr
             } else {
                 let prim_name_tokens = quote_escaped_ident(daml_type.name());
                 quote!(#prim_name_tokens)
-            },
-        DamlType::TextMap(args) | DamlType::GenMap(args) =>
+            }
+        },
+        DamlType::TextMap(args) | DamlType::GenMap(args) => {
             if let (Some(k), Some(v)) = (args.first(), args.get(1)) {
                 let prim_name_tokens = quote_escaped_ident(daml_type.name());
                 let prim_key_param_tokens = quote_type(ctx, k);
@@ -26,8 +27,9 @@ pub fn quote_type(ctx: &RenderContext<'_>, daml_type: &DamlType<'_>) -> TokenStr
             } else {
                 let prim_name_tokens = quote_escaped_ident(daml_type.name());
                 quote!(#prim_name_tokens)
-            },
-        DamlType::Optional(args) | DamlType::Numeric(args) =>
+            }
+        },
+        DamlType::Optional(args) | DamlType::Numeric(args) => {
             if let Some(arg) = args.first() {
                 let prim_name_tokens = quote_escaped_ident(daml_type.name());
                 let prim_param_tokens = quote_type(ctx, arg);
@@ -35,7 +37,8 @@ pub fn quote_type(ctx: &RenderContext<'_>, daml_type: &DamlType<'_>) -> TokenStr
             } else {
                 let prim_name_tokens = quote_escaped_ident(daml_type.name());
                 quote!(#prim_name_tokens)
-            },
+            }
+        },
         DamlType::ContractId(_) => quote_escaped_ident(daml_type.name()),
         DamlType::TyCon(tycon) => quote_tycon(ctx, tycon),
         DamlType::BoxedTyCon(tycon) => {
@@ -124,11 +127,8 @@ fn quote_non_local_path(tycon: &DamlNonLocalTyCon<'_>) -> TokenStream {
         current_full_path.iter().zip(target_full_path.iter()).take_while(|(a, b)| a == b).count();
     let supers_needed = current_full_path.len().saturating_sub(common_prefix_length);
     let supers: Vec<_> = (0..supers_needed).map(|_| quote!(super)).collect();
-    let target_tail_tokens: Vec<_> = target_full_path
-        .iter()
-        .skip(common_prefix_length)
-        .map(|s| quote_escaped_ident(s.clone()))
-        .collect();
+    let target_tail_tokens: Vec<_> =
+        target_full_path.iter().skip(common_prefix_length).map(|s| quote_escaped_ident(s.clone())).collect();
     quote!( #( #supers :: )* #( #target_tail_tokens :: )* )
 }
 

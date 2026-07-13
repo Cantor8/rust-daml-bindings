@@ -1,11 +1,11 @@
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc)]
 
-use daml_lf::element::DamlVisitableElement;
-use daml_lf::element::{DamlElementVisitor, DamlEnum};
 use daml_lf::DamlLfResult;
 use daml_lf::DarFile;
 use daml_lf::LanguageVersion;
+use daml_lf::element::DamlVisitableElement;
+use daml_lf::element::{DamlElementVisitor, DamlEnum};
 use daml_lf::{DarEncryptionType, DarManifestFormat, DarManifestVersion};
 use std::collections::HashSet;
 
@@ -131,9 +131,8 @@ fn test_cross_package_name_resolution() -> DamlLfResult<()> {
 
     let mut visitor = CollectAbs::default();
     let dar = DarFile::from_file(FIXTURE_DAR)?;
-    let loaded_pkg_ids: HashSet<String> = std::iter::once(dar.main.hash.clone())
-        .chain(dar.dependencies.iter().map(|d| d.hash.clone()))
-        .collect();
+    let loaded_pkg_ids: HashSet<String> =
+        std::iter::once(dar.main.hash.clone()).chain(dar.dependencies.iter().map(|d| d.hash.clone())).collect();
     dar.apply(|archive| archive.accept(&mut visitor))?;
     // Unresolved is only a bug if the unresolved package-id is one
     // we actually loaded. References to package-ids outside the
@@ -226,13 +225,7 @@ fn test_validate_rejects_non_record_interface_view() {
         #[cfg(feature = "full")]
         HashMap::new(),
     );
-    let pkg = DamlPackage::new(
-        Cow::Borrowed("pkg"),
-        Cow::Borrowed("pkg-id"),
-        None,
-        LanguageVersion::V2_1,
-        module,
-    );
+    let pkg = DamlPackage::new(Cow::Borrowed("pkg"), Cow::Borrowed("pkg-id"), None, LanguageVersion::V2_1, module);
     let mut packages = HashMap::new();
     packages.insert(Cow::Borrowed("pkg-id"), pkg);
     let archive = DamlArchive::new(Cow::Borrowed("test"), Cow::Borrowed("pkg-id"), packages);

@@ -175,7 +175,9 @@ impl DataIdentity for DamlTyConName<'_> {
 }
 
 fn data_identity_eq<A: DataIdentity, B: DataIdentity>(a: &A, b: &B) -> bool {
-    a.package_id() == b.package_id() && cmp_all(a.module_path(), b.module_path()) && a.identity_name() == b.identity_name()
+    a.package_id() == b.package_id()
+        && cmp_all(a.module_path(), b.module_path())
+        && a.identity_name() == b.identity_name()
 }
 
 impl<'a> DamlVisitableElement<'a> for DamlData<'a> {

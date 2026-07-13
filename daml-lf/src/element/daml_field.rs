@@ -1,6 +1,6 @@
+use crate::element::DamlVisitableElement;
 use crate::element::daml_type::DamlType;
 use crate::element::visitor::DamlElementVisitor;
-use crate::element::DamlVisitableElement;
 use bounded_static::ToStatic;
 use serde::Serialize;
 use std::borrow::Cow;

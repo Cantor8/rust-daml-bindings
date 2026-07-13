@@ -3,8 +3,8 @@ use std::convert::TryFrom;
 use crate::data::identifier::DamlIdentifier;
 use crate::data::value::DamlValue;
 use crate::data::{DamlError, DamlResult};
-use crate::grpc_protobuf::com::daml::ledger::api::v2::command::Command;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::ExerciseByKeyCommand;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::command::Command;
 use crate::util::Required;
 
 /// Exercise a choice on an existing contract specified by its key.

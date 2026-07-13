@@ -4,11 +4,11 @@ use std::fmt::Debug;
 use tonic::transport::Channel;
 use tracing::{instrument, trace};
 
+use crate::data::DamlResult;
 use crate::data::package::{
     DamlPackage, DamlPackageMetadataFilter, DamlPackageStatus, DamlTopologyStateFilter, DamlVettedPackages,
     DamlVettedPackagesPage,
 };
-use crate::data::DamlResult;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::package_service_client::PackageServiceClient;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::{
     GetPackageRequest, GetPackageStatusRequest, ListPackagesRequest, ListVettedPackagesRequest, PackageStatus,

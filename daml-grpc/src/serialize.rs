@@ -1,5 +1,5 @@
-use crate::data::value::DamlValue;
 use crate::data::DamlResult;
+use crate::data::value::DamlValue;
 use crate::nat::Nat;
 use crate::primitive_types::{
     DamlBool, DamlContractId, DamlDate, DamlFixedNumeric, DamlGenMap, DamlInt64, DamlParty, DamlText, DamlTextMap,

@@ -156,8 +156,7 @@ impl<'a> TryFrom<&'a DamlLfArchive> for DamlPackagePayload<'a> {
                 })?
                 .to_owned()
         };
-        let modules =
-            package.modules.iter().map(DamlModulePayload::new).collect::<DamlLfConvertResult<Vec<_>>>()?;
+        let modules = package.modules.iter().map(DamlModulePayload::new).collect::<DamlLfConvertResult<Vec<_>>>()?;
         // Seed the name table with the self-mapping. The archive
         // payload (multi-package case) replaces this with the full
         // table once it's collected every package's name.

@@ -1,12 +1,12 @@
 use std::convert::TryFrom;
 
+use crate::data::command::DamlCreateAndExerciseCommand;
 use crate::data::command::create::DamlCreateCommand;
 use crate::data::command::exercise::DamlExerciseCommand;
 use crate::data::command::exercise_by_key::DamlExerciseByKeyCommand;
-use crate::data::command::DamlCreateAndExerciseCommand;
 use crate::data::{DamlError, DamlResult};
-use crate::grpc_protobuf::com::daml::ledger::api::v2::command::Command as CommandKind;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::Command;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::command::Command as CommandKind;
 use crate::util::Required;
 
 /// A Daml ledger command.

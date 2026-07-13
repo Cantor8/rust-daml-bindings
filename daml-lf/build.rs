@@ -16,13 +16,10 @@ fn main() -> Result<(), Box<dyn error::Error>> {
 }
 
 fn get_all_protos(root: &Path, src_paths: &[&str]) -> Result<Vec<PathBuf>, Error> {
-    src_paths
-        .iter()
-        .map(|s| get_protos_from_dir(root, Path::new(s)))
-        .fold_ok(vec![], |mut acc: Vec<PathBuf>, v| {
-            acc.extend(v);
-            acc
-        })
+    src_paths.iter().map(|s| get_protos_from_dir(root, Path::new(s))).fold_ok(vec![], |mut acc: Vec<PathBuf>, v| {
+        acc.extend(v);
+        acc
+    })
 }
 
 fn get_protos_from_dir(root: &Path, dir: &Path) -> Result<Vec<PathBuf>, Error> {

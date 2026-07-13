@@ -4,10 +4,10 @@ use std::fmt::Debug;
 use tonic::transport::Channel;
 use tracing::{instrument, trace};
 
+use crate::data::DamlTransaction;
 use crate::data::filter::{DamlEventFormat, DamlTransactionFormat};
 use crate::data::offset::DamlLedgerOffset;
 use crate::data::reassignment::{DamlReassignment, DamlReassignmentCommands};
-use crate::data::DamlTransaction;
 use crate::data::{DamlCommands, DamlResult};
 use crate::grpc_protobuf::com::daml::ledger::api::v2::command_service_client::CommandServiceClient;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::{
@@ -80,8 +80,7 @@ impl<'a> DamlCommandService<'a> {
             commands: Some(Commands::try_from(commands.into())?),
         };
         trace!(payload = ?payload, token = ?self.auth_token);
-        let response =
-            self.client().submit_and_wait(make_request(payload, self.auth_token)?).await?.into_inner();
+        let response = self.client().submit_and_wait(make_request(payload, self.auth_token)?).await?.into_inner();
         trace!(?response);
         Ok(DamlSubmitAndWaitOutcome {
             update_id: response.update_id,
@@ -111,11 +110,8 @@ impl<'a> DamlCommandService<'a> {
             transaction_format: transaction_format.map(Into::into),
         };
         trace!(payload = ?payload, token = ?self.auth_token);
-        let response = self
-            .client()
-            .submit_and_wait_for_transaction(make_request(payload, self.auth_token)?)
-            .await?
-            .into_inner();
+        let response =
+            self.client().submit_and_wait_for_transaction(make_request(payload, self.auth_token)?).await?.into_inner();
         trace!(?response);
         DamlTransaction::try_from(response.transaction.req()?)
     }
@@ -140,11 +136,8 @@ impl<'a> DamlCommandService<'a> {
             event_format: event_format.map(Into::into),
         };
         trace!(payload = ?payload, token = ?self.auth_token);
-        let response = self
-            .client()
-            .submit_and_wait_for_reassignment(make_request(payload, self.auth_token)?)
-            .await?
-            .into_inner();
+        let response =
+            self.client().submit_and_wait_for_reassignment(make_request(payload, self.auth_token)?).await?.into_inner();
         trace!(?response);
         DamlReassignment::try_from(response.reassignment.req()?)
     }

@@ -8,8 +8,8 @@ use tracing::{instrument, trace};
 use crate::data::completion::DamlCompletionResponse;
 use crate::data::offset::DamlLedgerOffset;
 use crate::data::{DamlError, DamlResult};
-use crate::grpc_protobuf::com::daml::ledger::api::v2::command_completion_service_client::CommandCompletionServiceClient;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::CompletionStreamRequest;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::command_completion_service_client::CommandCompletionServiceClient;
 use crate::service::common::make_request;
 
 /// Observe the status of command submissions on a v2 participant.

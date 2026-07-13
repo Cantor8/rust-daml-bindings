@@ -7,8 +7,7 @@ pub struct ModuleMatcher {
 
 impl ModuleMatcher {
     pub fn new(module_filter_regex: &[&str]) -> DamlCodeGenResult<ModuleMatcher> {
-        let matchers =
-            module_filter_regex.iter().map(|&re| Regex::new(re)).collect::<Result<Vec<_>, _>>()?;
+        let matchers = module_filter_regex.iter().map(|&re| Regex::new(re)).collect::<Result<Vec<_>, _>>()?;
         Ok(ModuleMatcher {
             matchers,
         })

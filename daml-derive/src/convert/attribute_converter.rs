@@ -1,4 +1,6 @@
-use crate::convert::{AttrChoice, AttrEnum, AttrField, AttrInterfaceRef, AttrRecord, AttrTemplate, AttrType, AttrVariant};
+use crate::convert::{
+    AttrChoice, AttrEnum, AttrField, AttrInterfaceRef, AttrRecord, AttrTemplate, AttrType, AttrVariant,
+};
 use daml_lf::element::{
     DamlAbsoluteTyCon, DamlChoice, DamlEnum, DamlField, DamlKind, DamlLocalTyCon, DamlRecord, DamlTemplate, DamlTyCon,
     DamlTyConName, DamlType, DamlTypeVarWithKind, DamlVariant,
@@ -115,7 +117,7 @@ impl<'a> From<&'a AttrType> for DamlType<'a> {
             AttrType::TextMap(nested) => DamlType::TextMap(vec![DamlType::from(nested.as_ref())]),
             AttrType::GenMap(k, v) => DamlType::GenMap(vec![DamlType::from(k.as_ref()), DamlType::from(v.as_ref())]),
             AttrType::Optional(nested) => DamlType::Optional(vec![DamlType::from(nested.as_ref())]),
-            AttrType::TyCon(data_name, path, type_arguments) =>
+            AttrType::TyCon(data_name, path, type_arguments) => {
                 if path.is_empty() {
                     DamlType::TyCon(DamlTyCon::new(
                         Box::new(DamlTyConName::Local(DamlLocalTyCon::new(
@@ -136,7 +138,8 @@ impl<'a> From<&'a AttrType> for DamlType<'a> {
                         ))),
                         type_arguments.iter().map(DamlType::from).collect(),
                     ))
-                },
+                }
+            },
             AttrType::Box(boxed_data) => {
                 let inner_type = DamlType::from(boxed_data.as_ref());
                 match inner_type {

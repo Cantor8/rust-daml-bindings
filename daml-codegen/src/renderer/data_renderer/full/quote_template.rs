@@ -3,7 +3,7 @@ use crate::renderer::data_renderer::full::quote_contract_struct::{
 };
 use crate::renderer::data_renderer::full::quote_interface::{quote_interface_choices, quote_interface_trait_path};
 use crate::renderer::data_renderer::full::{quote_choice, quote_daml_record_and_impl};
-use crate::renderer::{quote_escaped_ident, to_module_path, RenderContext};
+use crate::renderer::{RenderContext, quote_escaped_ident, to_module_path};
 use daml_lf::element::DamlTemplate;
 use proc_macro2::TokenStream;
 use quote::quote;

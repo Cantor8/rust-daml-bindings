@@ -124,8 +124,9 @@ impl DamlValueName<'_> {
     pub(crate) fn reference_parts(&self) -> (&str, &[Cow<'_, str>], &str) {
         match self {
             DamlValueName::Local(local) => (&local.package_id, &local.module_path, &local.name),
-            DamlValueName::NonLocal(non_local) =>
-                (&non_local.target_package_id, &non_local.target_module_path, &non_local.name),
+            DamlValueName::NonLocal(non_local) => {
+                (&non_local.target_package_id, &non_local.target_module_path, &non_local.name)
+            },
         }
     }
 }
@@ -133,8 +134,9 @@ impl DamlValueName<'_> {
 impl Display for DamlValueName<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            DamlValueName::Local(local) =>
-                write!(f, "{}:{}:{}", local.package_name, &local.module_path.join("."), local.name),
+            DamlValueName::Local(local) => {
+                write!(f, "{}:{}:{}", local.package_name, &local.module_path.join("."), local.name)
+            },
             DamlValueName::NonLocal(non_local) => write!(
                 f,
                 "{}:{}:{}",
@@ -1451,8 +1453,9 @@ impl<'a> DamlVisitableElement<'a> for DamlUpdate<'a> {
             DamlUpdate::Exercise(exercise) => exercise.accept(visitor),
             DamlUpdate::ExerciseByKey(exercise_by_key) => exercise_by_key.accept(visitor),
             DamlUpdate::Fetch(fetch) => fetch.accept(visitor),
-            DamlUpdate::LookupByKey(retrieve_by_key) | DamlUpdate::FetchByKey(retrieve_by_key) =>
-                retrieve_by_key.accept(visitor),
+            DamlUpdate::LookupByKey(retrieve_by_key) | DamlUpdate::FetchByKey(retrieve_by_key) => {
+                retrieve_by_key.accept(visitor)
+            },
             DamlUpdate::QueryNByKey(qbk) => qbk.accept(visitor),
             DamlUpdate::EmbedExpr(embed_expr) => embed_expr.accept(visitor),
             DamlUpdate::TryCatch(try_catch) => try_catch.accept(visitor),
@@ -2146,24 +2149,48 @@ impl<'a> DamlVisitableElement<'a> for DamlInterfaceExpr<'a> {
     fn accept(&'a self, visitor: &'a mut impl DamlElementVisitor) {
         visitor.pre_visit_interface_expr(self);
         match self {
-            DamlInterfaceExpr::ToInterface { interface_type, template_type, template_expr } => {
+            DamlInterfaceExpr::ToInterface {
+                interface_type,
+                template_type,
+                template_expr,
+            } => {
                 interface_type.accept(visitor);
                 template_type.accept(visitor);
                 template_expr.accept(visitor);
             },
-            DamlInterfaceExpr::FromInterface { interface_type, template_type, interface_expr } => {
+            DamlInterfaceExpr::FromInterface {
+                interface_type,
+                template_type,
+                interface_expr,
+            } => {
                 interface_type.accept(visitor);
                 template_type.accept(visitor);
                 interface_expr.accept(visitor);
             },
-            DamlInterfaceExpr::CallInterface { interface_type, method: _, interface_expr } => {
+            DamlInterfaceExpr::CallInterface {
+                interface_type,
+                method: _,
+                interface_expr,
+            } => {
                 interface_type.accept(visitor);
                 interface_expr.accept(visitor);
             },
-            DamlInterfaceExpr::ViewInterface { interface, expr }
-            | DamlInterfaceExpr::SignatoryInterface { interface, expr }
-            | DamlInterfaceExpr::ObserverInterface { interface, expr }
-            | DamlInterfaceExpr::InterfaceTemplateTypeRep { interface, expr } => {
+            DamlInterfaceExpr::ViewInterface {
+                interface,
+                expr,
+            }
+            | DamlInterfaceExpr::SignatoryInterface {
+                interface,
+                expr,
+            }
+            | DamlInterfaceExpr::ObserverInterface {
+                interface,
+                expr,
+            }
+            | DamlInterfaceExpr::InterfaceTemplateTypeRep {
+                interface,
+                expr,
+            } => {
                 interface.accept(visitor);
                 expr.accept(visitor);
             },
@@ -2178,8 +2205,16 @@ impl<'a> DamlVisitableElement<'a> for DamlInterfaceExpr<'a> {
                 contract_id_expr.accept(visitor);
                 interface_expr.accept(visitor);
             },
-            DamlInterfaceExpr::ToRequiredInterface { required_interface, requiring_interface, expr }
-            | DamlInterfaceExpr::FromRequiredInterface { required_interface, requiring_interface, expr } => {
+            DamlInterfaceExpr::ToRequiredInterface {
+                required_interface,
+                requiring_interface,
+                expr,
+            }
+            | DamlInterfaceExpr::FromRequiredInterface {
+                required_interface,
+                requiring_interface,
+                expr,
+            } => {
                 required_interface.accept(visitor);
                 requiring_interface.accept(visitor);
                 expr.accept(visitor);
@@ -2195,8 +2230,18 @@ impl<'a> DamlVisitableElement<'a> for DamlInterfaceExpr<'a> {
                 contract_id_expr.accept(visitor);
                 interface_expr.accept(visitor);
             },
-            DamlInterfaceExpr::ChoiceController { template, choice: _, contract_expr, choice_arg_expr }
-            | DamlInterfaceExpr::ChoiceObserver { template, choice: _, contract_expr, choice_arg_expr } => {
+            DamlInterfaceExpr::ChoiceController {
+                template,
+                choice: _,
+                contract_expr,
+                choice_arg_expr,
+            }
+            | DamlInterfaceExpr::ChoiceObserver {
+                template,
+                choice: _,
+                contract_expr,
+                choice_arg_expr,
+            } => {
                 template.accept(visitor);
                 contract_expr.accept(visitor);
                 choice_arg_expr.accept(visitor);

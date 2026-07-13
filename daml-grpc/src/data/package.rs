@@ -58,7 +58,11 @@ impl TryFrom<GetPackageResponse> for DamlPackage {
     type Error = DamlError;
 
     fn try_from(response: GetPackageResponse) -> DamlResult<Self> {
-        Ok(Self::new(response.archive_payload, response.hash, HashFunction::try_from(response.hash_function).ok().req()?))
+        Ok(Self::new(
+            response.archive_payload,
+            response.hash,
+            HashFunction::try_from(response.hash_function).ok().req()?,
+        ))
     }
 }
 
@@ -187,11 +191,7 @@ impl TryFrom<VettedPackages> for DamlVettedPackages {
 
     fn try_from(v: VettedPackages) -> DamlResult<Self> {
         Ok(Self {
-            packages: v
-                .packages
-                .into_iter()
-                .map(DamlVettedPackage::try_from)
-                .collect::<DamlResult<Vec<_>>>()?,
+            packages: v.packages.into_iter().map(DamlVettedPackage::try_from).collect::<DamlResult<Vec<_>>>()?,
             participant_id: v.participant_id,
             synchronizer_id: v.synchronizer_id,
             topology_serial: v.topology_serial,
@@ -381,10 +381,12 @@ impl From<DamlUpdateVettedPackagesForceFlag> for i32 {
 impl From<DamlUpdateVettedPackagesForceFlag> for UpdateVettedPackagesForceFlag {
     fn from(f: DamlUpdateVettedPackagesForceFlag) -> Self {
         match f {
-            DamlUpdateVettedPackagesForceFlag::AllowVetIncompatibleUpgrades =>
-                UpdateVettedPackagesForceFlag::AllowVetIncompatibleUpgrades,
-            DamlUpdateVettedPackagesForceFlag::AllowUnvettedDependencies =>
-                UpdateVettedPackagesForceFlag::AllowUnvettedDependencies,
+            DamlUpdateVettedPackagesForceFlag::AllowVetIncompatibleUpgrades => {
+                UpdateVettedPackagesForceFlag::AllowVetIncompatibleUpgrades
+            },
+            DamlUpdateVettedPackagesForceFlag::AllowUnvettedDependencies => {
+                UpdateVettedPackagesForceFlag::AllowUnvettedDependencies
+            },
         }
     }
 }
@@ -437,7 +439,7 @@ mod tests {
             other => panic!("Prior(7) lost on the way to proto: {other:?}"),
         }
         match no_prior.serial {
-            Some(Serial::NoPrior(_)) => {}
+            Some(Serial::NoPrior(_)) => {},
             other => panic!("NoPrior lost on the way to proto: {other:?}"),
         }
     }
@@ -477,7 +479,7 @@ mod tests {
                 assert_eq!(v.packages[0].package_id, "abc");
                 assert!(v.new_valid_from_inclusive.is_some(), "lower bound must be set");
                 assert!(v.new_valid_until_exclusive.is_some(), "upper bound must be set");
-            }
+            },
             other => panic!("Vet variant lost: {other:?}"),
         }
     }

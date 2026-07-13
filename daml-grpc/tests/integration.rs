@@ -29,7 +29,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use chrono::Duration as ChronoDuration;
 use futures::StreamExt;
 
@@ -50,8 +50,7 @@ use daml_grpc::data::{DamlError, DamlIdentifier};
 use daml_grpc::{DamlCommandFactory, DamlGrpcClient, DamlGrpcClientBuilder};
 
 const SANDBOX_URI: &str = "http://localhost:5011";
-const FIXTURE_DAR: &str =
-    "../daml-lf/test_resources/TestingTypes-3_0_0-sdk_3_4_11-lf_2_1.dar";
+const FIXTURE_DAR: &str = "../daml-lf/test_resources/TestingTypes-3_0_0-sdk_3_4_11-lf_2_1.dar";
 const PACKAGE_NAME: &str = "TestingTypes";
 const ASSET_MODULE: &str = "Fuji.Asset";
 const ASSET_TEMPLATE: &str = "Asset";
@@ -95,14 +94,7 @@ fn asset_record(issuer: &str, owner: &str, ref_id: &str, quantity: i64) -> DamlR
 }
 
 fn command_factory(party: &str, workflow_id: &str) -> DamlCommandFactory {
-    DamlCommandFactory::new(
-        workflow_id,
-        APP_ID,
-        vec![party.to_string()],
-        Vec::<String>::new(),
-        None,
-        None,
-    )
+    DamlCommandFactory::new(workflow_id, APP_ID, vec![party.to_string()], Vec::<String>::new(), None, None)
 }
 
 fn event_format_for(party: &str) -> DamlEventFormat {
@@ -141,11 +133,7 @@ fn unique_tag() -> u128 {
 /// canonical id chosen by the participant.
 async fn alloc_party(client: &DamlGrpcClient, hint_prefix: &str) -> Result<String> {
     let hint = format!("{hint_prefix}-{}", unique_tag());
-    Ok(client
-        .party_management_service()
-        .allocate_party(&hint, None, "", "", "")
-        .await?
-        .party)
+    Ok(client.party_management_service().allocate_party(&hint, None, "", "", "").await?.party)
 }
 
 /// Upload the fixture DAR. Canton accepts re-uploading the same DAR
@@ -183,15 +171,9 @@ async fn create_asset(
     owner: &str,
     workflow_id: &str,
 ) -> Result<(String, String, DamlLedgerOffset)> {
-    let cmd = DamlCommand::Create(DamlCreateCommand::new(
-        asset_template_id(),
-        asset_record(issuer, owner, "REF", 42),
-    ));
+    let cmd = DamlCommand::Create(DamlCreateCommand::new(asset_template_id(), asset_record(issuer, owner, "REF", 42)));
     let commands = command_factory(issuer, workflow_id).make_command(cmd);
-    let tx = client
-        .command_service()
-        .submit_and_wait_for_transaction(commands, None)
-        .await?;
+    let tx = client.command_service().submit_and_wait_for_transaction(commands, None).await?;
     let cid = tx
         .events
         .iter()
@@ -221,12 +203,7 @@ async fn smoke_test_end_to_end() -> Result<()> {
     let dar_bytes = std::fs::read(FIXTURE_DAR)?;
     client
         .package_management_service()
-        .upload_dar_file(
-            dar_bytes,
-            "smoke-dar-upload",
-            DamlVettingChange::VetAllPackages,
-            "",
-        )
+        .upload_dar_file(dar_bytes, "smoke-dar-upload", DamlVettingChange::VetAllPackages, "")
         .await?;
 
     // ----- 3. PartyManagementService.AllocateParty (x2) -----
@@ -237,14 +214,8 @@ async fn smoke_test_end_to_end() -> Result<()> {
     let tag = unique_tag();
     let alice_hint = format!("Alice-{tag}");
     let bob_hint = format!("Bob-{tag}");
-    let alice = client
-        .party_management_service()
-        .allocate_party(&alice_hint, None, "", "", "")
-        .await?;
-    let bob = client
-        .party_management_service()
-        .allocate_party(&bob_hint, None, "", "", "")
-        .await?;
+    let alice = client.party_management_service().allocate_party(&alice_hint, None, "", "", "").await?;
+    let bob = client.party_management_service().allocate_party(&bob_hint, None, "", "", "").await?;
     let alice_party = alice.party.clone();
     let bob_party = bob.party.clone();
     println!("allocated parties: alice={alice_party} bob={bob_party}");
@@ -254,12 +225,8 @@ async fn smoke_test_end_to_end() -> Result<()> {
         asset_template_id(),
         asset_record(&alice_party, &bob_party, "REF-001", 100),
     ));
-    let create_commands =
-        command_factory(&alice_party, "smoke-wf-create").make_command(create_cmd);
-    let create_tx = client
-        .command_service()
-        .submit_and_wait_for_transaction(create_commands, None)
-        .await?;
+    let create_commands = command_factory(&alice_party, "smoke-wf-create").make_command(create_cmd);
+    let create_tx = client.command_service().submit_and_wait_for_transaction(create_commands, None).await?;
     println!("Create tx: update_id={}", create_tx.update_id);
 
     let asset_cid: String = create_tx
@@ -274,9 +241,7 @@ async fn smoke_test_end_to_end() -> Result<()> {
 
     // ----- 5. Exercise Reassign via Holding (interface-addressed) -----
     let exercise_arg = DamlValue::new_record(
-        DamlRecordBuilder::new()
-            .add_field("target", DamlValue::new_party(alice_party.as_str()))
-            .build(),
+        DamlRecordBuilder::new().add_field("target", DamlValue::new_party(alice_party.as_str())).build(),
     );
     let exercise_cmd = DamlCommand::Exercise(DamlExerciseCommand::new(
         holding_interface_id(),
@@ -284,12 +249,8 @@ async fn smoke_test_end_to_end() -> Result<()> {
         REASSIGN_CHOICE,
         exercise_arg,
     ));
-    let exercise_commands =
-        command_factory(&bob_party, "smoke-wf-exercise").make_command(exercise_cmd);
-    let exercise_tx = client
-        .command_service()
-        .submit_and_wait_for_transaction(exercise_commands, None)
-        .await?;
+    let exercise_commands = command_factory(&bob_party, "smoke-wf-exercise").make_command(exercise_cmd);
+    let exercise_tx = client.command_service().submit_and_wait_for_transaction(exercise_commands, None).await?;
     println!("Exercise (Reassign via Holding) tx: update_id={}", exercise_tx.update_id);
 
     // ----- 6. StateService.GetActiveContracts (sanity check) -----
@@ -298,20 +259,9 @@ async fn smoke_test_end_to_end() -> Result<()> {
     // current ledger end. Asking for offset 0 (BEGIN) is legal but
     // returns an empty set and on Canton 3.5.1 surfaces a tonic
     // transport error when the stream closes early.
-    let page = client
-        .state_service()
-        .get_active_contracts_page(
-            None,
-            event_format_for(&alice_party),
-            Some(100),
-            None,
-        )
-        .await?;
-    println!(
-        "ACS page: {} contract entries at offset {:?}",
-        page.active_contracts.len(),
-        page.active_at_offset
-    );
+    let page =
+        client.state_service().get_active_contracts_page(None, event_format_for(&alice_party), Some(100), None).await?;
+    println!("ACS page: {} contract entries at offset {:?}", page.active_contracts.len(), page.active_at_offset);
 
     Ok(())
 }
@@ -327,11 +277,7 @@ async fn version_service_get_ledger_api_version() -> Result<()> {
     let client = connect().await?;
     let version_info = client.version_service().get_ledger_api_version().await?;
     assert!(!version_info.version.is_empty(), "version string must be non-empty");
-    println!(
-        "version={}, features.user_management={:?}",
-        version_info.version,
-        version_info.features.is_some(),
-    );
+    println!("version={}, features.user_management={:?}", version_info.version, version_info.features.is_some(),);
     Ok(())
 }
 
@@ -375,7 +321,11 @@ async fn package_management_service_all_methods() -> Result<()> {
             std::iter::empty(),
         )
         .await?;
-    println!("vetting dry-run outcome: past={:?} new={:?}", outcome.past_vetted_packages.is_some(), outcome.new_vetted_packages.is_some());
+    println!(
+        "vetting dry-run outcome: past={:?} new={:?}",
+        outcome.past_vetted_packages.is_some(),
+        outcome.new_vetted_packages.is_some()
+    );
     Ok(())
 }
 
@@ -418,14 +368,8 @@ async fn party_management_service_all_methods() -> Result<()> {
 
     // get_parties: read-back the allocated party. Empty IDP id =
     // default IDP, which the helper allocates under.
-    let details = client
-        .party_management_service()
-        .get_parties(vec![alice.clone()], "")
-        .await?;
-    assert!(
-        details.iter().any(|p| p.party == alice),
-        "get_parties should include the freshly-allocated party",
-    );
+    let details = client.party_management_service().get_parties(vec![alice.clone()], "").await?;
+    assert!(details.iter().any(|p| p.party == alice), "get_parties should include the freshly-allocated party",);
 
     // list_known_parties: page through; the participant returns at
     // least the party we just allocated.
@@ -453,10 +397,7 @@ async fn party_management_service_all_methods() -> Result<()> {
     // update_party_identity_provider_id: move alice from default IDP
     // to itself (default→default). Accepts the no-op move and exercises
     // the RPC wiring without needing an external IDP to be configured.
-    client
-        .party_management_service()
-        .update_party_identity_provider_id(alice, "", "")
-        .await?;
+    client.party_management_service().update_party_identity_provider_id(alice, "", "").await?;
     Ok(())
 }
 
@@ -475,27 +416,20 @@ async fn state_service_all_methods() -> Result<()> {
     assert!(pruned.participant_pruned_up_to_inclusive.value() >= 0);
 
     // get_connected_synchronizers: returns the local "da" alias.
-    let syncs = client
-        .state_service()
-        .get_connected_synchronizers(&alice, "", "")
-        .await?;
+    let syncs = client.state_service().get_connected_synchronizers(&alice, "", "").await?;
     assert!(!syncs.is_empty(), "expected at least one connected synchronizer");
 
     // get_active_contracts_page: empty result is fine — alice hasn't
     // observed anything yet.
-    let _page = client
-        .state_service()
-        .get_active_contracts_page(None, event_format_for(&alice), Some(50), None)
-        .await?;
+    let _page =
+        client.state_service().get_active_contracts_page(None, event_format_for(&alice), Some(50), None).await?;
 
     // get_active_contracts (streaming): take a couple of items off
     // the stream and stop. `active_at_offset = BEGIN` is the
     // "everything in the ACS as of the start" sentinel.
     use futures::stream::StreamExt;
     let state_svc = client.state_service();
-    let mut stream = state_svc
-        .get_active_contracts(DamlLedgerOffset::BEGIN, event_format_for(&alice), None)
-        .await?;
+    let mut stream = state_svc.get_active_contracts(DamlLedgerOffset::BEGIN, event_format_for(&alice), None).await?;
     // We don't expect alice to witness anything; just verify the
     // stream terminates cleanly (Canton closes the stream once it has
     // sent the ACS snapshot + checkpoint).
@@ -519,10 +453,8 @@ async fn command_service_submit_and_wait_variants() -> Result<()> {
     // submit_and_wait_for_transaction is exercised by the smoke test
     // and by create_asset(); this one focuses on the no-result
     // submit_and_wait variant.
-    let create = DamlCommand::Create(DamlCreateCommand::new(
-        asset_template_id(),
-        asset_record(&alice, &bob, "REF-SAW", 7),
-    ));
+    let create =
+        DamlCommand::Create(DamlCreateCommand::new(asset_template_id(), asset_record(&alice, &bob, "REF-SAW", 7)));
     let commands = command_factory(&alice, "cmd-svc-saw").make_command(create);
     let resp = client.command_service().submit_and_wait(commands).await?;
     println!("submit_and_wait completion_offset={:?}", resp.completion_offset);
@@ -539,10 +471,8 @@ async fn command_submission_service_submit_request() -> Result<()> {
     let alice = alloc_party(&client, "cmd-sub-alice").await?;
     let bob = alloc_party(&client, "cmd-sub-bob").await?;
 
-    let create = DamlCommand::Create(DamlCreateCommand::new(
-        asset_template_id(),
-        asset_record(&alice, &bob, "REF-SUB", 1),
-    ));
+    let create =
+        DamlCommand::Create(DamlCreateCommand::new(asset_template_id(), asset_record(&alice, &bob, "REF-SUB", 1)));
     let commands = command_factory(&alice, "cmd-sub-wf").make_command(create);
     let returned_command_id = client.command_submission_service().submit_request(commands).await?;
     assert!(!returned_command_id.is_empty(), "submit_request must echo the command_id");
@@ -561,10 +491,8 @@ async fn command_completion_service_get_completion_stream() -> Result<()> {
     // stream's `begin_exclusive` is positioned ahead of any older
     // activity in this sandbox process.
     let before = client.state_service().get_ledger_end().await?;
-    let create = DamlCommand::Create(DamlCreateCommand::new(
-        asset_template_id(),
-        asset_record(&alice, &bob, "REF-CMP", 1),
-    ));
+    let create =
+        DamlCommand::Create(DamlCreateCommand::new(asset_template_id(), asset_record(&alice, &bob, "REF-CMP", 1)));
     let commands = command_factory(&alice, "cmd-cmp-wf").make_command(create);
     let command_id = commands.command_id.clone();
     client.command_submission_service().submit_request(commands).await?;
@@ -573,9 +501,7 @@ async fn command_completion_service_get_completion_stream() -> Result<()> {
     // grab the first item that mentions our command_id (or any item
     // and stop after one — Canton interleaves checkpoints).
     let completion_svc = client.command_completion_service();
-    let mut stream = completion_svc
-        .get_completion_stream(APP_ID, vec![alice.clone()], before)
-        .await?;
+    let mut stream = completion_svc.get_completion_stream(APP_ID, vec![alice.clone()], before).await?;
     let mut saw_completion = false;
     let timeout = tokio::time::sleep(Duration::from_secs(15));
     tokio::pin!(timeout);
@@ -611,28 +537,22 @@ async fn command_inspection_service_get_command_status() -> Result<()> {
     // prefix. CommandInspectionService requires the participant's
     // command-inspection store to be enabled; on a stock sandbox it
     // may return UNIMPLEMENTED. Accept either outcome.
-    let create = DamlCommand::Create(DamlCreateCommand::new(
-        asset_template_id(),
-        asset_record(&alice, &bob, "REF-INSP", 1),
-    ));
+    let create =
+        DamlCommand::Create(DamlCreateCommand::new(asset_template_id(), asset_record(&alice, &bob, "REF-INSP", 1)));
     let commands = command_factory(&alice, "cmd-insp-wf").make_command(create);
     let command_id = commands.command_id.clone();
     let _ = client.command_service().submit_and_wait(commands).await;
 
-    match client
-        .command_inspection_service()
-        .get_command_status(&command_id, DamlCommandState::Unspecified, 10)
-        .await
-    {
+    match client.command_inspection_service().get_command_status(&command_id, DamlCommandState::Unspecified, 10).await {
         Ok(rows) => {
             println!("command-inspection rows: {}", rows.len());
-        }
+        },
         Err(e) if is_status(&e, tonic::Code::Unimplemented) => {
             println!("command inspection is not enabled on this participant (UNIMPLEMENTED), accepting");
-        }
+        },
         Err(e) if is_status(&e, tonic::Code::FailedPrecondition) => {
             println!("command inspection is not enabled (FAILED_PRECONDITION), accepting");
-        }
+        },
         Err(e) => return Err(anyhow!("unexpected error: {e:?}")),
     }
     Ok(())
@@ -650,17 +570,11 @@ async fn update_service_all_methods() -> Result<()> {
     let after = client.state_service().get_ledger_end().await?;
 
     // get_update_by_id: fetch the transaction we just submitted.
-    let by_id = client
-        .update_service()
-        .get_update_by_id(&update_id, update_format_for(&alice))
-        .await?;
+    let by_id = client.update_service().get_update_by_id(&update_id, update_format_for(&alice)).await?;
     assert!(matches!(by_id, DamlUpdate::Transaction(_)), "expected a Transaction update, saw {by_id:?}");
 
     // get_update_by_offset: same payload via offset.
-    let by_offset = client
-        .update_service()
-        .get_update_by_offset(offset, update_format_for(&alice))
-        .await?;
+    let by_offset = client.update_service().get_update_by_offset(offset, update_format_for(&alice)).await?;
     assert!(matches!(by_offset, DamlUpdate::Transaction(_)));
 
     // get_updates_page: bounded paged read from `before` -> `after`.
@@ -681,9 +595,7 @@ async fn update_service_all_methods() -> Result<()> {
     // stream and assert the create's update_id appears.
     use futures::StreamExt;
     let update_svc = client.update_service();
-    let mut stream = update_svc
-        .get_updates(before, Some(after), update_format_for(&alice), false)
-        .await?;
+    let mut stream = update_svc.get_updates(before, Some(after), update_format_for(&alice), false).await?;
     use daml_grpc::data::update::DamlUpdateResponse;
     let mut saw = false;
     while let Some(item) = stream.next().await {
@@ -706,10 +618,7 @@ async fn contract_service_get_contract() -> Result<()> {
     let bob = alloc_party(&client, "ctr-svc-bob").await?;
     let (cid, _, _) = create_asset(&client, &alice, &bob, "ctr-svc-wf").await?;
 
-    let created = client
-        .contract_service()
-        .get_contract(&cid, vec![alice.clone(), bob.clone()])
-        .await?;
+    let created = client.contract_service().get_contract(&cid, vec![alice.clone(), bob.clone()]).await?;
     assert_eq!(created.contract_id, cid, "fetched contract id should round-trip");
     Ok(())
 }
@@ -722,10 +631,7 @@ async fn event_query_service_get_events_by_contract_id() -> Result<()> {
     let bob = alloc_party(&client, "evt-svc-bob").await?;
     let (cid, _, _) = create_asset(&client, &alice, &bob, "evt-svc-wf").await?;
 
-    let events = client
-        .event_query_service()
-        .get_events_by_contract_id(&cid, event_format_for(&alice))
-        .await?;
+    let events = client.event_query_service().get_events_by_contract_id(&cid, event_format_for(&alice)).await?;
     assert!(events.created.is_some(), "fresh contract should have a create event");
     Ok(())
 }
@@ -743,13 +649,10 @@ async fn time_service_get_and_set() -> Result<()> {
             client.time_service().set_time(now, advance).await?;
             let read_back = client.time_service().get_time().await?;
             assert!(read_back >= advance, "set_time should have advanced the clock");
-        }
-        Err(e)
-            if is_status(&e, tonic::Code::Unimplemented)
-                || is_status(&e, tonic::Code::FailedPrecondition) =>
-        {
+        },
+        Err(e) if is_status(&e, tonic::Code::Unimplemented) || is_status(&e, tonic::Code::FailedPrecondition) => {
             println!("TimeService unavailable on wall-clock sandbox ({e}); accepting");
-        }
+        },
         Err(e) => return Err(anyhow!("unexpected TimeService error: {e:?}")),
     }
     Ok(())
@@ -763,10 +666,7 @@ async fn participant_pruning_service_prune() -> Result<()> {
     // `prune_up_to = 0` is rejected as out-of-range; we expect an
     // INVALID_ARGUMENT / FAILED_PRECONDITION style response that
     // still exercises the RPC end-to-end.
-    let result = client
-        .participant_pruning_service()
-        .prune(DamlLedgerOffset::BEGIN, "prune-smoke", false)
-        .await;
+    let result = client.participant_pruning_service().prune(DamlLedgerOffset::BEGIN, "prune-smoke", false).await;
     match result {
         Ok(()) => println!("prune accepted at BEGIN (no-op participant)"),
         Err(e)
@@ -775,7 +675,7 @@ async fn participant_pruning_service_prune() -> Result<()> {
                 || is_status(&e, tonic::Code::Unimplemented) =>
         {
             println!("prune rejected as expected on a fresh sandbox: {e}");
-        }
+        },
         Err(e) => return Err(anyhow!("unexpected prune error: {e:?}")),
     }
     Ok(())
@@ -798,10 +698,7 @@ async fn identity_provider_config_service_lifecycle() -> Result<()> {
         .await?;
     assert_eq!(created.identity_provider_id, idp_id);
 
-    let fetched = client
-        .identity_provider_config_service()
-        .get_identity_provider_config(&idp_id)
-        .await?;
+    let fetched = client.identity_provider_config_service().get_identity_provider_config(&idp_id).await?;
     assert_eq!(fetched.issuer, format!("https://issuer.example/{idp_id}"));
 
     let listed = client.identity_provider_config_service().list_identity_provider_configs().await?;
@@ -875,20 +772,15 @@ async fn user_management_service_lifecycle() -> Result<()> {
     assert!(page.users.iter().any(|u| u.id == user_id), "list_users should include our test user");
 
     // grant_user_rights: add ParticipantAdmin.
-    let _ = client
-        .user_management_service()
-        .grant_user_rights(&user_id, [DamlUserRight::ParticipantAdmin], "")
-        .await?;
+    let _ = client.user_management_service().grant_user_rights(&user_id, [DamlUserRight::ParticipantAdmin], "").await?;
 
     // list_user_rights
     let rights = client.user_management_service().list_user_rights(&user_id, "").await?;
     assert!(rights.iter().any(|r| matches!(r, DamlUserRight::ParticipantAdmin)));
 
     // revoke_user_rights
-    let _ = client
-        .user_management_service()
-        .revoke_user_rights(&user_id, [DamlUserRight::ParticipantAdmin], "")
-        .await?;
+    let _ =
+        client.user_management_service().revoke_user_rights(&user_id, [DamlUserRight::ParticipantAdmin], "").await?;
 
     // update_user_identity_provider_id: default→default is a no-op
     // that exercises the RPC without needing a second IDP.

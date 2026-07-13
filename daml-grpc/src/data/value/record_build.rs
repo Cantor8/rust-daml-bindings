@@ -1,5 +1,5 @@
-use crate::data::value::{DamlRecord, DamlRecordField, DamlValue};
 use crate::data::DamlIdentifier;
+use crate::data::value::{DamlRecord, DamlRecordField, DamlValue};
 
 /// Helper for building a [`DamlRecord`].
 #[derive(Debug, Default)]

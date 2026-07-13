@@ -36,8 +36,17 @@ pub fn normalize_generic_param(param: &str) -> &str {
 }
 
 fn escape_identifier(value: impl AsRef<str>) -> String {
-    let mut sanitized_ident: String =
-        value.as_ref().chars().map(|c| if matches!(c, '-' | '$' | '.') { '_' } else { c }).collect();
+    let mut sanitized_ident: String = value
+        .as_ref()
+        .chars()
+        .map(|c| {
+            if matches!(c, '-' | '$' | '.') {
+                '_'
+            } else {
+                c
+            }
+        })
+        .collect();
     // Rust identifiers can't start with a digit. Daml's own grammar
     // forbids it for type / field / module names, but package and
     // archive names on the wire can be arbitrary — guard so a package

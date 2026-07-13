@@ -115,11 +115,7 @@ pub enum Paint {
 
 #[test]
 fn variant_round_trips_every_constructor() {
-    let cases: Vec<Paint> = vec![
-        Paint::Solid,
-        Paint::Custom(7),
-        Paint::Mix(RGBA::new(10, 20, 30, 255)),
-    ];
+    let cases: Vec<Paint> = vec![Paint::Solid, Paint::Custom(7), Paint::Mix(RGBA::new(10, 20, 30, 255))];
     for original in cases {
         let wire: DamlValue = original.clone().serialize_into();
         let DamlValue::Variant(ref v) = wire else {

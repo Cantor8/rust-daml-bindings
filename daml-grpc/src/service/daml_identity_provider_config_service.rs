@@ -3,8 +3,8 @@ use std::fmt::Debug;
 use tonic::transport::Channel;
 use tracing::{instrument, trace};
 
-use crate::data::identity_provider::DamlIdentityProviderConfig;
 use crate::data::DamlResult;
+use crate::data::identity_provider::DamlIdentityProviderConfig;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::identity_provider_config_service_client::IdentityProviderConfigServiceClient;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::{
     CreateIdentityProviderConfigRequest, DeleteIdentityProviderConfigRequest, GetIdentityProviderConfigRequest,

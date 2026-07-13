@@ -4,8 +4,8 @@ use std::fmt::Debug;
 use tonic::transport::Channel;
 use tracing::{instrument, trace};
 
-use crate::data::user::{DamlUser, DamlUserRight};
 use crate::data::DamlResult;
+use crate::data::user::{DamlUser, DamlUserRight};
 use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::user_management_service_client::UserManagementServiceClient;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::{
     CreateUserRequest, DeleteUserRequest, GetUserRequest, GrantUserRightsRequest, ListUserRightsRequest,

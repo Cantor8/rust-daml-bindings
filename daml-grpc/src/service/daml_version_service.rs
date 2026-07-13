@@ -2,8 +2,8 @@ use tonic::transport::Channel;
 use tracing::{instrument, trace};
 
 use crate::data::{DamlFeaturesDescriptor, DamlLedgerApiVersion, DamlResult};
-use crate::grpc_protobuf::com::daml::ledger::api::v2::version_service_client::VersionServiceClient;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::GetLedgerApiVersionRequest;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::version_service_client::VersionServiceClient;
 use crate::service::common::make_request;
 
 /// Retrieve information about the Ledger API version.

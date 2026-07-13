@@ -3,10 +3,10 @@ use std::fmt::Debug;
 use tonic::transport::Channel;
 use tracing::{instrument, trace};
 
-use crate::data::offset::DamlLedgerOffset;
 use crate::data::DamlResult;
-use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::participant_pruning_service_client::ParticipantPruningServiceClient;
+use crate::data::offset::DamlLedgerOffset;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::PruneRequest;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::participant_pruning_service_client::ParticipantPruningServiceClient;
 use crate::service::common::make_request;
 
 /// Truncate the oldest portion of the participant's ledger view in a way

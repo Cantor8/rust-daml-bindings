@@ -33,11 +33,7 @@ pub fn convert_interface<'a>(
     let mut full_module_path: Vec<Cow<'a, str>> = module_path.to_vec();
     full_module_path.extend(prefix.iter().copied().map(Cow::Borrowed));
     let param = package.resolve_string(proto.param_interned_str)?;
-    let methods = proto
-        .methods
-        .iter()
-        .map(|m| convert_method(m, package))
-        .collect::<DamlLfConvertResult<Vec<_>>>()?;
+    let methods = proto.methods.iter().map(|m| convert_method(m, package)).collect::<DamlLfConvertResult<Vec<_>>>()?;
     let choices = proto
         .choices
         .iter()

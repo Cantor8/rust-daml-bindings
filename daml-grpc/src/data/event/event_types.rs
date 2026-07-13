@@ -2,8 +2,8 @@ use std::convert::TryFrom;
 
 use crate::data::event::{DamlArchivedEvent, DamlCreatedEvent, DamlExercisedEvent};
 use crate::data::{DamlError, DamlResult};
-use crate::grpc_protobuf::com::daml::ledger::api::v2::event::Event as EventKind;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::Event;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::event::Event as EventKind;
 use crate::util::Required;
 
 /// A Daml ledger event as carried by the v2 update stream.

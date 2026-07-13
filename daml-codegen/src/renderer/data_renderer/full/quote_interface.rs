@@ -19,7 +19,7 @@
 use crate::renderer::data_renderer::full::quote_contract_struct::quote_contract_id_struct_name;
 use crate::renderer::renderer_utils::quote_escaped_ident;
 use crate::renderer::type_renderer::quote_type;
-use crate::renderer::{to_module_path, RenderContext};
+use crate::renderer::{RenderContext, to_module_path};
 use daml_lf::element::{DamlInterface, DamlTyConName};
 use heck::ToSnakeCase;
 use proc_macro2::TokenStream;
@@ -33,15 +33,13 @@ use std::iter;
 /// module).
 pub fn quote_interface_trait_path(tycon: &DamlTyConName<'_>) -> TokenStream {
     let (package_name, module_path, data_name) = match tycon {
-        DamlTyConName::Absolute(abs) =>
-            (abs.package_name(), abs.module_path().collect::<Vec<_>>(), abs.data_name()),
-        DamlTyConName::Local(local) =>
-            (local.package_name(), local.module_path().collect::<Vec<_>>(), local.data_name()),
-        DamlTyConName::NonLocal(nlocal) => (
-            nlocal.target_package_name(),
-            nlocal.target_module_path().collect::<Vec<_>>(),
-            nlocal.data_name(),
-        ),
+        DamlTyConName::Absolute(abs) => (abs.package_name(), abs.module_path().collect::<Vec<_>>(), abs.data_name()),
+        DamlTyConName::Local(local) => {
+            (local.package_name(), local.module_path().collect::<Vec<_>>(), local.data_name())
+        },
+        DamlTyConName::NonLocal(nlocal) => {
+            (nlocal.target_package_name(), nlocal.target_module_path().collect::<Vec<_>>(), nlocal.data_name())
+        },
     };
     let path: Vec<&str> = if package_name.is_empty() {
         module_path

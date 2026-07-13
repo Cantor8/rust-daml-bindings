@@ -4,7 +4,7 @@ use bounded_static::ToStatic;
 use serde::Serialize;
 
 use crate::element::visitor::{DamlElementVisitor, DamlVisitableElement};
-use crate::element::{DamlChoice, DamlType, DamlTyConName};
+use crate::element::{DamlChoice, DamlTyConName, DamlType};
 
 /// A Daml interface — LF2's first-class abstraction for templates
 /// to implement.

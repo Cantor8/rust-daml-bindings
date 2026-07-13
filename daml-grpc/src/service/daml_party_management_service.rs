@@ -3,12 +3,12 @@ use std::fmt::Debug;
 use tonic::transport::Channel;
 use tracing::{instrument, trace};
 
-use crate::data::party::{DamlObjectMeta, DamlPartyDetails};
 use crate::data::DamlResult;
+use crate::data::party::{DamlObjectMeta, DamlPartyDetails};
 use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::party_management_service_client::PartyManagementServiceClient;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::{
-    AllocatePartyRequest, GetParticipantIdRequest, GetPartiesRequest, ListKnownPartiesRequest, UpdatePartyDetailsRequest,
-    UpdatePartyIdentityProviderIdRequest,
+    AllocatePartyRequest, GetParticipantIdRequest, GetPartiesRequest, ListKnownPartiesRequest,
+    UpdatePartyDetailsRequest, UpdatePartyIdentityProviderIdRequest,
 };
 use crate::service::common::make_request;
 use crate::util::Required;

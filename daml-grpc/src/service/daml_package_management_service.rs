@@ -5,11 +5,11 @@ use bytes::Bytes;
 use tonic::transport::Channel;
 use tracing::{instrument, trace};
 
+use crate::data::DamlResult;
 use crate::data::package::{
     DamlPackageDetails, DamlPriorTopologySerial, DamlUpdateVettedPackagesForceFlag, DamlUpdateVettedPackagesOutcome,
     DamlVettedPackages, DamlVettedPackagesChange, DamlVettingChange,
 };
-use crate::data::DamlResult;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::package_management_service_client::PackageManagementServiceClient;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::upload_dar_file_request::VettingChange as ProtoVettingChange;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::admin::{

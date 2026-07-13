@@ -1,9 +1,9 @@
-use crate::element::daml_data::DamlData;
-use crate::element::visitor::DamlElementVisitor;
 #[cfg(feature = "full")]
 use crate::element::DamlDefValue;
 use crate::element::DamlVisitableElement;
-use crate::element::{serialize, DamlType, DamlTypeVarWithKind};
+use crate::element::daml_data::DamlData;
+use crate::element::visitor::DamlElementVisitor;
+use crate::element::{DamlType, DamlTypeVarWithKind, serialize};
 use bounded_static::ToStatic;
 use itertools::Itertools;
 use serde::Serialize;
@@ -239,9 +239,8 @@ impl<'a> DamlModule<'a> {
     pub(crate) fn synthetic_child_or_new(&mut self, name: &'a str) -> &mut Self {
         let path = &self.path;
         self.child_modules.entry(Cow::from(name)).or_insert_with(|| {
-            let mut module = DamlModule::new_empty(
-                path.iter().map(ToOwned::to_owned).chain(once(Cow::from(name))).collect(),
-            );
+            let mut module =
+                DamlModule::new_empty(path.iter().map(ToOwned::to_owned).chain(once(Cow::from(name))).collect());
             module.synthetic = true;
             module
         })

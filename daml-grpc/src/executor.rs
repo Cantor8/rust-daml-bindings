@@ -165,14 +165,8 @@ impl<'a> DamlSimpleExecutor<'a> {
         min_ledger_time: Option<DamlMinLedgerTime>,
         auth_token: Option<&'a str>,
     ) -> Self {
-        let command_factory = DamlCommandFactory::new(
-            workflow_id,
-            user_id,
-            act_as,
-            read_as,
-            deduplication_period,
-            min_ledger_time,
-        );
+        let command_factory =
+            DamlCommandFactory::new(workflow_id, user_id, act_as, read_as, deduplication_period, min_ledger_time);
         Self {
             ledger_client,
             command_factory,
@@ -199,10 +193,7 @@ impl<'a> DamlSimpleExecutor<'a> {
     /// Submit and wait, returning a [`DamlTransaction`] populated
     /// with both `Created` and `Exercised` events (the LedgerEffects
     /// shape; v1's `TransactionTree`).
-    async fn submit_and_wait_for_transaction_with_effects(
-        &self,
-        command: DamlCommand,
-    ) -> DamlResult<DamlTransaction> {
+    async fn submit_and_wait_for_transaction_with_effects(&self, command: DamlCommand) -> DamlResult<DamlTransaction> {
         let commands = self.command_factory.make_command(command);
         // Build a transaction-format scoped to the submitter's parties
         // with the LedgerEffects shape and verbose output.
@@ -248,9 +239,7 @@ impl CommandExecutor for DamlSimpleExecutor<'_> {
     async fn execute_create(&self, create_command: DamlCreateCommand) -> Result<DamlCreatedEvent, DamlError> {
         let mut tx = self.submit_and_wait_for_transaction(DamlCommand::Create(create_command)).await?;
         if tx.events.is_empty() {
-            return Err(DamlError::Other(
-                "execute_create: transaction had no events".to_owned(),
-            ));
+            return Err(DamlError::Other("execute_create: transaction had no events".to_owned()));
         }
         tx.events.swap_remove(0).try_created()
     }

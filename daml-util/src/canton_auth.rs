@@ -186,7 +186,7 @@ impl DamlCantonTokenBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use jsonwebtoken::{decode, DecodingKey, Validation};
+    use jsonwebtoken::{DecodingKey, Validation, decode};
 
     #[test]
     fn hs256_roundtrip() {

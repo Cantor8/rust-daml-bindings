@@ -334,9 +334,9 @@
 mod convert;
 mod generator;
 
-use darling::ast::NestedMeta;
 use darling::FromMeta;
-use syn::{parse_macro_input, DeriveInput, ItemImpl};
+use darling::ast::NestedMeta;
+use syn::{DeriveInput, ItemImpl, parse_macro_input};
 
 fn parse_attr_args(attr: proc_macro::TokenStream) -> Vec<NestedMeta> {
     match NestedMeta::parse_meta_list(attr.into()) {

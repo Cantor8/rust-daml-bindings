@@ -3,8 +3,8 @@ use std::convert::TryFrom;
 use crate::data::identifier::DamlIdentifier;
 use crate::data::value::DamlRecord;
 use crate::data::{DamlError, DamlResult};
-use crate::grpc_protobuf::com::daml::ledger::api::v2::command::Command;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::CreateCommand;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::command::Command;
 use crate::util::Required;
 
 /// Create a new contract instance based on a template.

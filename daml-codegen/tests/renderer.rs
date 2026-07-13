@@ -57,10 +57,7 @@ fn template_id_uses_package_name() {
     let r = render_demo_modules();
     assert_contains(&r, "fn template_id () -> DamlIdentifier", "Asset must expose template_id()");
     assert_contains(&r, "DamlIdentifier :: from_package_name", "template_id() must address by package-name");
-    assert!(
-        !r.contains("from_package_id"),
-        "renderer should not emit any from_package_id call in v2 codegen",
-    );
+    assert!(!r.contains("from_package_id"), "renderer should not emit any from_package_id call in v2 codegen",);
 }
 
 #[test]
@@ -99,17 +96,10 @@ fn cross_package_paths_carry_package_name() {
     // The Asset template's archive_command takes
     // DA.Internal.Template.Archive, which lives in the daml-stdlib
     // package; the rendered path must carry that package's name.
-    assert_contains(
-        &r,
-        "ghc_stdlib_da_internal_template",
-        "cross-package path must include the target package's name",
-    );
+    assert_contains(&r, "ghc_stdlib_da_internal_template", "cross-package path must include the target package's name");
     // The hard invariant: no rendered `crate :: ` path should have
     // an empty segment.
-    assert!(
-        !r.contains("crate :: :: "),
-        "rendered output contains an empty path segment (unresolved package_name)",
-    );
+    assert!(!r.contains("crate :: :: "), "rendered output contains an empty path segment (unresolved package_name)",);
 }
 
 #[test]
@@ -135,11 +125,7 @@ fn interface_addressed_choice_methods_emitted() {
     // method dispatches via the interface's `interface_id()`, not
     // the template's `template_id()`.
     let r = render_demo_modules();
-    assert_contains(
-        &r,
-        "pub fn holding_reassign_command",
-        "AssetContractId must expose holding_reassign_command",
-    );
+    assert_contains(&r, "pub fn holding_reassign_command", "AssetContractId must expose holding_reassign_command");
     assert_contains(
         &r,
         "pub fn holding_archive_command",
@@ -168,14 +154,8 @@ fn module_matcher_filters_out_unmatched_modules() {
     assert_contains(&only_asset, "pub struct Asset", "Fuji.Asset's Asset must render");
     assert_contains(&only_asset, "pub trait Holding", "Fuji.Asset's Holding must render");
     // Fuji.Types's variant + records must NOT render.
-    assert!(
-        !only_asset.contains("pub enum Shape"),
-        "Fuji.Types::Shape leaked despite matcher filtering it out",
-    );
-    assert!(
-        !only_asset.contains("pub struct Painted"),
-        "Fuji.Types::Painted leaked despite matcher filtering it out",
-    );
+    assert!(!only_asset.contains("pub enum Shape"), "Fuji.Types::Shape leaked despite matcher filtering it out",);
+    assert!(!only_asset.contains("pub struct Painted"), "Fuji.Types::Painted leaked despite matcher filtering it out",);
     // The synthetic `pub mod shape` is data inside Fuji.Types and
     // must follow the same filtering rule.
     assert!(
@@ -218,8 +198,5 @@ fn rendered_archive_compiles_to_balanced_braces() {
     assert_eq!(open, close, "unbalanced braces in rendered output: {open} open, {close} close");
     let paren_open = r.matches('(').count();
     let paren_close = r.matches(')').count();
-    assert_eq!(
-        paren_open, paren_close,
-        "unbalanced parens in rendered output: {paren_open} open, {paren_close} close",
-    );
+    assert_eq!(paren_open, paren_close, "unbalanced parens in rendered output: {paren_open} open, {paren_close} close",);
 }

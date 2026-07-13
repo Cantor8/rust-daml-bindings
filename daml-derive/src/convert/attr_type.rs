@@ -104,7 +104,11 @@ fn split_segments<'a>(segments: &'a [&PathSegment]) -> (&'a PathSegment, Vec<Str
         [segment] => (segment, vec![]),
         [path @ .., last] => {
             let head_is_crate = path.first().is_some_and(|seg| seg.ident == "crate");
-            let module_segments = if head_is_crate { &path[1..] } else { path };
+            let module_segments = if head_is_crate {
+                &path[1..]
+            } else {
+                path
+            };
             (last, module_segments.iter().map(|&s| s.ident.to_string()).collect())
         },
     }

@@ -1,7 +1,7 @@
+use crate::LanguageVersion;
+use crate::element::DamlVisitableElement;
 use crate::element::daml_module::DamlModule;
 use crate::element::visitor::DamlElementVisitor;
-use crate::element::DamlVisitableElement;
-use crate::LanguageVersion;
 use bounded_static::ToStatic;
 use serde::Serialize;
 use std::borrow::Cow;

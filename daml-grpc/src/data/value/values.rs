@@ -2,7 +2,7 @@ use crate::data::value::{DamlEnum, DamlRecord, DamlVariant};
 use crate::data::{DamlError, DamlResult};
 use crate::grpc_protobuf::com::daml::ledger::api::v2::value::Sum;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::{
-    gen_map, text_map, Enum, GenMap, List, Optional, Record, TextMap, Value, Variant,
+    Enum, GenMap, List, Optional, Record, TextMap, Value, Variant, gen_map, text_map,
 };
 use crate::util;
 use crate::util::Required;
@@ -917,8 +917,9 @@ impl TryFrom<Value> for DamlValue {
             Sum::Variant(v) => DamlValue::Variant((*v).try_into()?),
             Sum::Enum(e) => DamlValue::Enum(e.into()),
             Sum::ContractId(v) => DamlValue::ContractId(DamlContractId::new(v)),
-            Sum::List(v) =>
-                DamlValue::List(v.elements.into_iter().map(TryInto::try_into).collect::<DamlResult<DamlList<_>>>()?),
+            Sum::List(v) => {
+                DamlValue::List(v.elements.into_iter().map(TryInto::try_into).collect::<DamlResult<DamlList<_>>>()?)
+            },
             Sum::Int64(v) => DamlValue::Int64(v),
             Sum::Numeric(v) => DamlValue::Numeric(DamlNumeric::from_str(&v)?),
             Sum::Text(v) => DamlValue::Text(v),
@@ -927,8 +928,9 @@ impl TryFrom<Value> for DamlValue {
             Sum::Bool(v) => DamlValue::Bool(v),
             Sum::Unit(_) => DamlValue::Unit,
             Sum::Date(v) => DamlValue::Date(util::date_from_days(v)?),
-            Sum::Optional(v) =>
-                DamlValue::Optional(v.value.map(|v| DamlValue::try_from(*v)).transpose()?.map(Box::new)),
+            Sum::Optional(v) => {
+                DamlValue::Optional(v.value.map(|v| DamlValue::try_from(*v)).transpose()?.map(Box::new))
+            },
             Sum::TextMap(v) => DamlValue::TextMap(
                 v.entries
                     .into_iter()
@@ -1019,7 +1021,7 @@ impl PartialOrd for DamlValue {
             (DamlValue::Unit, DamlValue::Unit) => Some(Ordering::Equal),
             (DamlValue::Date(v1), DamlValue::Date(v2)) => v1.partial_cmp(v2),
             (DamlValue::Optional(v1), DamlValue::Optional(v2)) => v1.partial_cmp(v2),
-            (DamlValue::TextMap(v1), DamlValue::TextMap(v2)) =>
+            (DamlValue::TextMap(v1), DamlValue::TextMap(v2)) => {
                 if v1.len() == v2.len() {
                     // Sort each side by key; compare (key, value) pairs
                     // lexicographically. Considers values (pre-0.4 walked
@@ -1030,8 +1032,9 @@ impl PartialOrd for DamlValue {
                     s1.partial_cmp(s2)
                 } else {
                     v1.len().partial_cmp(&v2.len())
-                },
-            (DamlValue::GenMap(v1), DamlValue::GenMap(v2)) =>
+                }
+            },
+            (DamlValue::GenMap(v1), DamlValue::GenMap(v2)) => {
                 if v1.len() == v2.len() {
                     // BTreeMap iterates in key-sorted order already;
                     // walk (key, value) pairs. Same value-aware semantics
@@ -1039,7 +1042,8 @@ impl PartialOrd for DamlValue {
                     v1.iter().partial_cmp(v2.iter())
                 } else {
                     v1.len().partial_cmp(&v2.len())
-                },
+                }
+            },
             // Cross-variant comparison falls back to a stable per-variant
             // ordinal so `partial_cmp` is total and `impl Ord` can unwrap.
             (a, b) => a.ordinal().partial_cmp(&b.ordinal()),
@@ -1155,8 +1159,7 @@ mod tests {
         // Same keys, different values — pre-0.4 partial_cmp reported
         // Equal because it walked keys only. Now walks (key, value)
         // pairs, so the difference matters.
-        let items1 =
-            vec![(String::from("text1"), DamlValue::Int64(10)), (String::from("text2"), DamlValue::Int64(20))];
+        let items1 = vec![(String::from("text1"), DamlValue::Int64(10)), (String::from("text2"), DamlValue::Int64(20))];
         let items2 =
             vec![(String::from("text1"), DamlValue::Int64(999)), (String::from("text2"), DamlValue::Int64(20))];
         let value1 = DamlValue::TextMap(items1.into_iter().collect::<DamlTextMap<DamlValue>>());
@@ -1191,8 +1194,8 @@ mod tests {
         // value to 37 decimal places. Now uses BigDecimal's natural
         // Display, which preserves whatever scale the value was
         // constructed with.
-        use crate::grpc_protobuf::com::daml::ledger::api::v2::value::Sum;
         use crate::grpc_protobuf::com::daml::ledger::api::v2::Value;
+        use crate::grpc_protobuf::com::daml::ledger::api::v2::value::Sum;
         use bigdecimal::BigDecimal;
         use std::str::FromStr;
         let cases = ["0", "1.23", "0.00000000000000000000000000000000000001", "100", "-9.5"];

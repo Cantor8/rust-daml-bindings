@@ -1,5 +1,5 @@
-use crate::data::value::DamlValue;
 use crate::data::DamlError;
+use crate::data::value::DamlValue;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::{RecordField, Value};
 use crate::util::Required;
 use std::convert::TryFrom;

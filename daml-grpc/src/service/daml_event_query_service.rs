@@ -4,11 +4,11 @@ use std::fmt::Debug;
 use tonic::transport::Channel;
 use tracing::{instrument, trace};
 
+use crate::data::DamlResult;
 use crate::data::event_query::DamlEventsByContractId;
 use crate::data::filter::DamlEventFormat;
-use crate::data::DamlResult;
-use crate::grpc_protobuf::com::daml::ledger::api::v2::event_query_service_client::EventQueryServiceClient;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::GetEventsByContractIdRequest;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::event_query_service_client::EventQueryServiceClient;
 use crate::service::common::make_request;
 
 /// Look up the create + consuming-archive events for a single

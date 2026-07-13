@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::sync::Arc;
 
+use crate::DarFile;
 use crate::convert::package_payload::DamlPackagePayload;
 use crate::error::{DamlLfConvertError, DamlLfConvertResult};
-use crate::DarFile;
 
 /// Borrowed view of all packages in a [`DarFile`], indexed by
 /// package-id, with the main package's id called out separately.

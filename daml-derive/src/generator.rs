@@ -1,6 +1,6 @@
 use crate::convert::{
-    data_type_string_from_type, extract_all_choices, extract_enum, extract_record, extract_template, extract_variant,
-    AttrChoice, AttrInterfaceRef, AttrRecord, AttrTemplate, AttrVariant,
+    AttrChoice, AttrInterfaceRef, AttrRecord, AttrTemplate, AttrVariant, data_type_string_from_type,
+    extract_all_choices, extract_enum, extract_record, extract_template, extract_variant,
 };
 use crate::{CodeGeneratorParameters, RenderModeArg};
 use daml_codegen::generator::{ModuleMatcher, RenderMethod};
@@ -14,8 +14,8 @@ use daml_lf::element::{
     DamlVariant,
 };
 use daml_lf::{DarFile, LanguageVersion};
-use darling::ast::NestedMeta;
 use darling::FromMeta;
+use darling::ast::NestedMeta;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use syn::{Data, DataStruct, DeriveInput, Fields, ItemImpl};
@@ -85,9 +85,7 @@ fn parse_implements_list(raw: &str) -> Vec<AttrInterfaceRef> {
         .map(|entry| {
             let parts: Vec<&str> = entry.split(':').collect();
             if parts.len() != 3 {
-                panic!(
-                    "#[DamlTemplate(implements = ...)]: expected `<pkg>:<Module.Path>:<Entity>`, got `{entry}`"
-                );
+                panic!("#[DamlTemplate(implements = ...)]: expected `<pkg>:<Module.Path>:<Entity>`, got `{entry}`");
             }
             AttrInterfaceRef {
                 package_name: parts[0].to_string(),

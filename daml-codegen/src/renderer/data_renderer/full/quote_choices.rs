@@ -2,10 +2,10 @@ use proc_macro2::TokenStream;
 
 use quote::quote;
 
+use crate::renderer::RenderContext;
 use crate::renderer::data_renderer::full::quote_contract_struct::quote_contract_id_struct_name;
 use crate::renderer::renderer_utils::quote_escaped_ident;
 use crate::renderer::type_renderer::quote_type;
-use crate::renderer::RenderContext;
 use daml_lf::element::DamlChoice;
 use heck::ToSnakeCase;
 

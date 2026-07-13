@@ -1,5 +1,5 @@
-use crate::data::value::DamlValue;
 use crate::data::DamlResult;
+use crate::data::value::DamlValue;
 use crate::serialize::{DamlDeserializableType, DamlDeserializeFrom, DamlSerializableType, DamlSerializeFrom};
 
 /// The value of a natural number type.

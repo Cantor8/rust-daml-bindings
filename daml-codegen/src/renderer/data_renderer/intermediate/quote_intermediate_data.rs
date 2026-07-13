@@ -1,6 +1,6 @@
 use crate::renderer::field_renderer::quote_fields;
 use crate::renderer::type_renderer::quote_type;
-use crate::renderer::{quote_escaped_ident, to_module_path, IsRenderable, RenderContext};
+use crate::renderer::{IsRenderable, RenderContext, quote_escaped_ident, to_module_path};
 use daml_lf::element::{DamlChoice, DamlEnum, DamlField, DamlRecord, DamlTemplate, DamlType, DamlVariant};
 use heck::ToSnakeCase;
 use proc_macro2::TokenStream;

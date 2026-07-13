@@ -1,5 +1,5 @@
-use crate::generator::module_matcher::ModuleMatcher;
 use crate::generator::RenderMethod;
+use crate::generator::module_matcher::ModuleMatcher;
 use crate::renderer::{quote_archive, to_rust_identifier};
 use daml_lf::element::DamlArchive;
 use std::fs::File;

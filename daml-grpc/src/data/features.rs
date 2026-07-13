@@ -53,7 +53,9 @@ impl From<ExperimentalFeatures> for DamlExperimentalFeatures {
     fn from(f: ExperimentalFeatures) -> Self {
         Self {
             static_time: f.static_time.map(DamlExperimentalStaticTime::from),
-            command_inspection_service: f.command_inspection_service.map(DamlExperimentalCommandInspectionService::from),
+            command_inspection_service: f
+                .command_inspection_service
+                .map(DamlExperimentalCommandInspectionService::from),
         }
     }
 }

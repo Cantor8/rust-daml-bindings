@@ -329,10 +329,8 @@ mod tests {
 
     #[test]
     fn test_daml_text_map_identical_pairs_are_equal() {
-        let map1: DamlTextMap<DamlInt64> =
-            vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
-        let map2: DamlTextMap<DamlInt64> =
-            vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
+        let map1: DamlTextMap<DamlInt64> = vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
+        let map2: DamlTextMap<DamlInt64> = vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
         assert_eq!(map1, map2);
     }
 
@@ -341,19 +339,15 @@ mod tests {
         // Pre-0.4 this incorrectly reported the two maps as equal (keys-
         // only comparison). The new PartialEq delegates to HashMap's, so
         // value differences count.
-        let map1: DamlTextMap<DamlInt64> =
-            vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
-        let map2: DamlTextMap<DamlInt64> =
-            vec![("key1".into(), 100), ("key2".into(), 200)].into_iter().collect();
+        let map1: DamlTextMap<DamlInt64> = vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
+        let map2: DamlTextMap<DamlInt64> = vec![("key1".into(), 100), ("key2".into(), 200)].into_iter().collect();
         assert_ne!(map1, map2);
     }
 
     #[test]
     fn test_daml_text_map_not_equal_keys() {
-        let map1: DamlTextMap<DamlInt64> =
-            vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
-        let map2: DamlTextMap<DamlInt64> =
-            vec![("key3".into(), 10), ("key4".into(), 20)].into_iter().collect();
+        let map1: DamlTextMap<DamlInt64> = vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
+        let map2: DamlTextMap<DamlInt64> = vec![("key3".into(), 10), ("key4".into(), 20)].into_iter().collect();
         assert_ne!(map1, map2);
     }
 
@@ -362,12 +356,9 @@ mod tests {
         // Same keys, different values — partial_cmp now walks
         // (key, value) pairs and reports the true relation instead of
         // returning Equal.
-        let map1: DamlTextMap<DamlInt64> =
-            vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
-        let map2: DamlTextMap<DamlInt64> =
-            vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
-        let map3: DamlTextMap<DamlInt64> =
-            vec![("key1".into(), 100), ("key2".into(), 200)].into_iter().collect();
+        let map1: DamlTextMap<DamlInt64> = vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
+        let map2: DamlTextMap<DamlInt64> = vec![("key1".into(), 10), ("key2".into(), 20)].into_iter().collect();
+        let map3: DamlTextMap<DamlInt64> = vec![("key1".into(), 100), ("key2".into(), 200)].into_iter().collect();
         assert_eq!(Some(Ordering::Equal), map1.partial_cmp(&map2));
         assert_eq!(Some(Ordering::Less), map1.partial_cmp(&map3));
         assert_eq!(Some(Ordering::Greater), map3.partial_cmp(&map1));
@@ -376,8 +367,7 @@ mod tests {
     #[test]
     fn test_daml_text_map_partial_cmp_orders_by_size_then_keys() {
         let small: DamlTextMap<DamlInt64> = vec![("k".into(), 1)].into_iter().collect();
-        let big: DamlTextMap<DamlInt64> =
-            vec![("a".into(), 1), ("b".into(), 1)].into_iter().collect();
+        let big: DamlTextMap<DamlInt64> = vec![("a".into(), 1), ("b".into(), 1)].into_iter().collect();
         assert_eq!(Some(Ordering::Less), small.partial_cmp(&big));
 
         let a_first: DamlTextMap<DamlInt64> = vec![("a".into(), 1)].into_iter().collect();

@@ -1,9 +1,9 @@
+use crate::DEFAULT_ARCHIVE_NAME;
 use crate::archive::DamlLfArchive;
 use crate::convert;
 use crate::element::DamlArchive;
 use crate::error::{DamlLfError, DamlLfResult};
 use crate::manifest::DarManifest;
-use crate::DEFAULT_ARCHIVE_NAME;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Read;
@@ -99,10 +99,11 @@ impl DarFile {
             Ok(manifest) => manifest,
             Err(fat_err) => match Self::make_manifest_from_archive(&mut zip_archive) {
                 Ok(manifest) => manifest,
-                Err(legacy_err) =>
+                Err(legacy_err) => {
                     return Err(DamlLfError::new_dar_parse_error(format!(
                         "failed to parse dar as either fat ({fat_err}) or legacy ({legacy_err})"
-                    ))),
+                    )));
+                },
             },
         };
         let dalf_main = Self::parse_dalf_from_archive(&mut zip_archive, manifest.dalf_main())?;
@@ -250,5 +251,4 @@ impl ZipArchiveEx<File> for ZipArchive<File> {
         }
         paths
     }
-
 }

@@ -1,11 +1,12 @@
 use std::time::Duration;
 
-use tonic::transport::{Certificate, Channel, ClientTlsConfig};
 #[cfg(test)]
 use tonic::transport::Uri;
+use tonic::transport::{Certificate, Channel, ClientTlsConfig};
 use tracing::{debug, instrument};
 
 use crate::data::{DamlError, DamlResult};
+use crate::service::DamlTimeService;
 use crate::service::{
     DamlCommandCompletionService, DamlCommandService, DamlCommandSubmissionService, DamlContractService,
     DamlEventQueryService, DamlPackageService, DamlStateService, DamlUpdateService, DamlVersionService,
@@ -15,7 +16,6 @@ use crate::service::{
     DamlCommandInspectionService, DamlIdentityProviderConfigService, DamlPackageManagementService,
     DamlParticipantPruningService, DamlPartyManagementService, DamlUserManagementService,
 };
-use crate::service::DamlTimeService;
 
 const DEFAULT_TIMEOUT_SECS: u64 = 5;
 const DEFAULT_CONNECT_TIMEOUT_SECS: u64 = 5;
@@ -354,8 +354,7 @@ impl DamlGrpcClient {
             Some(DamlGrpcTlsConfig {
                 ca_cert: Some(cert),
             }) => {
-                endpoint =
-                    endpoint.tls_config(ClientTlsConfig::new().ca_certificate(Certificate::from_pem(cert)))?;
+                endpoint = endpoint.tls_config(ClientTlsConfig::new().ca_certificate(Certificate::from_pem(cert)))?;
             },
             Some(DamlGrpcTlsConfig {
                 ca_cert: None,

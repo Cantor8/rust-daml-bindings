@@ -4,10 +4,10 @@ use std::fmt::Debug;
 use tonic::transport::Channel;
 use tracing::{instrument, trace};
 
-use crate::data::event::DamlCreatedEvent;
 use crate::data::DamlResult;
-use crate::grpc_protobuf::com::daml::ledger::api::v2::contract_service_client::ContractServiceClient;
+use crate::data::event::DamlCreatedEvent;
 use crate::grpc_protobuf::com::daml::ledger::api::v2::GetContractRequest;
+use crate::grpc_protobuf::com::daml::ledger::api::v2::contract_service_client::ContractServiceClient;
 use crate::service::common::make_request;
 use crate::util::Required;
 

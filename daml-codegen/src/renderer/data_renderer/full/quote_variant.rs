@@ -7,7 +7,7 @@ use crate::renderer::data_renderer::full::{
     quote_bounded_params, quote_deserialize_where, quote_serialize_where, quote_unbounded_params,
 };
 use crate::renderer::type_renderer::quote_type;
-use crate::renderer::{normalize_generic_param, quote_escaped_ident, quote_ident, IsRenderable, RenderContext};
+use crate::renderer::{IsRenderable, RenderContext, normalize_generic_param, quote_escaped_ident, quote_ident};
 use daml_lf::element::{DamlField, DamlType, DamlTypeVarWithKind, DamlVariant};
 use std::ops::Not;
 
@@ -28,7 +28,12 @@ pub fn quote_daml_variant(ctx: &RenderContext<'_>, variant: &DamlVariant<'_>) ->
 }
 
 /// Generate `enum Foo {...}` variant.
-fn quote_variant(ctx: &RenderContext<'_>, variant_name: &str, variants: &[&DamlField<'_>], params: &[DamlTypeVarWithKind<'_>]) -> TokenStream {
+fn quote_variant(
+    ctx: &RenderContext<'_>,
+    variant_name: &str,
+    variants: &[&DamlField<'_>],
+    params: &[DamlTypeVarWithKind<'_>],
+) -> TokenStream {
     let enum_name_tokens = quote_escaped_ident(variant_name);
     let bounded_param_tokens = quote_bounded_params(params);
     let unbounded_param_tokens = quote_unbounded_params(params);

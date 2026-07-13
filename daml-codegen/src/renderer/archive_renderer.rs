@@ -3,7 +3,7 @@ use quote::quote;
 
 use crate::generator::{ModuleMatcher, RenderMethod};
 use crate::renderer::render_context::RenderFilterMode;
-use crate::renderer::{quote_package, RenderContext};
+use crate::renderer::{RenderContext, quote_package};
 use daml_lf::element::DamlArchive;
 
 pub fn quote_archive(

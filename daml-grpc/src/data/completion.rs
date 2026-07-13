@@ -75,7 +75,10 @@ impl TryFrom<Completion> for DamlCompletion {
             user_id: c.user_id,
             act_as: c.act_as,
             submission_id: c.submission_id,
-            deduplication_period: c.deduplication_period.map(DamlCompletionDeduplicationPeriod::try_from).transpose()?,
+            deduplication_period: c
+                .deduplication_period
+                .map(DamlCompletionDeduplicationPeriod::try_from)
+                .transpose()?,
             offset: DamlLedgerOffset::new(c.offset),
             synchronizer_time: c.synchronizer_time.map(DamlSynchronizerTime::try_from).transpose()?,
             paid_traffic_cost: c.paid_traffic_cost,
@@ -162,8 +165,9 @@ impl TryFrom<DeduplicationPeriod> for DamlCompletionDeduplicationPeriod {
     fn try_from(p: DeduplicationPeriod) -> DamlResult<Self> {
         Ok(match p {
             DeduplicationPeriod::DeduplicationOffset(offset) => Self::DeduplicationOffset(offset),
-            DeduplicationPeriod::DeduplicationDuration(duration) =>
-                Self::DeduplicationDuration(util::from_grpc_duration(&duration)?),
+            DeduplicationPeriod::DeduplicationDuration(duration) => {
+                Self::DeduplicationDuration(util::from_grpc_duration(&duration)?)
+            },
         })
     }
 }

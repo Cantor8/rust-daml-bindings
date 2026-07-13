@@ -93,14 +93,18 @@ impl TryFrom<TopologyEvent> for DamlTopologyEvent {
 
     fn try_from(e: TopologyEvent) -> DamlResult<Self> {
         Ok(match e.event.req()? {
-            TopologyEventKind::ParticipantAuthorizationAdded(e) =>
-                Self::ParticipantAuthorizationAdded(DamlParticipantAuthorizationAdded::try_from(e)?),
-            TopologyEventKind::ParticipantAuthorizationChanged(e) =>
-                Self::ParticipantAuthorizationChanged(DamlParticipantAuthorizationChanged::try_from(e)?),
-            TopologyEventKind::ParticipantAuthorizationRevoked(e) =>
-                Self::ParticipantAuthorizationRevoked(DamlParticipantAuthorizationRevoked::from(e)),
-            TopologyEventKind::ParticipantAuthorizationOnboarding(e) =>
-                Self::ParticipantAuthorizationOnboarding(DamlParticipantAuthorizationOnboarding::try_from(e)?),
+            TopologyEventKind::ParticipantAuthorizationAdded(e) => {
+                Self::ParticipantAuthorizationAdded(DamlParticipantAuthorizationAdded::try_from(e)?)
+            },
+            TopologyEventKind::ParticipantAuthorizationChanged(e) => {
+                Self::ParticipantAuthorizationChanged(DamlParticipantAuthorizationChanged::try_from(e)?)
+            },
+            TopologyEventKind::ParticipantAuthorizationRevoked(e) => {
+                Self::ParticipantAuthorizationRevoked(DamlParticipantAuthorizationRevoked::from(e))
+            },
+            TopologyEventKind::ParticipantAuthorizationOnboarding(e) => {
+                Self::ParticipantAuthorizationOnboarding(DamlParticipantAuthorizationOnboarding::try_from(e)?)
+            },
         })
     }
 }

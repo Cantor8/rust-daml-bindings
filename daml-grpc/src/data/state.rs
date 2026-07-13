@@ -104,10 +104,12 @@ impl TryFrom<ContractEntry> for DamlContractEntry {
     fn try_from(e: ContractEntry) -> DamlResult<Self> {
         Ok(match e {
             ContractEntry::ActiveContract(c) => Self::Active(DamlActiveContract::try_from(c)?),
-            ContractEntry::IncompleteUnassigned(u) =>
-                Self::IncompleteUnassigned(Box::new(DamlIncompleteUnassigned::try_from(u)?)),
-            ContractEntry::IncompleteAssigned(a) =>
-                Self::IncompleteAssigned(Box::new(DamlIncompleteAssigned::try_from(a)?)),
+            ContractEntry::IncompleteUnassigned(u) => {
+                Self::IncompleteUnassigned(Box::new(DamlIncompleteUnassigned::try_from(u)?))
+            },
+            ContractEntry::IncompleteAssigned(a) => {
+                Self::IncompleteAssigned(Box::new(DamlIncompleteAssigned::try_from(a)?))
+            },
         })
     }
 }

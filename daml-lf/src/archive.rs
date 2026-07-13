@@ -1,6 +1,6 @@
 use crate::element::DamlPackage;
 use crate::lf_protobuf::daml_lf::{Archive, HashFunction as ProtoHashFunction};
-use crate::{convert, DamlLfArchivePayload, DamlLfError, DamlLfResult};
+use crate::{DamlLfArchivePayload, DamlLfError, DamlLfResult, convert};
 use bytes::Bytes;
 use prost::Message;
 use std::ffi::OsStr;
@@ -117,11 +117,12 @@ impl DamlLfArchive {
         // (and so the unit test below can drive it without a valid payload).
         let hash_function = match ProtoHashFunction::try_from(archive.hash_function) {
             Ok(ProtoHashFunction::Sha256) => DamlLfHashFunction::Sha256,
-            Err(_) =>
+            Err(_) => {
                 return Err(DamlLfError::new_dar_parse_error(format!(
                     "unknown hash function id {} in archive envelope",
                     archive.hash_function
-                ))),
+                )));
+            },
         };
         let payload = DamlLfArchivePayload::from_bytes(archive.payload)?;
         let archive_name = name.into();
@@ -224,8 +225,9 @@ mod tests {
         let bytes = archive.encode_to_vec();
         let err = DamlLfArchive::from_bytes(bytes).expect_err("should reject unknown hash function");
         match err {
-            DamlLfError::DarParseError(msg) =>
-                assert!(msg.contains("unknown hash function id 99"), "unexpected message: {msg}"),
+            DamlLfError::DarParseError(msg) => {
+                assert!(msg.contains("unknown hash function id 99"), "unexpected message: {msg}")
+            },
             other => panic!("expected DarParseError, got {other:?}"),
         }
     }

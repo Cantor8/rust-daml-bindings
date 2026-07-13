@@ -354,8 +354,8 @@ mod test {
     use crate::test_util::TestResult;
     use crate::test_util::{make_date, make_timestamp};
     use bigdecimal::BigDecimal;
-    use daml_grpc::data::value::{DamlRecord, DamlValue, DamlVariant};
     use daml_grpc::data::DamlError;
+    use daml_grpc::data::value::{DamlRecord, DamlValue, DamlVariant};
     use std::convert::TryFrom;
 
     #[test]

@@ -8,7 +8,7 @@ use crate::renderer::data_renderer::full::{
 };
 use crate::renderer::render_context::RenderContext;
 use crate::renderer::type_renderer::quote_type;
-use crate::renderer::{make_ignored_ident, normalize_generic_param, quote_escaped_ident, quote_ident, IsRenderable};
+use crate::renderer::{IsRenderable, make_ignored_ident, normalize_generic_param, quote_escaped_ident, quote_ident};
 use daml_lf::element::{DamlField, DamlRecord, DamlType, DamlTypeVarWithKind};
 use std::ops::Not;
 
@@ -175,7 +175,11 @@ fn quote_deserialize_trait_impl_body(ctx: &RenderContext<'_>, struct_fields: &[&
     }
 }
 
-fn quote_declare_field_serialize_trait_impl(ctx: &RenderContext<'_>, field_name: &str, ty: &DamlType<'_>) -> TokenStream {
+fn quote_declare_field_serialize_trait_impl(
+    ctx: &RenderContext<'_>,
+    field_name: &str,
+    ty: &DamlType<'_>,
+) -> TokenStream {
     let field_name_tokens = quote_escaped_ident(field_name);
     let field_source_tokens = quote!(value.#field_name_tokens);
     let field_type_tokens = quote_type(ctx, ty);

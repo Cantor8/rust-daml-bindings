@@ -140,10 +140,12 @@ impl TryFrom<DamlCommandsDeduplicationPeriod> for DeduplicationPeriod {
 
     fn try_from(period: DamlCommandsDeduplicationPeriod) -> DamlResult<Self> {
         Ok(match period {
-            DamlCommandsDeduplicationPeriod::DeduplicationOffset(offset) =>
-                DeduplicationPeriod::DeduplicationOffset(offset),
-            DamlCommandsDeduplicationPeriod::DeduplicationDuration(dur) =>
-                DeduplicationPeriod::DeduplicationDuration(util::to_grpc_duration(&dur)?),
+            DamlCommandsDeduplicationPeriod::DeduplicationOffset(offset) => {
+                DeduplicationPeriod::DeduplicationOffset(offset)
+            },
+            DamlCommandsDeduplicationPeriod::DeduplicationDuration(dur) => {
+                DeduplicationPeriod::DeduplicationDuration(util::to_grpc_duration(&dur)?)
+            },
         })
     }
 }

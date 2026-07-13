@@ -1,4 +1,4 @@
-use crate::convert::{extract_enum_data, extract_struct_data, AttrField, AttrType};
+use crate::convert::{AttrField, AttrType, extract_enum_data, extract_struct_data};
 use syn::{DataEnum, FieldsNamed, GenericParam, Generics};
 
 pub struct AttrRecord {

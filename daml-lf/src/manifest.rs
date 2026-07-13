@@ -165,15 +165,15 @@ impl DarManifest {
             raw.as_str().map(str::to_owned).or_else(|| raw.as_f64().map(|n| format!("{n:.1}")));
         let manifest_version = match normalised {
             Some(ref s) if s == VERSION_1_VALUE => DarManifestVersion::V1,
-            Some(other) =>
+            Some(other) => {
                 return Err(DamlLfError::new_dar_parse_error(format!(
                     "unexpected value for {MANIFEST_VERSION_KEY}, found {other}"
-                ))),
+                )));
+            },
             None if raw.is_badvalue() => DarManifestVersion::Unknown,
-            None =>
-                return Err(DamlLfError::new_dar_parse_error(format!(
-                    "unexpected value for {MANIFEST_VERSION_KEY}"
-                ))),
+            None => {
+                return Err(DamlLfError::new_dar_parse_error(format!("unexpected value for {MANIFEST_VERSION_KEY}")));
+            },
         };
 
         let created_by = doc[CREATED_BY_KEY].as_str().map_or_else(|| "", |s| s);
@@ -196,15 +196,15 @@ impl DarManifest {
 
         let format = match doc[FORMAT_KEY].as_str() {
             Some(s) if s.to_lowercase() == DAML_LF_VALUE => Ok(DarManifestFormat::DamlLf),
-            Some(s) =>
-                Err(DamlLfError::new_dar_parse_error(format!("unexpected value for {FORMAT_KEY}, found {s}"))),
+            Some(s) => Err(DamlLfError::new_dar_parse_error(format!("unexpected value for {FORMAT_KEY}, found {s}"))),
             None => Err(DamlLfError::new_dar_parse_error(format!("key {FORMAT_KEY} not found"))),
         }?;
 
         let encryption = match doc[ENCRYPTION_KEY].as_str() {
             Some(s) if s.to_lowercase() == NON_ENCRYPTED_VALUE => Ok(DarEncryptionType::NotEncrypted),
-            Some(s) =>
-                Err(DamlLfError::new_dar_parse_error(format!("unexpected value for {ENCRYPTION_KEY}, found {s}"))),
+            Some(s) => {
+                Err(DamlLfError::new_dar_parse_error(format!("unexpected value for {ENCRYPTION_KEY}, found {s}")))
+            },
             None => Err(DamlLfError::new_dar_parse_error(format!("key {ENCRYPTION_KEY} not found"))),
         }?;
 
@@ -213,12 +213,14 @@ impl DarManifest {
 
     /// Render this `DarManifest`
     pub fn render(&self) -> String {
-        [make_manifest_entry(MANIFEST_VERSION_KEY, self.version().to_string()),
+        [
+            make_manifest_entry(MANIFEST_VERSION_KEY, self.version().to_string()),
             make_manifest_entry(CREATED_BY_KEY, self.created_by()),
             make_manifest_entry(DALF_MAIN_KEY, self.dalf_main()),
             make_manifest_entry(DALFS_KEY, self.dalf_dependencies().iter().join(", ")),
             make_manifest_entry(FORMAT_KEY, self.format().to_string()),
-            make_manifest_entry(ENCRYPTION_KEY, self.encryption().to_string())]
+            make_manifest_entry(ENCRYPTION_KEY, self.encryption().to_string()),
+        ]
         .join("\n")
     }
 
@@ -280,7 +282,7 @@ fn split_manifest_string(s: impl AsRef<str>) -> String {
 mod test {
     use crate::error::{DamlLfError, DamlLfResult};
     use crate::manifest::{
-        split_manifest_string, DarEncryptionType, DarManifest, DarManifestFormat, DarManifestVersion,
+        DarEncryptionType, DarManifest, DarManifestFormat, DarManifestVersion, split_manifest_string,
     };
     use trim_margin::MarginTrimmable;
 
@@ -452,8 +454,9 @@ mod test {
             .expect("invalid test string");
         let manifest = DarManifest::parse(&manifest_str[..]);
         match manifest.expect_err("expected failure") {
-            DamlLfError::DarParseError(s) =>
-                assert_eq!("unexpected value for Format, found anything-different-from-daml-lf", s),
+            DamlLfError::DarParseError(s) => {
+                assert_eq!("unexpected value for Format, found anything-different-from-daml-lf", s)
+            },
             _ => panic!("expected failure"),
         }
     }

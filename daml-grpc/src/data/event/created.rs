@@ -69,7 +69,11 @@ impl TryFrom<CreatedEvent> for DamlCreatedEvent {
             contract_key_hash: e.contract_key_hash,
             create_arguments: DamlRecord::try_from(e.create_arguments.req()?)?,
             created_event_blob: e.created_event_blob,
-            interface_views: e.interface_views.into_iter().map(DamlInterfaceView::try_from).collect::<DamlResult<_>>()?,
+            interface_views: e
+                .interface_views
+                .into_iter()
+                .map(DamlInterfaceView::try_from)
+                .collect::<DamlResult<_>>()?,
             witness_parties: e.witness_parties,
             signatories: e.signatories,
             observers: e.observers,

@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 
 use crate::generator::ModuleMatcher;
 use crate::generator::RenderMethod;
-use crate::renderer::{quote_module_tree, RenderContext};
+use crate::renderer::{RenderContext, quote_module_tree};
 use daml_lf::element::DamlPackage;
 
 pub fn quote_package(

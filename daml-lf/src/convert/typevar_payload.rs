@@ -16,10 +16,7 @@ use crate::lf_protobuf::daml_lf_2::kind::Sum as KindSum;
 /// containing package; it's the table referenced by
 /// `KindSum::InternedKind`. Always passed in to break the otherwise-
 /// circular dependency between Kind and "the package it lives in."
-pub fn convert_kind(
-    kind: &daml_lf_2::Kind,
-    interned_kinds: &[daml_lf_2::Kind],
-) -> DamlLfConvertResult<DamlKind> {
+pub fn convert_kind(kind: &daml_lf_2::Kind, interned_kinds: &[daml_lf_2::Kind]) -> DamlLfConvertResult<DamlKind> {
     match kind.sum.as_ref().req()? {
         KindSum::Star(_) => Ok(DamlKind::Star),
         KindSum::Nat(_) => Ok(DamlKind::Nat),
@@ -35,9 +32,9 @@ pub fn convert_kind(
         KindSum::InternedKind(idx) => {
             let idx_usize = usize::try_from(*idx)
                 .map_err(|_| DamlLfConvertError::InternalError(format!("negative interned-kind index {idx}")))?;
-            let resolved = interned_kinds
-                .get(idx_usize)
-                .ok_or_else(|| DamlLfConvertError::InternalError(format!("interned-kind index {idx_usize} out of range")))?;
+            let resolved = interned_kinds.get(idx_usize).ok_or_else(|| {
+                DamlLfConvertError::InternalError(format!("interned-kind index {idx_usize} out of range"))
+            })?;
             convert_kind(resolved, interned_kinds)
         },
     }

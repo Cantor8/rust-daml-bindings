@@ -6,10 +6,10 @@ use prost::Message;
 
 use crate::element::DamlPackage;
 use crate::error::{DamlLfError, DamlLfResult};
-use crate::lf_protobuf::daml_lf::archive_payload::Sum;
 use crate::lf_protobuf::daml_lf::ArchivePayload;
+use crate::lf_protobuf::daml_lf::archive_payload::Sum;
 use crate::lf_protobuf::daml_lf_2;
-use crate::{convert, LanguageV2MinorVersion, LanguageVersion};
+use crate::{LanguageV2MinorVersion, LanguageVersion, convert};
 
 /// A `Daml LF` archive payload (aka "package"): a `language_version`
 /// plus the decoded LF2 package AST.

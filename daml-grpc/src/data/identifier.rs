@@ -26,11 +26,7 @@ pub struct DamlIdentifier {
 impl DamlIdentifier {
     /// Construct an identifier from a raw package reference (either a
     /// package-id, or a package-name already prefixed with `#`).
-    pub fn new(
-        package_ref: impl Into<String>,
-        module_name: impl Into<String>,
-        entity_name: impl Into<String>,
-    ) -> Self {
+    pub fn new(package_ref: impl Into<String>, module_name: impl Into<String>, entity_name: impl Into<String>) -> Self {
         Self {
             package_ref: package_ref.into(),
             module_name: module_name.into(),
@@ -45,11 +41,7 @@ impl DamlIdentifier {
         module_name: impl Into<String>,
         entity_name: impl Into<String>,
     ) -> Self {
-        Self::new(
-            format!("{PACKAGE_NAME_PREFIX}{}", package_name.as_ref()),
-            module_name,
-            entity_name,
-        )
+        Self::new(format!("{PACKAGE_NAME_PREFIX}{}", package_name.as_ref()), module_name, entity_name)
     }
 
     /// The raw package reference exactly as it appears on the wire — either

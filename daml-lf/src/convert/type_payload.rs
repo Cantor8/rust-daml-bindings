@@ -12,9 +12,9 @@ use crate::element::{
 };
 use crate::error::{DamlLfConvertError, DamlLfConvertResult};
 use crate::lf_protobuf::daml_lf_2;
+use crate::lf_protobuf::daml_lf_2::BuiltinType;
 use crate::lf_protobuf::daml_lf_2::self_or_imported_package_id::Sum as PackageRefSum;
 use crate::lf_protobuf::daml_lf_2::r#type::Sum as TypeSum;
-use crate::lf_protobuf::daml_lf_2::BuiltinType;
 
 /// Convert an LF2 `Type` message into the element-layer
 /// [`DamlType`]. Recurses through the interned-types and
@@ -59,10 +59,9 @@ pub fn convert_type<'a>(
         TypeSum::InternedType(idx) => {
             let idx_usize = usize::try_from(*idx)
                 .map_err(|_| DamlLfConvertError::InternalError(format!("negative interned-type index {idx}")))?;
-            let resolved = package
-                .interned_types_raw()
-                .get(idx_usize)
-                .ok_or_else(|| DamlLfConvertError::InternalError(format!("interned-type index {idx_usize} out of range")))?;
+            let resolved = package.interned_types_raw().get(idx_usize).ok_or_else(|| {
+                DamlLfConvertError::InternalError(format!("interned-type index {idx_usize} out of range"))
+            })?;
             convert_type(resolved, package)
         },
         // TApp is a 2.dev-only flattening replacement; we don't see

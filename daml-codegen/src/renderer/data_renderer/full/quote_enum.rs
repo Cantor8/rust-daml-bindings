@@ -1,7 +1,7 @@
 use crate::renderer::data_renderer::full::{
     quote_bounded_params, quote_deserialize_where, quote_serialize_where, quote_unbounded_params,
 };
-use crate::renderer::{quote_escaped_ident, RenderContext};
+use crate::renderer::{RenderContext, quote_escaped_ident};
 use daml_lf::element::DamlEnum;
 use itertools::Itertools;
 use proc_macro2::TokenStream;
