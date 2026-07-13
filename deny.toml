@@ -1,19 +1,27 @@
+# cargo-deny configuration.
+#
+# Bump the `version = 2` markers below if cargo-deny's schema
+# changes again — the previous file was on the pre-v2 schema which
+# has been removed.
+
 [licenses]
-unlicensed = "deny"
+version = 2
 allow = [
     "MIT",
     "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
     "ISC",
     "OpenSSL",
     "BSD-3-Clause",
-    "MPL-2.0"
+    "MPL-2.0",
+    "Zlib",
+    "Unicode-3.0",
 ]
-copyleft = "deny"
-allow-osi-fsf-free = "neither"
-default = "deny"
 confidence-threshold = 0.8
-exceptions = []
 
+# Crates whose license expression cargo-deny can't infer from a
+# SPDX field alone; the file hash pins the clarification to a
+# specific LICENSE / COPYRIGHT file.
 [[licenses.clarify]]
 name = "ring"
 version = "*"
@@ -31,15 +39,12 @@ license-files = [
 ]
 
 [advisories]
+version = 2
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-vulnerability = "deny"
-unmaintained = "deny"
 yanked = "warn"
-notice = "warn"
-
-# ignores RUSTSEC-2020-0159 (chrono) and RUSTSEC-2020-0071 (time) and fixes are available
-ignore = ["RUSTSEC-2020-0071", "RUSTSEC-2020-0159"]
 
 [bans]
+# Duplicate versions are unavoidable in a tonic + prost workspace
+# — allow them and rely on advisory checks for the real risk.
 multiple-versions = "allow"
