@@ -176,4 +176,4 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: cargo deny check
-        run: nix develop .#ci --command cargo deny --log-level warn check --all-features
+        run: nix develop .#ci --command cargo deny --log-level warn --all-features check
