@@ -36,52 +36,54 @@
           sha256 = "0gdjrhiqa2djjam42cdw5m80fcdbq2fcy7bk3jyqv8z9cmmycwby";
         };
 
-        # Daml SDK 3.4.x produces LF 2.x DARs, which is what the
-        # LF2-only `daml-lf` crate consumes. Paired with Canton
-        # 3.5.x for the participant side — the SDK toolchain and
-        # the participant binary track different release trains;
-        # the minor mismatch is fine because `daml build` only
-        # depends on the LF specification, not the participant.
-        damlSdkVersion = "3.4.11";
+        # DPM — the Digital Asset Package Manager — replaces the
+        # deprecated Daml Assistant (`daml`). It is a small,
+        # statically-linked Go launcher: the actual SDK (including
+        # the `dpm build` subcommand that compiles LF2 DARs) is
+        # pulled from an OCI registry into $DPM_HOME (default
+        # `~/.dpm`) on first use via `dpm install`. So unlike the
+        # old self-contained `daml-sdk`, `dpm build` needs network
+        # + a writable home the first time it runs.
+        #
+        # That's an acceptable trade here: the only DAR the repo
+        # builds is the checked-in `daml-lf` fixture, and rebuilding
+        # it is a rare, manual dev-shell task (see
+        # daml-lf/test_resources/README.md) — never part of CI. The
+        # SDK version stays pinned in each project's `daml.yaml`
+        # (`sdk-version:`), which dpm reads directly, so it isn't
+        # duplicated here.
+        dpmVersion = "1.0.21";
 
-        damlSdkSrc = pkgs.fetchurl {
-          url = "https://github.com/digital-asset/daml/releases/download/v${damlSdkVersion}/daml-sdk-${damlSdkVersion}-linux-x86_64.tar.gz";
-          sha256 = "0bf6l6drkblzrdh4yf47c0c745k593jji9lm4nxh29d6mjin4xb0";
+        dpmSrc = pkgs.fetchurl {
+          url = "https://github.com/digital-asset/dpm/releases/download/${dpmVersion}/dpm-${dpmVersion}-linux-amd64.tar.gz";
+          hash = "sha256-cQYePs7gKbyIzPwbUTZ+MlcWLzvZHH7cxoivUD/vXlk=";
         };
 
-        # Daml SDK — exposes `daml build` (and the rest of the
-        # Daml Assistant CLI) for compiling LF2 DARs locally. The
-        # SDK ships a self-contained tree under
-        # $out/share/daml-sdk/<version>; the wrapper script keeps
-        # DAML_SDK / DAML_HOME pointing into that tree so the
-        # toolchain doesn't try to write to `~/.daml`.
-        damlSdk = pkgs.stdenv.mkDerivation {
-          pname = "daml-sdk";
-          version = damlSdkVersion;
-          src = damlSdkSrc;
-          nativeBuildInputs = [ pkgs.makeWrapper pkgs.autoPatchelfHook ];
-          # The bundled JDK / Haskell binaries link against glibc +
-          # libstdc++ + zlib + ncurses; autoPatchelfHook needs
-          # these in scope to rewrite their rpaths.
-          buildInputs = [ pkgs.stdenv.cc.cc.lib pkgs.zlib pkgs.ncurses5 ];
-          # The SDK includes prebuilt Linux ELF binaries; skip the
-          # cross-arch and broken-symlink scans that would
-          # otherwise scrub them.
-          dontStrip = true;
-          dontPatchELF = false;
+        # The launcher is a static ELF, so it needs no autoPatchelf.
+        # The wrapper puts a JDK (17+) on PATH / JAVA_HOME for the
+        # JVM-based SDK components dpm downloads and runs, and points
+        # DPM_REGISTRY at the public OCI registry so `dpm install`
+        # works out of the box from the bare binary.
+        dpm = pkgs.stdenv.mkDerivation {
+          pname = "dpm";
+          version = dpmVersion;
+          src = dpmSrc;
+          # Tarball is a flat bundle: ./dpm, ./LICENSE, ./README.md.
+          sourceRoot = ".";
+          nativeBuildInputs = [ pkgs.makeWrapper ];
+          dontConfigure = true;
+          dontBuild = true;
           installPhase = ''
-            sdkdir="$out/share/daml-sdk/${damlSdkVersion}"
-            mkdir -p "$sdkdir" "$out/bin"
-            cp -r . "$sdkdir/"
-            makeWrapper "$sdkdir/daml/daml" "$out/bin/daml" \
+            install -Dm755 dpm "$out/libexec/dpm/dpm"
+            install -Dm644 LICENSE "$out/share/doc/dpm/LICENSE"
+            makeWrapper "$out/libexec/dpm/dpm" "$out/bin/dpm" \
               --set JAVA_HOME ${pkgs.jdk21}/lib/openjdk \
-              --set DAML_SDK "$sdkdir" \
-              --set DAML_SDK_VERSION "${damlSdkVersion}" \
+              --set DPM_REGISTRY europe-docker.pkg.dev/da-images/public \
               --prefix PATH : ${pkgs.jdk21}/bin
           '';
           meta = {
-            description = "Daml SDK — daml build, daml-assistant, daml-libs";
-            homepage = "https://daml.com/";
+            description = "Digital Asset Package Manager — dpm build and the Daml SDK launcher";
+            homepage = "https://docs.digitalasset.com/build/3.4/dpm/dpm.html";
             license = pkgs.lib.licenses.asl20;
             platforms = [ "x86_64-linux" ];
           };
@@ -139,7 +141,7 @@
       in
       {
         packages = {
-          inherit canton canton-sandbox damlSdk;
+          inherit canton canton-sandbox dpm;
           default = canton-sandbox;
         };
 
@@ -200,8 +202,9 @@
               canton
               canton-sandbox
 
-              # Daml SDK for building LF2 .dar fixtures from .daml sources.
-              damlSdk
+              # DPM for building LF2 .dar fixtures from .daml sources
+              # (`dpm build`; downloads the SDK into ~/.dpm on first use).
+              dpm
 
               # Handy for poking the gRPC surface from the shell.
               grpcurl
@@ -219,12 +222,12 @@
               echo "  protoc:          $(protoc --version)"
               echo "  java:            $(java -version 2>&1 | head -1)"
               echo "  canton:          ${canton}/share/canton (v${cantonVersion})"
-              echo "  daml SDK:        ${damlSdk}/share/daml-sdk/${damlSdkVersion} (v${damlSdkVersion})"
+              echo "  dpm:             ${dpm}/bin/dpm (v${dpmVersion})"
               echo ""
               echo "  Start the sandbox with: canton-sandbox"
               echo "  Ledger API listens on:  localhost:5011"
               echo "  Admin API  listens on:  localhost:5012"
-              echo "  Build a DAR with:       daml build (in a project dir with daml.yaml)"
+              echo "  Build a DAR with:       dpm build (in a project dir with daml.yaml)"
             '';
           };
         };

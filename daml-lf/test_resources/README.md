@@ -14,14 +14,16 @@ that produced it live under [`src/`](src) — see
 
 ## Rebuilding the fixture
 
-The fixture is checked in as a binary because `daml build` needs
+The fixture is checked in as a binary because `dpm build` needs
 the Daml SDK (not the LF2-only `daml-lf` crate). To regenerate
 after editing the `.daml` sources:
 
 ```sh
-# From inside the nix dev shell (daml SDK 3.4.11 is on PATH).
+# From inside the nix dev shell (dpm is on PATH). The first
+# `dpm build` downloads SDK 3.4.11 — the sdk-version pinned in
+# daml.yaml — into ~/.dpm; that step needs network access.
 cd daml-lf/test_resources/src
-daml build
+dpm build
 cp .daml/dist/TestingTypes-3.0.0.dar \
    ../TestingTypes-3_0_0-sdk_3_4_11-lf_2_1.dar
 rm -rf .daml
@@ -54,8 +56,9 @@ dropped key support, and adding a key triggers a
 
 Two reasons:
 
-1. `daml build` needs the Daml SDK on PATH (the repo's `flake.nix`
-   provides it), but most CI runs only depend on the Nix-pinned
+1. `dpm build` needs the Daml SDK (the repo's `flake.nix`
+   provides `dpm`, which fetches the SDK on first use), but most
+   CI runs only depend on the Nix-pinned
    Rust toolchain. Checking the DAR in keeps `cargo test` working
    without spinning up the JVM.
 2. The fixture changes rarely; build-time regeneration would make

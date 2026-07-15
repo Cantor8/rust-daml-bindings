@@ -93,7 +93,7 @@ jobs:
   integration:
     runs-on: ubuntu-latest
     # Pull requests only — never on pushes to main. This is the most
-    # expensive job (cold Canton + Daml SDK closure), so we pay for it
+    # expensive job (cold Canton + JDK closure), so we pay for it
     # once while a change is under review rather than again on every
     # merge. Draft PRs are skipped too, so iterating on a draft doesn't
     # trigger the sandbox boot.
@@ -103,7 +103,7 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
-      # Realize the dev-shell closure (Canton, the JDK, the Daml SDK,
+      # Realize the dev-shell closure (Canton, the JDK, dpm,
       # …) *before* the port-wait timer starts. On a cold runner this
       # fetch is minutes of downloads; folding it into the wait budget
       # below is what made the sandbox look like it "never came up".
