@@ -1,0 +1,87 @@
+on:
+  push:
+    tags:
+      # Plain semver tags like `0.3.0`, matching the existing tag
+      # convention (no `v` prefix). Pre-release / build-metadata
+      # suffixes are intentionally excluded -- widen this if the
+      # project ever cuts `-rc` tags.
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+name: Release
+
+# `publish` cuts the GitHub Release from the pushed tag, so it needs
+# write access to repository contents. The crates.io token comes from
+# the CARGO_REGISTRY_TOKEN repo secret (see the env block below).
+permissions:
+  contents: write
+
+# Like the CI workflow, every step runs inside the flake dev shell
+# (`nix develop .#ci --command …`) so the release build is
+# byte-for-byte reproducible with CI and local development -- most
+# importantly it provides `protoc`, which `cargo publish`'s verify
+# build shells out to when compiling `daml-lf` / `daml-grpc`.
+jobs:
+
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      # `cargo publish` reads this automatically. Add it under
+      # Settings → Secrets and variables → Actions → CARGO_REGISTRY_TOKEN
+      # (a crates.io API token with publish-update scope for an owner
+      # of every daml* crate).
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      # For the `gh release create` step.
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      # Guard: the pushed tag must equal the workspace version, so a
+      # mistyped tag can never publish the wrong number to crates.io
+      # (publishes are irreversible). The umbrella `daml` crate is the
+      # single source of truth -- every member is pinned to the same
+      # version.
+      - name: Verify tag matches crate version
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          crate_ver="$(grep -m1 '^version = ' daml/Cargo.toml | sed -E 's/version = "(.*)"/\1/')"
+          echo "tag=$tag  crate=$crate_ver"
+          if [ "$tag" != "$crate_ver" ]; then
+            echo "::error::tag '$tag' does not match daml crate version '$crate_ver'" >&2
+            exit 1
+          fi
+
+      # Cut the GitHub Release from the tag BEFORE publishing. This is
+      # a deliberate hard gate: if the Release step fails, the job
+      # stops (steps are fail-fast) and nothing is pushed to crates.io.
+      # The body is the matching CHANGELOG section -- everything
+      # between this version's `## [x]` header and the next one.
+      - name: Create GitHub Release
+        run: |
+          notes="$(awk -v h="## [${GITHUB_REF_NAME}]" '
+            $0==h {f=1; next}
+            f && /^## \[/ {exit}
+            f {print}
+          ' CHANGELOG.md)"
+          gh release create "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes "${notes:-Release ${GITHUB_REF_NAME}}"
+
+      # Publish each crate in dependency order (deps before
+      # dependents). `cargo publish` blocks until the just-published
+      # crate is visible in the registry index, so the next dependent
+      # resolves it without manual sleeps. Each publish also runs a
+      # verify build, so a packaging error aborts the release before
+      # anything downstream is pushed. The `daml = { path = … }`
+      # dev-dependencies carry no version requirement, so cargo strips
+      # them on publish and the daml ↔ daml-derive doctest cycle never
+      # blocks resolution.
+      - name: Publish to crates.io
+        run: |
+          for c in daml-lf daml-codegen daml-grpc daml-derive daml-util daml-macro daml; do
+            echo "::group::cargo publish -p $c"
+            nix develop .#ci --command cargo publish -p "$c"
+            echo "::endgroup::"
+          done
