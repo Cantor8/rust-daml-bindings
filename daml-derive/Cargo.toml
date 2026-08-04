@@ -19,7 +19,7 @@ daml-lf = { version = "0.3.0", path = "../daml-lf" }
 syn = { version = "3.0.3", features = ["full"] }
 quote = { workspace = true }
 proc-macro2 = { workspace = true }
-darling = "0.23.0"
+darling = "0.24.0"
 itertools = { workspace = true }
 
 # The v1 attribute/codegen test trees were dropped during the v2
