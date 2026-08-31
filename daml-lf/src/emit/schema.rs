@@ -32,7 +32,30 @@ impl Field {
     }
 }
 
-/// A template: its payload and who sees it.
+/// What a choice returns.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ResultType {
+    Unit,
+    Party,
+    Text,
+    Int64,
+    Bool,
+}
+
+/// A choice's signature. How it behaves is not described: the emitted body
+/// is a stub, because the engine that interprets the template supplies it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Choice {
+    pub name: String,
+    pub consuming: bool,
+    /// Payload fields holding the parties that may exercise it.
+    pub controllers: Vec<String>,
+    /// The choice's own arguments, which become its argument record.
+    pub arguments: Vec<Field>,
+    pub result: ResultType,
+}
+
+/// A template: its payload, who sees it, and what may be exercised on it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Template {
     pub name: String,
@@ -41,6 +64,7 @@ pub struct Template {
     pub signatories: Vec<String>,
     /// Payload fields holding the observers. Each must be a `Party` field.
     pub observers: Vec<String>,
+    pub choices: Vec<Choice>,
 }
 
 /// A module's worth of templates.
@@ -68,7 +92,16 @@ impl Package {
     pub(crate) fn validate(&self) -> DamlLfResult<()> {
         for module in &self.modules {
             for template in &module.templates {
-                for party_field in template.signatories.iter().chain(&template.observers) {
+                let choice_controllers = template
+                    .choices
+                    .iter()
+                    .flat_map(|choice| choice.controllers.iter());
+                for party_field in template
+                    .signatories
+                    .iter()
+                    .chain(&template.observers)
+                    .chain(choice_controllers)
+                {
                     let field = template
                         .fields
                         .iter()

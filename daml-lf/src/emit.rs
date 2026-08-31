@@ -8,4 +8,4 @@ mod build;
 mod schema;
 
 pub use build::{build_archive, encode_archive};
-pub use schema::{Field, FieldType, Module, Package, Template};
+pub use schema::{Choice, Field, FieldType, Module, Package, ResultType, Template};
