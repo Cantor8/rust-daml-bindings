@@ -155,6 +155,9 @@ fn build_module(module: &schema::Module, interner: &mut Interner) -> Module {
     // Each template contributes its payload record, and one record per choice
     // for that choice's arguments.
     let mut data_types = Vec::new();
+    for data in &module.data_types {
+        data_types.push(build_user_data_type(data, interner));
+    }
     for template in &module.templates {
         data_types.push(build_data_type(template, interner));
         for choice in &template.choices {
@@ -447,17 +450,13 @@ fn field_type(ty: &schema::FieldType, interner: &mut Interner) -> Type {
             })],
         ),
         // A contract id is parameterised by the template it points at.
-        schema::FieldType::ContractId(template) => {
-            let segments: Vec<&str> = template.module.split('.').collect();
-            let module_dname = interner.dotted_name(&segments);
-            let con = template_tycon(module_dname, &template.name, interner);
-            (
-                BuiltinType::ContractId,
-                vec![interner.r#type(Type {
-                    sum: Some(r#type::Sum::Con(con)),
-                })],
-            )
-        },
+        schema::FieldType::ContractId(target) => (
+            BuiltinType::ContractId,
+            vec![type_con(target, interner)],
+        ),
+        // A user-defined type is named, not built: its definition stands
+        // beside whatever holds it.
+        schema::FieldType::Data(target) => return type_con(target, interner),
         schema::FieldType::List(inner) => {
             (BuiltinType::List, vec![field_type(inner, interner)])
         },
@@ -485,6 +484,7 @@ mod tests {
             name: "RoadrunnerExample".to_owned(),
             version: "1.0.0".to_owned(),
             modules: vec![SchemaModule {
+                data_types: Vec::new(),
                 name: "Example.Iou".to_owned(),
                 templates: vec![Template {
                     name: "Iou".to_owned(),
@@ -581,4 +581,82 @@ mod tests {
         let error = build_archive(&missing).expect_err("no such field");
         assert!(error.to_string().contains("has no field nobody"));
     }
+}
+
+/// A user-defined type's own definition, which a field naming it needs.
+fn build_user_data_type(data: &schema::DataType, interner: &mut Interner) -> DefDataType {
+    // A name may be dotted — the record behind a variant's named fields is
+    // named after the variant holding it.
+    let segments: Vec<&str> = data.name.split('.').collect();
+    let data_cons = match &data.body {
+        schema::DataBody::Record(fields) => {
+            def_data_type::DataCons::Record(fields_with_types(fields, interner))
+        },
+        schema::DataBody::Variant(ctors) => {
+            let fields = ctors
+                .iter()
+                .map(|ctor| FieldWithType {
+                    field_interned_str: interner.string(&ctor.name),
+                    r#type: Some(field_type(&ctor.payload, interner)),
+                })
+                .collect();
+            def_data_type::DataCons::Variant(def_data_type::Fields { fields })
+        },
+        schema::DataBody::Enum(names) => {
+            def_data_type::DataCons::Enum(def_data_type::EnumConstructors {
+                constructors_interned_str: names
+                    .iter()
+                    .map(|name| interner.string(name))
+                    .collect(),
+            })
+        },
+    };
+
+    DefDataType {
+        location: None,
+        name_interned_dname: interner.dotted_name(&segments),
+        params: Vec::new(),
+        serializable: true,
+        data_cons: Some(data_cons),
+    }
+}
+
+fn fields_with_types(
+    fields: &[schema::Field],
+    interner: &mut Interner,
+) -> def_data_type::Fields {
+    def_data_type::Fields {
+        fields: fields
+            .iter()
+            .map(|field| FieldWithType {
+                field_interned_str: interner.string(&field.name),
+                r#type: Some(field_type(&field.field_type, interner)),
+            })
+            .collect(),
+    }
+}
+
+/// The interned type naming a record, variant, enum or template in this
+/// package.
+fn type_con(target: &schema::TypeRef, interner: &mut Interner) -> Type {
+    let module_segments: Vec<&str> = target.module.split('.').collect();
+    let module_dname = interner.dotted_name(&module_segments);
+    // A name may be dotted: the record behind a variant is named after the
+    // variant holding it.
+    let name_segments: Vec<&str> = target.name.split('.').collect();
+    let con = r#type::Con {
+        tycon: Some(TypeConId {
+            module: Some(ModuleId {
+                package_id: Some(SelfOrImportedPackageId {
+                    sum: Some(self_or_imported_package_id::Sum::SelfPackageId(Unit {})),
+                }),
+                module_name_interned_dname: module_dname,
+            }),
+            name_interned_dname: interner.dotted_name(&name_segments),
+        }),
+        args: Vec::new(),
+    };
+    interner.r#type(Type {
+        sum: Some(r#type::Sum::Con(con)),
+    })
 }

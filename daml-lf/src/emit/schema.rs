@@ -7,10 +7,9 @@
 
 use crate::error::{DamlLfError, DamlLfResult};
 
-/// A template referred to by a contract-id field. The template lives in the
-/// package being built.
+/// A type named by another, which lives in the package being built.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TemplateRef {
+pub struct TypeRef {
     /// Dotted module name, e.g. `Fuji.Asset`.
     pub module: String,
     pub name: String,
@@ -31,7 +30,9 @@ pub enum FieldType {
     Timestamp,
     Date,
     Party,
-    ContractId(TemplateRef),
+    ContractId(TypeRef),
+    /// A record, variant or enum defined in the package.
+    Data(TypeRef),
     List(Box<FieldType>),
     Optional(Box<FieldType>),
 }
@@ -86,6 +87,8 @@ pub struct Module {
     /// Dotted module name, e.g. `Fuji.Asset`.
     pub name: String,
     pub templates: Vec<Template>,
+    /// Types the templates name, defined here.
+    pub data_types: Vec<DataType>,
 }
 
 /// The package to build.
@@ -103,6 +106,7 @@ impl Package {
     /// rejects: a contract disclosed to a field that does not exist, or to one
     /// that does not hold a party.
     pub(crate) fn validate(&self) -> DamlLfResult<()> {
+        self.check_named_types_exist()?;
         for module in &self.modules {
             for template in &module.templates {
                 let choice_controllers = template
@@ -135,5 +139,101 @@ impl Package {
             }
         }
         Ok(())
+    }
+}
+
+/// One constructor of a variant, and what it carries.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Ctor {
+    pub name: String,
+    pub payload: FieldType,
+}
+
+/// What a user-defined type is made of.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DataBody {
+    Record(Vec<Field>),
+    Variant(Vec<Ctor>),
+    /// Constructor names, none of which carry anything.
+    Enum(Vec<String>),
+}
+
+/// A type a template's field may hold, defined so the field can name it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DataType {
+    pub name: String,
+    pub body: DataBody,
+}
+
+impl Package {
+    /// Check every named type is defined here.
+    ///
+    /// A field naming a type the package does not carry is a package a
+    /// participant rejects, so it is caught while the cause is still in hand.
+    fn check_named_types_exist(&self) -> DamlLfResult<()> {
+        let mut defined: Vec<(&str, &str)> = Vec::new();
+        for module in &self.modules {
+            for data in &module.data_types {
+                defined.push((&module.name, &data.name));
+            }
+            for template in &module.templates {
+                defined.push((&module.name, &template.name));
+            }
+        }
+
+        for module in &self.modules {
+            for template in &module.templates {
+                let choice_types = template
+                    .choices
+                    .iter()
+                    .flat_map(|choice| {
+                        choice
+                            .arguments
+                            .iter()
+                            .map(|field| &field.field_type)
+                            .chain(std::iter::once(&choice.result))
+                    });
+                let field_types = template.fields.iter().map(|field| &field.field_type);
+                for ty in field_types.chain(choice_types) {
+                    check_type(ty, &defined)?;
+                }
+            }
+            for data in &module.data_types {
+                match &data.body {
+                    DataBody::Record(fields) => {
+                        for field in fields {
+                            check_type(&field.field_type, &defined)?;
+                        }
+                    },
+                    DataBody::Variant(ctors) => {
+                        for ctor in ctors {
+                            check_type(&ctor.payload, &defined)?;
+                        }
+                    },
+                    DataBody::Enum(_) => (),
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+fn check_type(ty: &FieldType, defined: &[(&str, &str)]) -> DamlLfResult<()> {
+    match ty {
+        FieldType::List(inner) | FieldType::Optional(inner) => check_type(inner, defined),
+        FieldType::ContractId(target) | FieldType::Data(target) => {
+            if defined
+                .iter()
+                .any(|(module, name)| *module == target.module && *name == target.name)
+            {
+                Ok(())
+            } else {
+                Err(DamlLfError::new_package_build_error(format!(
+                    "no type {}:{} in this package",
+                    target.module, target.name
+                )))
+            }
+        },
+        _ => Ok(()),
     }
 }

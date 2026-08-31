@@ -58,6 +58,7 @@ mod tests {
             name: "RoadrunnerExample".to_owned(),
             version: "1.0.0".to_owned(),
             modules: vec![Module {
+                data_types: Vec::new(),
                 name: "Example.Iou".to_owned(),
                 templates: vec![Template {
                     name: "Iou".to_owned(),
