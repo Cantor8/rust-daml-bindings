@@ -12,6 +12,8 @@ pub enum DamlLfError {
     DamlLfConvertError(#[from] DamlLfConvertError),
     #[error("io error: {0}")]
     IoError(#[from] std::io::Error),
+    #[error("cannot build Daml LF package: {0}")]
+    PackageBuildError(String),
     #[error("unknown Daml LF version: {0}")]
     UnknownVersion(String),
     #[error("unsupported Daml LF version: {0}")]
@@ -21,6 +23,10 @@ pub enum DamlLfError {
 impl DamlLfError {
     pub fn new_dar_parse_error(error: impl Into<String>) -> Self {
         DamlLfError::DarParseError(error.into())
+    }
+
+    pub fn new_package_build_error(error: impl Into<String>) -> Self {
+        DamlLfError::PackageBuildError(error.into())
     }
 
     pub fn new_unknown_version(version: impl Into<String>) -> Self {

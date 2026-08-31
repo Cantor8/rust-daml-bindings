@@ -104,6 +104,7 @@
 mod archive;
 mod convert;
 mod dar;
+pub mod emit;
 mod error;
 mod lf_protobuf;
 mod manifest;

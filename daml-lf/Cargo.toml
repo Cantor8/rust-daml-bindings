@@ -19,6 +19,8 @@ full = []
 [dependencies]
 bytes = { workspace = true }
 prost = { workspace = true, features = [ "no-recursion-limit" ] }
+sha2 = "0.10"
+hex = "0.4"
 prost-derive = { workspace = true }
 zip = { version = "8.6.0", default-features = false, features = [ "deflate-flate2-zlib-rs" ] }
 yaml-rust2 = "0.11.0"
