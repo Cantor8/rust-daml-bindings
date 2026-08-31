@@ -26,9 +26,6 @@ use super::schema;
 /// The LF version the emitted packages declare.
 const LF_MAJOR_MINOR: &str = "1";
 
-/// The name given to the emitted archive.
-const ARCHIVE_NAME: &str = "roadrunner";
-
 /// Collects the package's name tables, handing out the indices names are
 /// referred to by.
 #[derive(Default)]
@@ -70,6 +67,18 @@ impl Interner {
 /// The archive's hash is its package id: the identity a participant knows the
 /// templates by.
 pub fn build_archive(package: &schema::Package) -> DamlLfResult<DamlLfArchive> {
+    let (payload_bytes, hash) = build_payload(package)?;
+    let payload = DamlLfArchivePayload::from_bytes(payload_bytes)?;
+    Ok(DamlLfArchive::new(
+        package.name.clone(),
+        payload,
+        DamlLfHashFunction::Sha256,
+        hash,
+    ))
+}
+
+/// The serialized payload of `package` and the hash naming it.
+pub(crate) fn build_payload(package: &schema::Package) -> DamlLfResult<(Vec<u8>, String)> {
     package.validate()?;
 
     let mut interner = Interner::default();
@@ -104,21 +113,15 @@ pub fn build_archive(package: &schema::Package) -> DamlLfResult<DamlLfArchive> {
     .encode_to_vec();
 
     let hash = hex::encode(Sha256::digest(&payload_bytes));
-    let payload = DamlLfArchivePayload::from_bytes(payload_bytes)?;
-    Ok(DamlLfArchive::new(
-        ARCHIVE_NAME,
-        payload,
-        DamlLfHashFunction::Sha256,
-        hash,
-    ))
+    Ok((payload_bytes, hash))
 }
 
-/// Serialize an archive to the bytes a participant reads.
-pub fn encode_archive(archive: &DamlLfArchive, payload_bytes: Vec<u8>) -> Vec<u8> {
+/// Serialize the archive envelope a participant reads.
+pub(crate) fn encode_archive(payload_bytes: Vec<u8>, hash: &str) -> Vec<u8> {
     Archive {
         hash_function: HashFunction::Sha256 as i32,
         payload: payload_bytes,
-        hash: archive.hash.clone(),
+        hash: hash.to_owned(),
     }
     .encode_to_vec()
 }

@@ -454,6 +454,7 @@ dependencies = [
  "prost-derive",
  "serde",
  "sha2",
+ "tempfile",
  "thiserror",
  "trim-margin",
  "yaml-rust2",

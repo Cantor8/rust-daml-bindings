@@ -30,6 +30,7 @@ thiserror = { workspace = true }
 bounded-static = { version = "0.8.0", features = [ "derive" ] }
 
 [dev-dependencies]
+tempfile = "3"
 trim-margin = "0.1.0"
 
 [build-dependencies]

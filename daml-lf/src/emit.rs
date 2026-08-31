@@ -5,7 +5,9 @@
 //! order to type, store and project their contracts.
 
 mod build;
+mod dar;
 mod schema;
 
-pub use build::{build_archive, encode_archive};
+pub use build::build_archive;
+pub use dar::build_dar;
 pub use schema::{Choice, Field, FieldType, Module, Package, ResultType, Template};
