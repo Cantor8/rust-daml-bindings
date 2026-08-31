@@ -34,6 +34,8 @@ struct Interner {
     string_indices: HashMap<String, i32>,
     dotted_names: Vec<InternedDottedName>,
     dotted_indices: HashMap<Vec<i32>, i32>,
+    types: Vec<Type>,
+    type_indices: HashMap<Vec<u8>, i32>,
 }
 
 impl Interner {
@@ -45,6 +47,26 @@ impl Interner {
         self.strings.push(value.to_owned());
         self.string_indices.insert(value.to_owned(), index);
         index
+    }
+
+    /// Intern a type and return a reference to it.
+    ///
+    /// Types may only appear in a package through this table, so every type a
+    /// definition mentions goes through here.
+    fn r#type(&mut self, value: Type) -> Type {
+        let key = value.encode_to_vec();
+        let index = match self.type_indices.get(&key) {
+            Some(index) => *index,
+            None => {
+                let index = self.types.len() as i32;
+                self.types.push(value);
+                self.type_indices.insert(key, index);
+                index
+            },
+        };
+        Type {
+            sum: Some(r#type::Sum::InternedType(index)),
+        }
     }
 
     /// Intern a dotted name, e.g. a module name or a data type's name.
@@ -99,7 +121,7 @@ pub(crate) fn build_payload(package: &schema::Package) -> DamlLfResult<(Vec<u8>,
         interned_strings: interner.strings,
         interned_dotted_names: interner.dotted_names,
         metadata: Some(metadata),
-        interned_types: Vec::new(),
+        interned_types: interner.types,
         interned_kinds: Vec::new(),
         interned_exprs: Vec::new(),
         imports_sum: None,
@@ -169,7 +191,7 @@ fn build_data_type(template: &schema::Template, interner: &mut Interner) -> DefD
         .iter()
         .map(|field| FieldWithType {
             field_interned_str: interner.string(&field.name),
-            r#type: Some(field_type(&field.field_type)),
+            r#type: Some(field_type(&field.field_type, interner)),
         })
         .collect();
 
@@ -230,12 +252,7 @@ fn party_list(
     module_dname: i32,
     interner: &mut Interner,
 ) -> Expr {
-    let party = Type {
-        sum: Some(r#type::Sum::Builtin(r#type::Builtin {
-            builtin: BuiltinType::Party as i32,
-            args: Vec::new(),
-        })),
-    };
+    let party = party_type(interner);
     let nil = Expr {
         location: None,
         sum: Some(expr::Sum::Nil(expr::Nil {
@@ -281,7 +298,7 @@ fn build_choice_data_type(choice: &schema::Choice, interner: &mut Interner) -> D
         .iter()
         .map(|field| FieldWithType {
             field_interned_str: interner.string(&field.name),
-            r#type: Some(field_type(&field.field_type)),
+            r#type: Some(field_type(&field.field_type, interner)),
         })
         .collect();
 
@@ -303,7 +320,7 @@ fn build_choice(
     module_dname: i32,
     interner: &mut Interner,
 ) -> TemplateChoice {
-    let ret_type = result_type(&choice.result);
+    let ret_type = result_type(&choice.result, interner);
     TemplateChoice {
         location: None,
         name_interned_str: interner.string(&choice.name),
@@ -315,15 +332,14 @@ fn build_choice(
             module_dname,
             interner,
         )),
-        observers: Some(empty_party_list()),
+        observers: Some(empty_party_list(interner)),
         arg_binder: Some(VarWithType {
             var_interned_str: interner.string("arg"),
-            r#type: Some(Type {
-                sum: Some(r#type::Sum::Con(template_tycon(
-                    module_dname,
-                    &choice.name,
-                    interner,
-                ))),
+            r#type: Some({
+                let con = template_tycon(module_dname, &choice.name, interner);
+                interner.r#type(Type {
+                    sum: Some(r#type::Sum::Con(con)),
+                })
             }),
         }),
         ret_type: Some(ret_type.clone()),
@@ -339,12 +355,12 @@ fn build_choice(
 /// interprets the template runs the choice. Should something reach this body,
 /// failing loudly beats behaving as though the choice did nothing.
 fn stub_body(ret_type: &Type, choice_name: &str, interner: &mut Interner) -> Expr {
-    let update_ret = Type {
+    let update_ret = interner.r#type(Type {
         sum: Some(r#type::Sum::Builtin(r#type::Builtin {
             builtin: BuiltinType::Update as i32,
             args: vec![ret_type.clone()],
         })),
-    };
+    });
     let error = Expr {
         location: None,
         sum: Some(expr::Sum::Builtin(BuiltinFunction::Error as i32)),
@@ -373,25 +389,25 @@ fn stub_body(ret_type: &Type, choice_name: &str, interner: &mut Interner) -> Exp
     }
 }
 
-fn empty_party_list() -> Expr {
+fn empty_party_list(interner: &mut Interner) -> Expr {
     Expr {
         location: None,
         sum: Some(expr::Sum::Nil(expr::Nil {
-            r#type: Some(party_type()),
+            r#type: Some(party_type(interner)),
         })),
     }
 }
 
-fn party_type() -> Type {
-    Type {
+fn party_type(interner: &mut Interner) -> Type {
+    interner.r#type(Type {
         sum: Some(r#type::Sum::Builtin(r#type::Builtin {
             builtin: BuiltinType::Party as i32,
             args: Vec::new(),
         })),
-    }
+    })
 }
 
-fn result_type(result: &schema::ResultType) -> Type {
+fn result_type(result: &schema::ResultType, interner: &mut Interner) -> Type {
     let builtin = match result {
         schema::ResultType::Unit => BuiltinType::Unit,
         schema::ResultType::Party => BuiltinType::Party,
@@ -399,12 +415,12 @@ fn result_type(result: &schema::ResultType) -> Type {
         schema::ResultType::Int64 => BuiltinType::Int64,
         schema::ResultType::Bool => BuiltinType::Bool,
     };
-    Type {
+    interner.r#type(Type {
         sum: Some(r#type::Sum::Builtin(r#type::Builtin {
             builtin: builtin as i32,
             args: Vec::new(),
         })),
-    }
+    })
 }
 /// The type constructor naming a template's record, within this package.
 fn template_tycon(
@@ -426,19 +442,19 @@ fn template_tycon(
     }
 }
 
-fn field_type(field_type: &schema::FieldType) -> Type {
+fn field_type(field_type: &schema::FieldType, interner: &mut Interner) -> Type {
     let builtin = match field_type {
         schema::FieldType::Party => BuiltinType::Party,
         schema::FieldType::Text => BuiltinType::Text,
         schema::FieldType::Int64 => BuiltinType::Int64,
         schema::FieldType::Bool => BuiltinType::Bool,
     };
-    Type {
+    interner.r#type(Type {
         sum: Some(r#type::Sum::Builtin(r#type::Builtin {
             builtin: builtin as i32,
             args: Vec::new(),
         })),
-    }
+    })
 }
 
 #[cfg(test)]
