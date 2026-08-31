@@ -320,7 +320,7 @@ fn build_choice(
     module_dname: i32,
     interner: &mut Interner,
 ) -> TemplateChoice {
-    let ret_type = result_type(&choice.result, interner);
+    let ret_type = field_type(&choice.result, interner);
     TemplateChoice {
         location: None,
         name_interned_str: interner.string(&choice.name),
@@ -407,21 +407,6 @@ fn party_type(interner: &mut Interner) -> Type {
     })
 }
 
-fn result_type(result: &schema::ResultType, interner: &mut Interner) -> Type {
-    let builtin = match result {
-        schema::ResultType::Unit => BuiltinType::Unit,
-        schema::ResultType::Party => BuiltinType::Party,
-        schema::ResultType::Text => BuiltinType::Text,
-        schema::ResultType::Int64 => BuiltinType::Int64,
-        schema::ResultType::Bool => BuiltinType::Bool,
-    };
-    interner.r#type(Type {
-        sum: Some(r#type::Sum::Builtin(r#type::Builtin {
-            builtin: builtin as i32,
-            args: Vec::new(),
-        })),
-    })
-}
 /// The type constructor naming a template's record, within this package.
 fn template_tycon(
     module_dname: i32,
@@ -442,17 +427,48 @@ fn template_tycon(
     }
 }
 
-fn field_type(field_type: &schema::FieldType, interner: &mut Interner) -> Type {
-    let builtin = match field_type {
-        schema::FieldType::Party => BuiltinType::Party,
-        schema::FieldType::Text => BuiltinType::Text,
-        schema::FieldType::Int64 => BuiltinType::Int64,
-        schema::FieldType::Bool => BuiltinType::Bool,
+/// The scale Daml's `Decimal` fixes `Numeric` at.
+const DECIMAL_SCALE: i64 = 10;
+
+fn field_type(ty: &schema::FieldType, interner: &mut Interner) -> Type {
+    let (builtin, args) = match ty {
+        schema::FieldType::Unit => (BuiltinType::Unit, Vec::new()),
+        schema::FieldType::Bool => (BuiltinType::Bool, Vec::new()),
+        schema::FieldType::Int64 => (BuiltinType::Int64, Vec::new()),
+        schema::FieldType::Text => (BuiltinType::Text, Vec::new()),
+        schema::FieldType::Timestamp => (BuiltinType::Timestamp, Vec::new()),
+        schema::FieldType::Date => (BuiltinType::Date, Vec::new()),
+        schema::FieldType::Party => (BuiltinType::Party, Vec::new()),
+        // A numeric carries its scale as a type argument.
+        schema::FieldType::Numeric => (
+            BuiltinType::Numeric,
+            vec![interner.r#type(Type {
+                sum: Some(r#type::Sum::Nat(DECIMAL_SCALE)),
+            })],
+        ),
+        // A contract id is parameterised by the template it points at.
+        schema::FieldType::ContractId(template) => {
+            let segments: Vec<&str> = template.module.split('.').collect();
+            let module_dname = interner.dotted_name(&segments);
+            let con = template_tycon(module_dname, &template.name, interner);
+            (
+                BuiltinType::ContractId,
+                vec![interner.r#type(Type {
+                    sum: Some(r#type::Sum::Con(con)),
+                })],
+            )
+        },
+        schema::FieldType::List(inner) => {
+            (BuiltinType::List, vec![field_type(inner, interner)])
+        },
+        schema::FieldType::Optional(inner) => {
+            (BuiltinType::Optional, vec![field_type(inner, interner)])
+        },
     };
     interner.r#type(Type {
         sum: Some(r#type::Sum::Builtin(r#type::Builtin {
             builtin: builtin as i32,
-            args: Vec::new(),
+            args,
         })),
     })
 }

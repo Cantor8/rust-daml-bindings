@@ -7,14 +7,37 @@
 
 use crate::error::{DamlLfError, DamlLfResult};
 
-/// A field's type, limited to what a template payload can hold today.
+/// A template referred to by a contract-id field. The template lives in the
+/// package being built.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TemplateRef {
+    /// Dotted module name, e.g. `Fuji.Asset`.
+    pub module: String,
+    pub name: String,
+}
+
+/// A field's type.
+///
+/// Covers a builtin, or a builtin applied to another such type. A field
+/// holding a record, variant or enum would need that type defined alongside
+/// it, which a package built this way does not carry.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FieldType {
-    Party,
-    Text,
-    Int64,
+    Unit,
     Bool,
+    Int64,
+    Numeric,
+    Text,
+    Timestamp,
+    Date,
+    Party,
+    ContractId(TemplateRef),
+    List(Box<FieldType>),
+    Optional(Box<FieldType>),
 }
+
+/// What a choice returns, which is drawn from the same vocabulary as a field.
+pub type ResultType = FieldType;
 
 /// One field of a template's payload.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -30,16 +53,6 @@ impl Field {
             field_type,
         }
     }
-}
-
-/// What a choice returns.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ResultType {
-    Unit,
-    Party,
-    Text,
-    Int64,
-    Bool,
 }
 
 /// A choice's signature. How it behaves is not described: the emitted body
