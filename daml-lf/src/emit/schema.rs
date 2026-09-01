@@ -25,7 +25,8 @@ pub enum FieldType {
     Unit,
     Bool,
     Int64,
-    Numeric,
+    /// A number, and the scale it is held at.
+    Numeric(u8),
     Text,
     Timestamp,
     Date,
@@ -235,8 +236,16 @@ impl Package {
     }
 }
 
+/// The widest scale a Daml number may be held at.
+const MAX_NUMERIC_SCALE: u8 = 37;
+
 fn check_type(ty: &FieldType, defined: &[(&str, &str)]) -> DamlLfResult<()> {
     match ty {
+        FieldType::Numeric(scale) if *scale > MAX_NUMERIC_SCALE => {
+            Err(DamlLfError::new_package_build_error(format!(
+                "a number is held at scale {scale}, and {MAX_NUMERIC_SCALE} is the widest"
+            )))
+        },
         FieldType::List(inner) | FieldType::Optional(inner) | FieldType::TextMap(inner) =>
             check_type(inner, defined),
         FieldType::GenMap(key, value) => {

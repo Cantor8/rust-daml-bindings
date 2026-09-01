@@ -479,9 +479,6 @@ fn template_tycon(
     }
 }
 
-/// The scale Daml's `Decimal` fixes `Numeric` at.
-const DECIMAL_SCALE: i64 = 10;
-
 fn field_type(ty: &schema::FieldType, interner: &mut Interner) -> Type {
     let (builtin, args) = match ty {
         schema::FieldType::Unit => (BuiltinType::Unit, Vec::new()),
@@ -492,10 +489,10 @@ fn field_type(ty: &schema::FieldType, interner: &mut Interner) -> Type {
         schema::FieldType::Date => (BuiltinType::Date, Vec::new()),
         schema::FieldType::Party => (BuiltinType::Party, Vec::new()),
         // A numeric carries its scale as a type argument.
-        schema::FieldType::Numeric => (
+        schema::FieldType::Numeric(scale) => (
             BuiltinType::Numeric,
             vec![interner.r#type(Type {
-                sum: Some(r#type::Sum::Nat(DECIMAL_SCALE)),
+                sum: Some(r#type::Sum::Nat(i64::from(*scale))),
             })],
         ),
         // A contract id is parameterised by the template it points at.
