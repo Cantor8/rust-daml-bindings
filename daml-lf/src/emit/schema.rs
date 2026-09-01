@@ -69,6 +69,17 @@ pub struct Choice {
     pub result: ResultType,
 }
 
+/// A template.s contract key: what type it is.
+///
+/// How the key and its maintainers are computed is not described, for the
+/// same reason a choice.s behaviour is not: the engine that interprets the
+/// template works them out. The type is what a participant needs, to read a
+/// key value it is given.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TemplateKey {
+    pub key_type: FieldType,
+}
+
 /// A template: its payload, who sees it, and what may be exercised on it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Template {
@@ -79,6 +90,8 @@ pub struct Template {
     /// Payload fields holding the observers. Each must be a `Party` field.
     pub observers: Vec<String>,
     pub choices: Vec<Choice>,
+    /// The contract key, when the template has one.
+    pub key: Option<TemplateKey>,
 }
 
 /// A module's worth of templates.

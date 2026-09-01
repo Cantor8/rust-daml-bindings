@@ -13,7 +13,8 @@ use crate::archive::{DamlLfArchive, DamlLfHashFunction};
 use crate::error::DamlLfResult;
 use crate::lf_protobuf::daml_lf::{archive_payload, Archive, ArchivePayload, HashFunction};
 use crate::lf_protobuf::daml_lf_2::{
-    builtin_lit, def_data_type, expr, r#type, self_or_imported_package_id, BuiltinFunction,
+    builtin_lit, def_data_type, def_template, expr, r#type, self_or_imported_package_id,
+    BuiltinFunction,
     BuiltinLit, BuiltinType, DefDataType, DefTemplate, Expr, FeatureFlags, FieldWithType,
     InternedDottedName,
     Module, ModuleId, Package, PackageMetadata, SelfOrImportedPackageId, TemplateChoice, Type,
@@ -23,8 +24,11 @@ use crate::payload::DamlLfArchivePayload;
 
 use super::schema;
 
-/// The LF version the emitted packages declare.
-const LF_MAJOR_MINOR: &str = "1";
+/// The Daml-LF 2 minor version the emitted packages declare.
+///
+/// Contract keys need this much, and from 2.2 a type is applied rather than
+/// carrying its arguments inline, so one version keeps one encoding.
+const LF_MINOR: &str = "3";
 
 /// Collects the package's name tables, handing out the indices names are
 /// referred to by.
@@ -128,7 +132,7 @@ pub(crate) fn build_payload(package: &schema::Package) -> DamlLfResult<(Vec<u8>,
     };
 
     let payload_bytes = ArchivePayload {
-        minor: LF_MAJOR_MINOR.to_owned(),
+        minor: LF_MINOR.to_owned(),
         patch: 0,
         sum: Some(archive_payload::Sum::DamlLf2(lf_package.encode_to_vec())),
     }
@@ -243,7 +247,61 @@ fn build_template(
             .map(|choice| build_choice(choice, template, param, module_dname, interner))
             .collect(),
         implements: Vec::new(),
-        key: None,
+        key: template
+            .key
+            .as_ref()
+            .map(|key| build_key(key, interner)),
+    }
+}
+
+/// A template.s key: its type, and stubs for how it and its maintainers are
+/// worked out.
+///
+/// The expressions are stubs for the same reason a choice.s body is: whoever
+/// interprets the template computes them, and a participant reads the type.
+fn build_key(key: &schema::TemplateKey, interner: &mut Interner) -> def_template::DefKey {
+    let key_type = field_type(&key.key_type, interner);
+    let party = party_type(interner);
+    let list = builtin(BuiltinType::List, interner);
+    let party_list_type = applied(list, vec![party], interner);
+    let arrow = builtin(BuiltinType::Arrow, interner);
+    let maintainers_type = applied(arrow, vec![key_type.clone(), party_list_type], interner);
+    def_template::DefKey {
+        r#type: Some(key_type.clone()),
+        key_expr: Some(stub_expr(&key_type, "the engine computes this key", interner)),
+        maintainers: Some(stub_expr(
+            &maintainers_type,
+            "the engine computes this key.s maintainers",
+            interner,
+        )),
+    }
+}
+
+/// `error  "message"` — an expression of the right type that stands in for
+/// one only an interpreter needs.
+fn stub_expr(ty: &Type, message: &str, interner: &mut Interner) -> Expr {
+    let error = Expr {
+        location: None,
+        sum: Some(expr::Sum::Builtin(BuiltinFunction::Error as i32)),
+    };
+    let error_at_type = Expr {
+        location: None,
+        sum: Some(expr::Sum::TyApp(Box::new(expr::TyApp {
+            expr: Some(Box::new(error)),
+            types: vec![ty.clone()],
+        }))),
+    };
+    Expr {
+        location: None,
+        sum: Some(expr::Sum::App(Box::new(expr::App {
+            fun: Some(Box::new(error_at_type)),
+            args: vec![Expr {
+                location: None,
+                sum: Some(expr::Sum::BuiltinLit(BuiltinLit {
+                    sum: Some(builtin_lit::Sum::TextInternedStr(interner.string(message))),
+                })),
+            }],
+        }))),
     }
 }
 
@@ -358,12 +416,8 @@ fn build_choice(
 /// interprets the template runs the choice. Should something reach this body,
 /// failing loudly beats behaving as though the choice did nothing.
 fn stub_body(ret_type: &Type, choice_name: &str, interner: &mut Interner) -> Expr {
-    let update_ret = interner.r#type(Type {
-        sum: Some(r#type::Sum::Builtin(r#type::Builtin {
-            builtin: BuiltinType::Update as i32,
-            args: vec![ret_type.clone()],
-        })),
-    });
+    let update = builtin(BuiltinType::Update, interner);
+    let update_ret = applied(update, vec![ret_type.clone()], interner);
     let error = Expr {
         location: None,
         sum: Some(expr::Sum::Builtin(BuiltinFunction::Error as i32)),
@@ -402,12 +456,7 @@ fn empty_party_list(interner: &mut Interner) -> Expr {
 }
 
 fn party_type(interner: &mut Interner) -> Type {
-    interner.r#type(Type {
-        sum: Some(r#type::Sum::Builtin(r#type::Builtin {
-            builtin: BuiltinType::Party as i32,
-            args: Vec::new(),
-        })),
-    })
+    builtin(BuiltinType::Party, interner)
 }
 
 /// The type constructor naming a template's record, within this package.
@@ -464,12 +513,8 @@ fn field_type(ty: &schema::FieldType, interner: &mut Interner) -> Type {
             (BuiltinType::Optional, vec![field_type(inner, interner)])
         },
     };
-    interner.r#type(Type {
-        sum: Some(r#type::Sum::Builtin(r#type::Builtin {
-            builtin: builtin as i32,
-            args,
-        })),
-    })
+    let base = self::builtin(builtin, interner);
+    applied(base, args, interner)
 }
 
 #[cfg(test)]
@@ -487,6 +532,7 @@ mod tests {
                 data_types: Vec::new(),
                 name: "Example.Iou".to_owned(),
                 templates: vec![Template {
+                    key: None,
                     name: "Iou".to_owned(),
                     fields: vec![
                         Field::new("issuer", FieldType::Party),
@@ -634,6 +680,31 @@ fn fields_with_types(
             })
             .collect(),
     }
+}
+
+/// A builtin type on its own.
+fn builtin(builtin: BuiltinType, interner: &mut Interner) -> Type {
+    interner.r#type(Type {
+        sum: Some(r#type::Sum::Builtin(r#type::Builtin {
+            builtin: builtin as i32,
+            args: Vec::new(),
+        })),
+    })
+}
+
+/// A type applied to arguments, one at a time.
+///
+/// The arguments used to hang off the type itself; since 2.2 they are applied
+/// as they are written, so `List Party` is `List` applied to `Party`.
+fn applied(base: Type, args: Vec<Type>, interner: &mut Interner) -> Type {
+    args.into_iter().fold(base, |lhs, rhs| {
+        interner.r#type(Type {
+            sum: Some(r#type::Sum::Tapp(Box::new(r#type::TApp {
+                lhs: Some(Box::new(lhs)),
+                rhs: Some(Box::new(rhs)),
+            }))),
+        })
+    })
 }
 
 /// The interned type naming a record, variant, enum or template in this

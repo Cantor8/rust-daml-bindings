@@ -61,6 +61,7 @@ mod tests {
                 data_types: Vec::new(),
                 name: "Example.Iou".to_owned(),
                 templates: vec![Template {
+                    key: None,
                     name: "Iou".to_owned(),
                     fields: vec![
                         Field::new("issuer", FieldType::Party),
