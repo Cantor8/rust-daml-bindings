@@ -18,6 +18,8 @@ pub enum LanguageVersion {
 impl LanguageVersion {
     /// LF 2.1 — the first stable LF2 minor version.
     pub const V2_1: LanguageVersion = LanguageVersion::Lv2(LanguageV2MinorVersion::V1);
+    /// LF 2.3 — the minor version contract keys returned in.
+    pub const V2_3: LanguageVersion = LanguageVersion::Lv2(LanguageV2MinorVersion::V3);
     /// LF 2.dev — staging area for the next LF2 minor version.
     pub const V2_DEV: LanguageVersion = LanguageVersion::Lv2(LanguageV2MinorVersion::Dev);
 
@@ -42,6 +44,8 @@ impl Display for LanguageVersion {
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Serialize, ToStatic)]
 pub enum LanguageV2MinorVersion {
     V1,
+    V2,
+    V3,
     Dev,
 }
 
@@ -49,6 +53,8 @@ impl Display for LanguageV2MinorVersion {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match *self {
             LanguageV2MinorVersion::V1 => write!(f, "1"),
+            LanguageV2MinorVersion::V2 => write!(f, "2"),
+            LanguageV2MinorVersion::V3 => write!(f, "3"),
             LanguageV2MinorVersion::Dev => write!(f, "dev"),
         }
     }
@@ -60,6 +66,8 @@ impl TryFrom<&str> for LanguageV2MinorVersion {
     fn try_from(minor_version: &str) -> Result<Self, Self::Error> {
         match minor_version {
             "1" => Ok(LanguageV2MinorVersion::V1),
+            "2" => Ok(LanguageV2MinorVersion::V2),
+            "3" => Ok(LanguageV2MinorVersion::V3),
             "dev" => Ok(LanguageV2MinorVersion::Dev),
             _ => Err(DamlLfError::new_unknown_version(minor_version)),
         }
