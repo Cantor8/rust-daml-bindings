@@ -16,6 +16,7 @@ use crate::lf_protobuf::daml_lf_2::{
     builtin_lit, def_data_type, def_template, expr, r#type, self_or_imported_package_id,
     BuiltinFunction,
     BuiltinLit, BuiltinType, DefDataType, DefInterface, DefTemplate, Expr, FeatureFlags,
+    InterfaceInstanceBody,
     FieldWithType,
     InternedDottedName,
     Module, ModuleId, Package, PackageMetadata, SelfOrImportedPackageId, TemplateChoice, Type,
@@ -265,7 +266,11 @@ fn build_template(
             .iter()
             .map(|choice| build_choice(choice, template, param, module_dname, interner))
             .collect(),
-        implements: Vec::new(),
+        implements: template
+            .implements
+            .iter()
+            .map(|implemented| build_implements(implemented, interner))
+            .collect(),
         key: template
             .key
             .as_ref()
@@ -558,6 +563,7 @@ mod tests {
                 name: "Example.Iou".to_owned(),
                 templates: vec![Template {
                     key: None,
+                    implements: Vec::new(),
                     name: "Iou".to_owned(),
                     fields: vec![
                         Field::new("issuer", FieldType::Party),
@@ -651,6 +657,45 @@ mod tests {
         missing.modules[0].templates[0].observers = vec!["nobody".to_owned()];
         let error = build_archive(&missing).expect_err("no such field");
         assert!(error.to_string().contains("has no field nobody"));
+    }
+}
+
+/// The identity of a type in this package, named rather than applied.
+fn type_con_id(target: &schema::TypeRef, interner: &mut Interner) -> TypeConId {
+    let module_segments: Vec<&str> = target.module.split('.').collect();
+    let name_segments: Vec<&str> = target.name.split('.').collect();
+    TypeConId {
+        module: Some(ModuleId {
+            package_id: Some(SelfOrImportedPackageId {
+                sum: Some(self_or_imported_package_id::Sum::SelfPackageId(Unit {})),
+            }),
+            module_name_interned_dname: interner.dotted_name(&module_segments),
+        }),
+        name_interned_dname: interner.dotted_name(&name_segments),
+    }
+}
+
+/// A template presenting itself as an interface.
+///
+/// What the view is computed from is a stub, for the same reason a choice's
+/// body is: whoever interprets the template works it out. A participant asked
+/// for the view of such a contract will find nothing to run.
+fn build_implements(
+    implemented: &schema::Implemented,
+    interner: &mut Interner,
+) -> def_template::Implements {
+    let view_type = field_type(&implemented.view, interner);
+    def_template::Implements {
+        interface: Some(type_con_id(&implemented.interface, interner)),
+        body: Some(InterfaceInstanceBody {
+            methods: Vec::new(),
+            view: Some(stub_expr(
+                &view_type,
+                "the engine computes this view",
+                interner,
+            )),
+        }),
+        location: None,
     }
 }
 

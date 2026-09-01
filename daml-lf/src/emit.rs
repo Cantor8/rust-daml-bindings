@@ -11,6 +11,7 @@ mod schema;
 pub use build::build_archive;
 pub use dar::build_dar;
 pub use schema::{
-    Choice, Ctor, DataBody, DataType, Field, FieldType, Interface, Module, Package, ResultType,
+    Choice, Ctor, DataBody, DataType, Field, FieldType, Implemented, Interface, Module, Package,
+    ResultType,
     Template, TemplateKey, TypeRef,
 };

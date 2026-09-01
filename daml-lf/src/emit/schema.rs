@@ -87,6 +87,15 @@ pub struct TemplateKey {
     pub key_type: FieldType,
 }
 
+/// An interface a template presents itself as, and the type of the view it
+/// presents as one. The view's type is repeated here so an instance states
+/// what it produces without looking the interface up.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Implemented {
+    pub interface: TypeRef,
+    pub view: FieldType,
+}
+
 /// An interface a contract id may point at, and the view it presents.
 ///
 /// What the view is computed from is not here: that belongs to whichever
@@ -109,6 +118,8 @@ pub struct Template {
     pub choices: Vec<Choice>,
     /// The contract key, when the template has one.
     pub key: Option<TemplateKey>,
+    /// Interfaces this template presents itself as.
+    pub implements: Vec<Implemented>,
 }
 
 /// A module's worth of templates.
@@ -231,6 +242,10 @@ impl Package {
                 let field_types = template.fields.iter().map(|field| &field.field_type);
                 for ty in field_types.chain(choice_types) {
                     check_type(ty, &defined)?;
+                }
+                for implemented in &template.implements {
+                    check_type(&FieldType::Data(implemented.interface.clone()), &defined)?;
+                    check_type(&implemented.view, &defined)?;
                 }
             }
             for data in &module.data_types {

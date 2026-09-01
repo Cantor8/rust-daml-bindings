@@ -63,6 +63,7 @@ mod tests {
                 name: "Example.Iou".to_owned(),
                 templates: vec![Template {
                     key: None,
+                    implements: Vec::new(),
                     name: "Iou".to_owned(),
                     fields: vec![
                         Field::new("issuer", FieldType::Party),
