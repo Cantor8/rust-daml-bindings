@@ -32,6 +32,8 @@ pub enum FieldType {
     Date,
     Party,
     ContractId(TypeRef),
+    /// A contract id pointing at an interface rather than a template.
+    InterfaceContractId(TypeRef),
     /// A record, variant or enum defined in the package.
     Data(TypeRef),
     List(Box<FieldType>),
@@ -85,6 +87,16 @@ pub struct TemplateKey {
     pub key_type: FieldType,
 }
 
+/// An interface a contract id may point at, and the view it presents.
+///
+/// What the view is computed from is not here: that belongs to whichever
+/// template implements it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Interface {
+    pub name: String,
+    pub view: FieldType,
+}
+
 /// A template: its payload, who sees it, and what may be exercised on it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Template {
@@ -107,6 +119,8 @@ pub struct Module {
     pub templates: Vec<Template>,
     /// Types the templates name, defined here.
     pub data_types: Vec<DataType>,
+    /// Interfaces the templates point at, defined here.
+    pub interfaces: Vec<Interface>,
 }
 
 /// The package to build.
@@ -194,6 +208,9 @@ impl Package {
             for data in &module.data_types {
                 defined.push((&module.name, &data.name));
             }
+            for interface in &module.interfaces {
+                defined.push((&module.name, &interface.name));
+            }
             for template in &module.templates {
                 defined.push((&module.name, &template.name));
             }
@@ -251,7 +268,9 @@ fn check_type(ty: &FieldType, defined: &[(&str, &str)]) -> DamlLfResult<()> {
         FieldType::GenMap(key, value) => {
             check_type(key, defined).and_then(|()| check_type(value, defined))
         },
-        FieldType::ContractId(target) | FieldType::Data(target) => {
+        FieldType::ContractId(target)
+        | FieldType::InterfaceContractId(target)
+        | FieldType::Data(target) => {
             if defined
                 .iter()
                 .any(|(module, name)| *module == target.module && *name == target.name)

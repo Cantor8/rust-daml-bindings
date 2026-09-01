@@ -59,6 +59,7 @@ mod tests {
             version: "1.0.0".to_owned(),
             modules: vec![Module {
                 data_types: Vec::new(),
+                interfaces: Vec::new(),
                 name: "Example.Iou".to_owned(),
                 templates: vec![Template {
                     key: None,

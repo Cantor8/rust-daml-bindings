@@ -15,7 +15,8 @@ use crate::lf_protobuf::daml_lf::{archive_payload, Archive, ArchivePayload, Hash
 use crate::lf_protobuf::daml_lf_2::{
     builtin_lit, def_data_type, def_template, expr, r#type, self_or_imported_package_id,
     BuiltinFunction,
-    BuiltinLit, BuiltinType, DefDataType, DefTemplate, Expr, FeatureFlags, FieldWithType,
+    BuiltinLit, BuiltinType, DefDataType, DefInterface, DefTemplate, Expr, FeatureFlags,
+    FieldWithType,
     InternedDottedName,
     Module, ModuleId, Package, PackageMetadata, SelfOrImportedPackageId, TemplateChoice, Type,
     TypeConId, Unit, VarWithType,
@@ -162,6 +163,24 @@ fn build_module(module: &schema::Module, interner: &mut Interner) -> Module {
     for data in &module.data_types {
         data_types.push(build_user_data_type(data, interner));
     }
+    let interfaces: Vec<DefInterface> = module
+        .interfaces
+        .iter()
+        .map(|interface| build_interface(interface, interner))
+        .collect();
+
+    // An interface is declared twice: as the interface itself, and as the
+    // type its name stands for, which is neither a record nor a variant.
+    for interface in &module.interfaces {
+        data_types.push(DefDataType {
+            location: None,
+            name_interned_dname: interner.dotted_name(&[&interface.name]),
+            params: Vec::new(),
+            serializable: false,
+            data_cons: Some(def_data_type::DataCons::Interface(Unit {})),
+        });
+    }
+
     for template in &module.templates {
         data_types.push(build_data_type(template, interner));
         for choice in &template.choices {
@@ -187,7 +206,7 @@ fn build_module(module: &schema::Module, interner: &mut Interner) -> Module {
         values: Vec::new(),
         templates,
         exceptions: Vec::new(),
-        interfaces: Vec::new(),
+        interfaces,
     }
 }
 
@@ -496,7 +515,8 @@ fn field_type(ty: &schema::FieldType, interner: &mut Interner) -> Type {
             })],
         ),
         // A contract id is parameterised by the template it points at.
-        schema::FieldType::ContractId(target) => (
+        schema::FieldType::ContractId(target)
+        | schema::FieldType::InterfaceContractId(target) => (
             BuiltinType::ContractId,
             vec![type_con(target, interner)],
         ),
@@ -534,6 +554,7 @@ mod tests {
             version: "1.0.0".to_owned(),
             modules: vec![SchemaModule {
                 data_types: Vec::new(),
+                interfaces: Vec::new(),
                 name: "Example.Iou".to_owned(),
                 templates: vec![Template {
                     key: None,
@@ -633,7 +654,23 @@ mod tests {
     }
 }
 
-/// A user-defined type's own definition, which a field naming it needs.
+/// An interface, and the type of the view it presents.
+///
+/// It declares no methods and no choices: whoever interprets the templates
+/// works those out, and a participant reads the view.s type.
+fn build_interface(interface: &schema::Interface, interner: &mut Interner) -> DefInterface {
+    DefInterface {
+        location: None,
+        tycon_interned_dname: interner.dotted_name(&[&interface.name]),
+        methods: Vec::new(),
+        param_interned_str: interner.string("this"),
+        choices: Vec::new(),
+        view: Some(field_type(&interface.view, interner)),
+        requires: Vec::new(),
+    }
+}
+
+/// A user-defined type.s own definition, which a field naming it needs.
 fn build_user_data_type(data: &schema::DataType, interner: &mut Interner) -> DefDataType {
     // A name may be dotted — the record behind a variant's named fields is
     // named after the variant holding it.
