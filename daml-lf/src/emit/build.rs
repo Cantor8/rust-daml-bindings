@@ -512,6 +512,13 @@ fn field_type(ty: &schema::FieldType, interner: &mut Interner) -> Type {
         schema::FieldType::Optional(inner) => {
             (BuiltinType::Optional, vec![field_type(inner, interner)])
         },
+        schema::FieldType::TextMap(inner) => {
+            (BuiltinType::Textmap, vec![field_type(inner, interner)])
+        },
+        schema::FieldType::GenMap(key, value) => (
+            BuiltinType::Genmap,
+            vec![field_type(key, interner), field_type(value, interner)],
+        ),
     };
     let base = self::builtin(builtin, interner);
     applied(base, args, interner)

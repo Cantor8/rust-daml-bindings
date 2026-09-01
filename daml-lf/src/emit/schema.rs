@@ -35,6 +35,10 @@ pub enum FieldType {
     Data(TypeRef),
     List(Box<FieldType>),
     Optional(Box<FieldType>),
+    /// A map from text to something.
+    TextMap(Box<FieldType>),
+    /// A map from anything to anything.
+    GenMap(Box<FieldType>, Box<FieldType>),
 }
 
 /// What a choice returns, which is drawn from the same vocabulary as a field.
@@ -233,7 +237,11 @@ impl Package {
 
 fn check_type(ty: &FieldType, defined: &[(&str, &str)]) -> DamlLfResult<()> {
     match ty {
-        FieldType::List(inner) | FieldType::Optional(inner) => check_type(inner, defined),
+        FieldType::List(inner) | FieldType::Optional(inner) | FieldType::TextMap(inner) =>
+            check_type(inner, defined),
+        FieldType::GenMap(key, value) => {
+            check_type(key, defined).and_then(|()| check_type(value, defined))
+        },
         FieldType::ContractId(target) | FieldType::Data(target) => {
             if defined
                 .iter()
