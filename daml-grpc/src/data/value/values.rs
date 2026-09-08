@@ -965,9 +965,9 @@ impl From<DamlValue> for Value {
                 // default Display flips to scientific for very small
                 // values (e.g. 1E-38), which Canton's Numeric parser
                 // rejects.
-                DamlValue::Numeric(v) => Some(Sum::Numeric(v.to_plain_string())),
+                DamlValue::Numeric(v) => Some(Sum::Numeric(numeric_wire(&v))),
                 DamlValue::Text(v) => Some(Sum::Text(v)), // value.set_text(v),
-                DamlValue::Timestamp(v) => Some(Sum::Timestamp(v.timestamp())),
+                DamlValue::Timestamp(v) => Some(Sum::Timestamp(v.timestamp_micros())),
                 DamlValue::Party(v) => Some(Sum::Party(v.party)),
                 DamlValue::Bool(v) => Some(Sum::Bool(v)),
                 DamlValue::Unit => Some(Sum::Unit(())),
@@ -1189,7 +1189,7 @@ mod tests {
     }
 
     #[test]
-    fn numeric_serialisation_preserves_natural_scale() {
+    fn numeric_serialisation_preserves_natural_scale_with_a_point() {
         // Pre-0.4 formatted numerics as `{:.37}` which padded every
         // value to 37 decimal places. Now uses BigDecimal's natural
         // Display, which preserves whatever scale the value was
@@ -1198,12 +1198,18 @@ mod tests {
         use crate::grpc_protobuf::com::daml::ledger::api::v2::value::Sum;
         use bigdecimal::BigDecimal;
         use std::str::FromStr;
-        let cases = ["0", "1.23", "0.00000000000000000000000000000000000001", "100", "-9.5"];
-        for s in cases {
+        let cases = [
+            ("0", "0."),
+            ("1.23", "1.23"),
+            ("0.00000000000000000000000000000000000001", "0.00000000000000000000000000000000000001"),
+            ("100", "100."),
+            ("-9.5", "-9.5"),
+        ];
+        for (s, wire) in cases {
             let dv = DamlValue::Numeric(BigDecimal::from_str(s).unwrap());
             let proto: Value = dv.into();
             match proto.sum {
-                Some(Sum::Numeric(out)) => assert_eq!(out, s, "unexpected serialised form"),
+                Some(Sum::Numeric(out)) => assert_eq!(out, wire, "unexpected serialised form"),
                 other => panic!("expected Sum::Numeric, got {other:?}"),
             }
         }
@@ -1223,5 +1229,35 @@ mod tests {
         let value2 = DamlValue::GenMap(items2.into_iter().collect::<DamlGenMap<DamlValue, DamlValue>>());
         assert_ne!(value1, value2);
         assert_eq!(Ordering::Less, value1.cmp(&value2));
+    }
+}
+
+/// A numeric as the ledger reads it: decimal notation with the point
+/// always present, since `3` is not a numeric literal to the ledger but
+/// `3.` is, at the same precision.
+fn numeric_wire(v: &DamlNumeric) -> String {
+    let mut s = v.to_plain_string();
+    if !s.contains('.') {
+        s.push('.');
+    }
+    s
+}
+
+#[cfg(test)]
+mod timestamp_wire {
+    use super::*;
+    use crate::grpc_protobuf::com::daml::ledger::api::v2::value::Sum;
+    use crate::grpc_protobuf::com::daml::ledger::api::v2::Value;
+    use chrono::DateTime;
+
+    /// The ledger counts timestamps in microseconds.
+    #[test]
+    fn a_timestamp_round_trips_in_micros() {
+        let micros: i64 = 1_709_209_815_000_000;
+        let at = DateTime::from_timestamp_micros(micros).unwrap();
+        let proto: Value = DamlValue::Timestamp(at).into();
+        assert!(matches!(proto.sum, Some(Sum::Timestamp(m)) if m == micros));
+        let back = DamlValue::try_from(Value { sum: Some(Sum::Timestamp(micros)) }).unwrap();
+        assert_eq!(back, DamlValue::Timestamp(at));
     }
 }
