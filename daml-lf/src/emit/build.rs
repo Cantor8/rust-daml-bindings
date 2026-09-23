@@ -11,16 +11,12 @@ use sha2::{Digest, Sha256};
 
 use crate::archive::{DamlLfArchive, DamlLfHashFunction};
 use crate::error::DamlLfResult;
-use crate::lf_protobuf::daml_lf::{archive_payload, Archive, ArchivePayload, HashFunction};
+use crate::lf_protobuf::daml_lf::{Archive, ArchivePayload, HashFunction, archive_payload};
 use crate::lf_protobuf::daml_lf_2::{
-    builtin_lit, def_data_type, def_template, expr, r#type, self_or_imported_package_id,
-    BuiltinFunction,
-    BuiltinLit, BuiltinType, DefDataType, DefInterface, DefTemplate, Expr, FeatureFlags,
-    InterfaceInstanceBody,
-    FieldWithType,
-    InternedDottedName,
-    Module, ModuleId, Package, PackageMetadata, SelfOrImportedPackageId, TemplateChoice, Type,
-    TypeConId, Unit, VarWithType,
+    BuiltinFunction, BuiltinLit, BuiltinType, DefDataType, DefInterface, DefTemplate, Expr, FeatureFlags,
+    FieldWithType, InterfaceInstanceBody, InternedDottedName, Module, ModuleId, Package, PackageMetadata,
+    SelfOrImportedPackageId, TemplateChoice, Type, TypeConId, Unit, VarWithType, builtin_lit, def_data_type,
+    def_template, expr, self_or_imported_package_id, r#type,
 };
 use crate::payload::DamlLfArchivePayload;
 
@@ -97,12 +93,7 @@ impl Interner {
 pub fn build_archive(package: &schema::Package) -> DamlLfResult<DamlLfArchive> {
     let (payload_bytes, hash) = build_payload(package)?;
     let payload = DamlLfArchivePayload::from_bytes(payload_bytes)?;
-    Ok(DamlLfArchive::new(
-        package.name.clone(),
-        payload,
-        DamlLfHashFunction::Sha256,
-        hash,
-    ))
+    Ok(DamlLfArchive::new(package.name.clone(), payload, DamlLfHashFunction::Sha256, hash))
 }
 
 /// The serialized payload of `package` and the hash naming it.
@@ -110,11 +101,7 @@ pub(crate) fn build_payload(package: &schema::Package) -> DamlLfResult<(Vec<u8>,
     package.validate()?;
 
     let mut interner = Interner::default();
-    let modules = package
-        .modules
-        .iter()
-        .map(|module| build_module(module, &mut interner))
-        .collect::<Vec<_>>();
+    let modules = package.modules.iter().map(|module| build_module(module, &mut interner)).collect::<Vec<_>>();
 
     let metadata = PackageMetadata {
         name_interned_str: interner.string(&package.name),
@@ -164,11 +151,8 @@ fn build_module(module: &schema::Module, interner: &mut Interner) -> Module {
     for data in &module.data_types {
         data_types.push(build_user_data_type(data, interner));
     }
-    let interfaces: Vec<DefInterface> = module
-        .interfaces
-        .iter()
-        .map(|interface| build_interface(interface, interner))
-        .collect();
+    let interfaces: Vec<DefInterface> =
+        module.interfaces.iter().map(|interface| build_interface(interface, interner)).collect();
 
     // An interface is declared twice: as the interface itself, and as the
     // type its name stands for, which is neither a record nor a variant.
@@ -188,11 +172,8 @@ fn build_module(module: &schema::Module, interner: &mut Interner) -> Module {
             data_types.push(build_choice_data_type(choice, interner));
         }
     }
-    let templates = module
-        .templates
-        .iter()
-        .map(|template| build_template(template, name_interned_dname, interner))
-        .collect();
+    let templates =
+        module.templates.iter().map(|template| build_template(template, name_interned_dname, interner)).collect();
 
     Module {
         name_interned_dname,
@@ -233,11 +214,7 @@ fn build_data_type(template: &schema::Template, interner: &mut Interner) -> DefD
     }
 }
 
-fn build_template(
-    template: &schema::Template,
-    module_dname: i32,
-    interner: &mut Interner,
-) -> DefTemplate {
+fn build_template(template: &schema::Template, module_dname: i32, interner: &mut Interner) -> DefTemplate {
     // The payload is bound to a name the party expressions project out of.
     let param = "this";
     let param_interned_str = interner.string(param);
@@ -246,35 +223,16 @@ fn build_template(
         tycon_interned_dname: interner.dotted_name(&[&template.name]),
         param_interned_str,
         precond: None,
-        signatories: Some(party_list(
-            &template.signatories,
-            param,
-            template,
-            module_dname,
-            interner,
-        )),
-        observers: Some(party_list(
-            &template.observers,
-            param,
-            template,
-            module_dname,
-            interner,
-        )),
+        signatories: Some(party_list(&template.signatories, param, template, module_dname, interner)),
+        observers: Some(party_list(&template.observers, param, template, module_dname, interner)),
         location: None,
         choices: template
             .choices
             .iter()
             .map(|choice| build_choice(choice, template, param, module_dname, interner))
             .collect(),
-        implements: template
-            .implements
-            .iter()
-            .map(|implemented| build_implements(implemented, interner))
-            .collect(),
-        key: template
-            .key
-            .as_ref()
-            .map(|key| build_key(key, interner)),
+        implements: template.implements.iter().map(|implemented| build_implements(implemented, interner)).collect(),
+        key: template.key.as_ref().map(|key| build_key(key, interner)),
     }
 }
 
@@ -293,11 +251,7 @@ fn build_key(key: &schema::TemplateKey, interner: &mut Interner) -> def_template
     def_template::DefKey {
         r#type: Some(key_type.clone()),
         key_expr: Some(stub_expr(&key_type, "the engine computes this key", interner)),
-        maintainers: Some(stub_expr(
-            &maintainers_type,
-            "the engine computes this key.s maintainers",
-            interner,
-        )),
+        maintainers: Some(stub_expr(&maintainers_type, "the engine computes this key.s maintainers", interner)),
     }
 }
 
@@ -375,7 +329,6 @@ fn party_list(
     }
 }
 
-
 /// The record behind a choice's arguments.
 fn build_choice_data_type(choice: &schema::Choice, interner: &mut Interner) -> DefDataType {
     let fields = choice
@@ -410,13 +363,7 @@ fn build_choice(
         location: None,
         name_interned_str: interner.string(&choice.name),
         consuming: choice.consuming,
-        controllers: Some(party_list(
-            &choice.controllers,
-            param,
-            template,
-            module_dname,
-            interner,
-        )),
+        controllers: Some(party_list(&choice.controllers, param, template, module_dname, interner)),
         observers: Some(empty_party_list(interner)),
         arg_binder: Some(VarWithType {
             var_interned_str: interner.string("arg"),
@@ -456,9 +403,9 @@ fn stub_body(ret_type: &Type, choice_name: &str, interner: &mut Interner) -> Exp
     let message = Expr {
         location: None,
         sum: Some(expr::Sum::BuiltinLit(BuiltinLit {
-            sum: Some(builtin_lit::Sum::TextInternedStr(interner.string(&format!(
-                "choice {choice_name} is interpreted by an external engine"
-            )))),
+            sum: Some(builtin_lit::Sum::TextInternedStr(
+                interner.string(&format!("choice {choice_name} is interpreted by an external engine")),
+            )),
         })),
     };
     Expr {
@@ -484,11 +431,7 @@ fn party_type(interner: &mut Interner) -> Type {
 }
 
 /// The type constructor naming a template's record, within this package.
-fn template_tycon(
-    module_dname: i32,
-    template_name: &str,
-    interner: &mut Interner,
-) -> r#type::Con {
+fn template_tycon(module_dname: i32, template_name: &str, interner: &mut Interner) -> r#type::Con {
     r#type::Con {
         tycon: Some(TypeConId {
             module: Some(ModuleId {
@@ -520,27 +463,18 @@ fn field_type(ty: &schema::FieldType, interner: &mut Interner) -> Type {
             })],
         ),
         // A contract id is parameterised by the template it points at.
-        schema::FieldType::ContractId(target)
-        | schema::FieldType::InterfaceContractId(target) => (
-            BuiltinType::ContractId,
-            vec![type_con(target, interner)],
-        ),
+        schema::FieldType::ContractId(target) | schema::FieldType::InterfaceContractId(target) => {
+            (BuiltinType::ContractId, vec![type_con(target, interner)])
+        },
         // A user-defined type is named, not built: its definition stands
         // beside whatever holds it.
         schema::FieldType::Data(target) => return type_con(target, interner),
-        schema::FieldType::List(inner) => {
-            (BuiltinType::List, vec![field_type(inner, interner)])
+        schema::FieldType::List(inner) => (BuiltinType::List, vec![field_type(inner, interner)]),
+        schema::FieldType::Optional(inner) => (BuiltinType::Optional, vec![field_type(inner, interner)]),
+        schema::FieldType::TextMap(inner) => (BuiltinType::Textmap, vec![field_type(inner, interner)]),
+        schema::FieldType::GenMap(key, value) => {
+            (BuiltinType::Genmap, vec![field_type(key, interner), field_type(value, interner)])
         },
-        schema::FieldType::Optional(inner) => {
-            (BuiltinType::Optional, vec![field_type(inner, interner)])
-        },
-        schema::FieldType::TextMap(inner) => {
-            (BuiltinType::Textmap, vec![field_type(inner, interner)])
-        },
-        schema::FieldType::GenMap(key, value) => (
-            BuiltinType::Genmap,
-            vec![field_type(key, interner), field_type(value, interner)],
-        ),
     };
     let base = self::builtin(builtin, interner);
     applied(base, args, interner)
@@ -549,9 +483,7 @@ fn field_type(ty: &schema::FieldType, interner: &mut Interner) -> Type {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::emit::schema::{
-        Choice, Field, FieldType, Module as SchemaModule, ResultType, Template,
-    };
+    use crate::emit::schema::{Choice, Field, FieldType, Module as SchemaModule, ResultType, Template};
 
     fn iou() -> schema::Package {
         schema::Package {
@@ -584,7 +516,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn a_template_and_its_choice_read_back() {
         // Decoding is what the rest of this crate does, so it is the check
@@ -608,11 +539,7 @@ mod tests {
                     .expect("the Iou template");
                 (
                     template.name().to_owned(),
-                    template
-                        .choices()
-                        .iter()
-                        .map(|choice| choice.name().to_owned())
-                        .collect::<Vec<_>>(),
+                    template.choices().iter().map(|choice| choice.name().to_owned()).collect::<Vec<_>>(),
                     template.fields().len(),
                 )
             })
@@ -680,20 +607,13 @@ fn type_con_id(target: &schema::TypeRef, interner: &mut Interner) -> TypeConId {
 /// What the view is computed from is a stub, for the same reason a choice's
 /// body is: whoever interprets the template works it out. A participant asked
 /// for the view of such a contract will find nothing to run.
-fn build_implements(
-    implemented: &schema::Implemented,
-    interner: &mut Interner,
-) -> def_template::Implements {
+fn build_implements(implemented: &schema::Implemented, interner: &mut Interner) -> def_template::Implements {
     let view_type = field_type(&implemented.view, interner);
     def_template::Implements {
         interface: Some(type_con_id(&implemented.interface, interner)),
         body: Some(InterfaceInstanceBody {
             methods: Vec::new(),
-            view: Some(stub_expr(
-                &view_type,
-                "the engine computes this view",
-                interner,
-            )),
+            view: Some(stub_expr(&view_type, "the engine computes this view", interner)),
         }),
         location: None,
     }
@@ -721,9 +641,7 @@ fn build_user_data_type(data: &schema::DataType, interner: &mut Interner) -> Def
     // named after the variant holding it.
     let segments: Vec<&str> = data.name.split('.').collect();
     let data_cons = match &data.body {
-        schema::DataBody::Record(fields) => {
-            def_data_type::DataCons::Record(fields_with_types(fields, interner))
-        },
+        schema::DataBody::Record(fields) => def_data_type::DataCons::Record(fields_with_types(fields, interner)),
         schema::DataBody::Variant(ctors) => {
             let fields = ctors
                 .iter()
@@ -732,16 +650,13 @@ fn build_user_data_type(data: &schema::DataType, interner: &mut Interner) -> Def
                     r#type: Some(field_type(&ctor.payload, interner)),
                 })
                 .collect();
-            def_data_type::DataCons::Variant(def_data_type::Fields { fields })
-        },
-        schema::DataBody::Enum(names) => {
-            def_data_type::DataCons::Enum(def_data_type::EnumConstructors {
-                constructors_interned_str: names
-                    .iter()
-                    .map(|name| interner.string(name))
-                    .collect(),
+            def_data_type::DataCons::Variant(def_data_type::Fields {
+                fields,
             })
         },
+        schema::DataBody::Enum(names) => def_data_type::DataCons::Enum(def_data_type::EnumConstructors {
+            constructors_interned_str: names.iter().map(|name| interner.string(name)).collect(),
+        }),
     };
 
     DefDataType {
@@ -753,10 +668,7 @@ fn build_user_data_type(data: &schema::DataType, interner: &mut Interner) -> Def
     }
 }
 
-fn fields_with_types(
-    fields: &[schema::Field],
-    interner: &mut Interner,
-) -> def_data_type::Fields {
+fn fields_with_types(fields: &[schema::Field], interner: &mut Interner) -> def_data_type::Fields {
     def_data_type::Fields {
         fields: fields
             .iter()

@@ -152,26 +152,14 @@ impl Package {
         self.check_named_types_exist()?;
         for module in &self.modules {
             for template in &module.templates {
-                let choice_controllers = template
-                    .choices
-                    .iter()
-                    .flat_map(|choice| choice.controllers.iter());
-                for party_field in template
-                    .signatories
-                    .iter()
-                    .chain(&template.observers)
-                    .chain(choice_controllers)
-                {
-                    let field = template
-                        .fields
-                        .iter()
-                        .find(|field| &field.name == party_field)
-                        .ok_or_else(|| {
-                            DamlLfError::new_package_build_error(format!(
-                                "template {} has no field {party_field}",
-                                template.name
-                            ))
-                        })?;
+                let choice_controllers = template.choices.iter().flat_map(|choice| choice.controllers.iter());
+                for party_field in template.signatories.iter().chain(&template.observers).chain(choice_controllers) {
+                    let field = template.fields.iter().find(|field| &field.name == party_field).ok_or_else(|| {
+                        DamlLfError::new_package_build_error(format!(
+                            "template {} has no field {party_field}",
+                            template.name
+                        ))
+                    })?;
                     if field.field_type != FieldType::Party {
                         return Err(DamlLfError::new_package_build_error(format!(
                             "template {}: field {party_field} does not hold a party",
@@ -229,16 +217,9 @@ impl Package {
 
         for module in &self.modules {
             for template in &module.templates {
-                let choice_types = template
-                    .choices
-                    .iter()
-                    .flat_map(|choice| {
-                        choice
-                            .arguments
-                            .iter()
-                            .map(|field| &field.field_type)
-                            .chain(std::iter::once(&choice.result))
-                    });
+                let choice_types = template.choices.iter().flat_map(|choice| {
+                    choice.arguments.iter().map(|field| &field.field_type).chain(std::iter::once(&choice.result))
+                });
                 let field_types = template.fields.iter().map(|field| &field.field_type);
                 for ty in field_types.chain(choice_types) {
                     check_type(ty, &defined)?;
@@ -273,23 +254,13 @@ const MAX_NUMERIC_SCALE: u8 = 37;
 
 fn check_type(ty: &FieldType, defined: &[(&str, &str)]) -> DamlLfResult<()> {
     match ty {
-        FieldType::Numeric(scale) if *scale > MAX_NUMERIC_SCALE => {
-            Err(DamlLfError::new_package_build_error(format!(
-                "a number is held at scale {scale}, and {MAX_NUMERIC_SCALE} is the widest"
-            )))
-        },
-        FieldType::List(inner) | FieldType::Optional(inner) | FieldType::TextMap(inner) =>
-            check_type(inner, defined),
-        FieldType::GenMap(key, value) => {
-            check_type(key, defined).and_then(|()| check_type(value, defined))
-        },
-        FieldType::ContractId(target)
-        | FieldType::InterfaceContractId(target)
-        | FieldType::Data(target) => {
-            if defined
-                .iter()
-                .any(|(module, name)| *module == target.module && *name == target.name)
-            {
+        FieldType::Numeric(scale) if *scale > MAX_NUMERIC_SCALE => Err(DamlLfError::new_package_build_error(format!(
+            "a number is held at scale {scale}, and {MAX_NUMERIC_SCALE} is the widest"
+        ))),
+        FieldType::List(inner) | FieldType::Optional(inner) | FieldType::TextMap(inner) => check_type(inner, defined),
+        FieldType::GenMap(key, value) => check_type(key, defined).and_then(|()| check_type(value, defined)),
+        FieldType::ContractId(target) | FieldType::InterfaceContractId(target) | FieldType::Data(target) => {
+            if defined.iter().any(|(module, name)| *module == target.module && *name == target.name) {
                 Ok(())
             } else {
                 Err(DamlLfError::new_package_build_error(format!(

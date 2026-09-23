@@ -1246,8 +1246,8 @@ fn numeric_wire(v: &DamlNumeric) -> String {
 #[cfg(test)]
 mod timestamp_wire {
     use super::*;
-    use crate::grpc_protobuf::com::daml::ledger::api::v2::value::Sum;
     use crate::grpc_protobuf::com::daml::ledger::api::v2::Value;
+    use crate::grpc_protobuf::com::daml::ledger::api::v2::value::Sum;
     use chrono::DateTime;
 
     /// The ledger counts timestamps in microseconds.
@@ -1257,7 +1257,10 @@ mod timestamp_wire {
         let at = DateTime::from_timestamp_micros(micros).unwrap();
         let proto: Value = DamlValue::Timestamp(at).into();
         assert!(matches!(proto.sum, Some(Sum::Timestamp(m)) if m == micros));
-        let back = DamlValue::try_from(Value { sum: Some(Sum::Timestamp(micros)) }).unwrap();
+        let back = DamlValue::try_from(Value {
+            sum: Some(Sum::Timestamp(micros)),
+        })
+        .unwrap();
         assert_eq!(back, DamlValue::Timestamp(at));
     }
 }

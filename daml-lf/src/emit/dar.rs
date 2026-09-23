@@ -5,8 +5,8 @@
 
 use std::io::{Cursor, Write};
 
-use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
+use zip::write::SimpleFileOptions;
 
 use crate::error::DamlLfResult;
 
@@ -50,8 +50,8 @@ fn manifest(dalf_name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::emit::schema::{Field, FieldType, Module, Package, Template};
     use crate::DarFile;
+    use crate::emit::schema::{Field, FieldType, Module, Package, Template};
 
     fn package() -> Package {
         Package {
@@ -65,10 +65,7 @@ mod tests {
                     key: None,
                     implements: Vec::new(),
                     name: "Iou".to_owned(),
-                    fields: vec![
-                        Field::new("issuer", FieldType::Party),
-                        Field::new("amount", FieldType::Int64),
-                    ],
+                    fields: vec![Field::new("issuer", FieldType::Party), Field::new("amount", FieldType::Int64)],
                     signatories: vec!["issuer".to_owned()],
                     observers: Vec::new(),
                     choices: Vec::new(),
@@ -94,16 +91,11 @@ mod tests {
                     .flat_map(|module| module.child_modules())
                     .flat_map(|module| module.data_types())
                     .filter_map(|data| match data {
-                        crate::element::DamlData::Template(template) =>
-                            Some(template.name().to_owned()),
+                        crate::element::DamlData::Template(template) => Some(template.name().to_owned()),
                         _ => None,
                     })
                     .collect();
-                (
-                    package.name().to_owned(),
-                    package.package_id().to_owned(),
-                    templates,
-                )
+                (package.name().to_owned(), package.package_id().to_owned(), templates)
             })
             .expect("applies");
         assert_eq!(name, "RoadrunnerExample");
