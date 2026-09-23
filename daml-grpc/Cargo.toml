@@ -10,6 +10,9 @@ keywords = ["daml", "api", "ledger"]
 categories = ["development-tools"]
 edition = "2024"
 rust-version = "1.96.0"
+# Lets dependents locate the proto sources: cargo exports the `cargo:root`
+# below to them as `DEP_DAML_GRPC_PROTOS_ROOT`.
+links = "daml-grpc-protos"
 build = "build.rs"
 
 [features]

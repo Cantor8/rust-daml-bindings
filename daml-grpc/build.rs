@@ -20,6 +20,8 @@ const PROTO_ROOT_PATH: &str = "resources/protobuf";
 
 fn main() -> Result<(), Box<dyn error::Error>> {
     let root = Path::new(PROTO_ROOT_PATH);
+    println!("cargo:rerun-if-changed={PROTO_ROOT_PATH}");
+    println!("cargo:root={}", fs::canonicalize(root)?.display());
     let all_protos = get_all_protos(root, ALL_PROTO_SRC_PATHS)?;
     tonic_prost_build::configure()
         .build_server(false)
